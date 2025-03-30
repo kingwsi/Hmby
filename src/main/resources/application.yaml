@@ -1,0 +1,35 @@
+spring:
+  application:
+    name: hmby
+  datasource:
+    url: jdbc:postgresql://192.168.123.232:5432/hmby
+    username: postgres
+    password: dev
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+  web:
+    resources:
+      static-locations: classpath:/dist/
+  mvc:
+    static-path-pattern: /web/**
+server:
+  port: 8094
+  
+hmby:
+  config:
+    ffmpeg-path: /opt/homebrew/bin/ffmpeg
+    ffprobe-path: /opt/homebrew/bin/ffprobe
+    emby-server: http://192.168.123.232:8096
+    volume-bind: 
+    - /Volumes/downloads/->/downloads/
+    - /Volumes/Volume1/->/Volume1
+    - /Volumes/Volume2/->/Volume2
+    output-media-path: /Volumes/downloads/output
+logging:
+  level:
+    org.springframework.ai.openai: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.springframework.web.socket: DEBUG
