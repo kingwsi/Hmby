@@ -183,7 +183,7 @@ public class MediaInfoService {
                     mediaInfo.setStatus(MediaStatus.SUCCESS);
                     break;
             }
-            long size = Files.size(Paths.get(mediaInfo.getOutputPath()));
+            long size = Files.size(Paths.get(ffmpegService.handlerVolumeBind(mediaInfo.getOutputPath())));
             mediaInfo.setProcessedSize(size);
         } catch (Exception e) {
             log.error("处理失败", e);
