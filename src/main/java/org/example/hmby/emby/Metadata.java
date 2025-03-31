@@ -2,11 +2,13 @@ package org.example.hmby.emby;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
+import org.example.hmby.entity.MediaInfo;
 import org.example.hmby.vo.MediaInfoDTO;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -101,8 +103,17 @@ public class Metadata {
     private String streamUrl;
     @JsonProperty("Size")
     private Long size;
-    
+
     private MediaInfoDTO mediaInfo;
     
+    private boolean isOutputMedia;
+    
     private List<SpecialFeature> specialFeatures;
+    
+    public boolean isOutputMedia() {
+        if (mediaInfo != null) {
+            return Objects.equals(mediaInfo.getOutputPath(), this.path);
+        }
+        return isOutputMedia;
+    }
 }

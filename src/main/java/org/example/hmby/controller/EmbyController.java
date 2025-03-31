@@ -95,7 +95,7 @@ public class EmbyController {
                 }
             }
             item.setDetailPage(String.format(propertiesConfig.getEmbyServer() + "/web/index.html#!/item?id=%s&serverId=%s", item.getId(), item.getServerId()));
-            item.setMediaInfo(mediaInfoService.getByAbsolutePath(item.getPath()));
+            item.setMediaInfo(mediaInfoService.getByInputPath(item.getPath()));
         }
         pageWrapper.setSize(pageSize);
         pageWrapper.setNumber(page);
@@ -111,7 +111,7 @@ public class EmbyController {
     @DeleteMapping("/{id}")
     public Response<String> deleteEmbyItem(@PathVariable("id") Long id) {
         Metadata itemMetadata = embyClient.getItemMetadata(id);
-        MediaInfo mediaInfo = mediaInfoService.getByAbsolutePath(itemMetadata.getPath());
+        MediaInfo mediaInfo = mediaInfoService.getByInputPath(itemMetadata.getPath());
         if (mediaInfo == null) {
             mediaInfoService.createByMetadata(itemMetadata);
         }
@@ -213,6 +213,7 @@ public class EmbyController {
 
     @GetMapping("/player/{itemId}")
     public Response<String> getPlayer(@PathVariable Long itemId, boolean hls) {
+        hls = false;
         EmbyUser userDetails = (EmbyUser) Optional.ofNullable(SecurityContextHolder.getContext())
                 .map(SecurityContext::getAuthentication)
                 .map(Authentication::getPrincipal)

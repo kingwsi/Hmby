@@ -42,6 +42,11 @@ public enum MediaStatus {
     WAITING,
 
     /**
+     * 完成（编码后操作覆盖或删除）
+     */
+    DONE,
+
+    /**
      * 删除以及删除EMBY资源
      */
     DELETE_EMBY;

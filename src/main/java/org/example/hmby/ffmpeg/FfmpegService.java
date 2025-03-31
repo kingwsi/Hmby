@@ -1,5 +1,6 @@
 package org.example.hmby.ffmpeg;
 
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.bramp.ffmpeg.FFmpegUtils;
 import net.bramp.ffmpeg.builder.FFmpegBuilder;
@@ -12,10 +13,14 @@ import org.apache.commons.lang3.StringUtils;
 import org.example.hmby.config.PropertiesConfig;
 import org.example.hmby.entity.MediaInfo;
 import org.example.hmby.entity.MediaMark;
+import org.example.hmby.exception.BusinessException;
+import org.example.hmby.service.MediaInfoService;
 import org.example.hmby.vo.MediaInfoDTO;
+import org.springframework.beans.BeanUtils;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -34,24 +39,26 @@ import static java.util.stream.Collectors.joining;
  */
 @Slf4j
 @Service
+@AllArgsConstructor
 public class FfmpegService {
 
     private final FFmpegManager ffmpegManager;
     private final SimpMessagingTemplate messagingTemplate;
-
-    public FfmpegService(FFmpegManager ffmpegManager, SimpMessagingTemplate messagingTemplate) {
-        this.ffmpegManager = ffmpegManager;
-        this.messagingTemplate = messagingTemplate;
-    }
+    private final PropertiesConfig propertiesConfig;
 
 
     public String encoding(MediaInfo mediaInfo) throws IOException {
+
+        String inputPath = this.handlerVolumeBind(mediaInfo.getInputPath());
+        String outputPath = this.handlerVolumeBind(mediaInfo.getOutputPath());
         FFmpegFileInputBuilder inputBuilder = new FFmpegBuilder()
-                .setInput(mediaInfo.getInputPath())
+                .setInput(inputPath)
+                .setVideoCodec("h264_cuvid")
+                .addExtraArgs("-hwaccel", "cuvid")
                 .setStrict(Strict.EXPERIMENTAL);
 
-        FFmpegOutputBuilder fFmpegOutputBuilder = inputBuilder.done().addOutput(mediaInfo.getOutputPath())
-                .setVideoCodec(StringUtils.isEmpty(mediaInfo.getCodec()) ? "h264" : mediaInfo.getCodec())
+        FFmpegOutputBuilder fFmpegOutputBuilder = inputBuilder.done().addOutput(outputPath)
+                .setVideoCodec("hevc_nvenc")
                 .setFormat("mp4");
         if (mediaInfo.getBitRate() != null && mediaInfo.getBitRate() > 1000) {
             fFmpegOutputBuilder.setVideoBitRate(mediaInfo.getBitRate())
@@ -63,7 +70,7 @@ public class FfmpegService {
         
         FFmpegBuilder fFmpegBuilder = fFmpegOutputBuilder.done().overrideOutputFiles(true);
 
-        FFmpegProbeResult in = ffmpegManager.getFfprobe().probe(mediaInfo.getInputPath());
+        FFmpegProbeResult in = ffmpegManager.getFfprobe().probe(inputPath);
 
         ProgressInfo progressInfo = new ProgressInfo();
         progressInfo.setMediaName(mediaInfo.getFileName());
@@ -115,10 +122,29 @@ public class FfmpegService {
         // 剪切
         ArrayList<String> tmpFileList = new ArrayList<>();
         try {
+            String inputPath = this.handlerVolumeBind(mediaInfoDTO.getInputPath());
+            String outputPath = this.handlerVolumeBind(mediaInfoDTO.getOutputPath());
+            
+            if (mediaInfoDTO.getMarks().size()==1) {
+                MediaMark mark = mediaInfoDTO.getMarks().get(0);
+                FFmpegBuilder builder = new FFmpegBuilder()
+                        .setInput(inputPath)
+                        .setStartOffset(mark.getStart(), TimeUnit.SECONDS)
+                        .setDuration(mark.getEnd() - mark.getStart(), TimeUnit.SECONDS)
+                        .done().addOutput(outputPath)
+                        .setVideoCodec("copy")
+                        .setAudioCodec("copy")
+                        .done().overrideOutputFiles(true);
+                ffmpegManager.createJob(builder).run();
+                // 获取转换后文件大小
+                long size = Files.size(Paths.get(outputPath));
+                mediaInfoDTO.setProcessedSize(size);
+                return;
+            }
             for (MediaMark mark : mediaInfoDTO.getMarks()) {
                 String outPath = Paths.get(getTmpPath(), mediaInfoDTO.getId() + "_" + mark.getStart() + "." + mediaInfoDTO.getSuffix()).toString();
                 FFmpegBuilder builder = new FFmpegBuilder()
-                        .setInput(mediaInfoDTO.getInputPath())
+                        .setInput(inputPath)
                         .setStartOffset(mark.getStart(), TimeUnit.SECONDS)
                         .setDuration(mark.getEnd() - mark.getStart(), TimeUnit.SECONDS)
                         .done().addOutput(outPath)
@@ -136,7 +162,7 @@ public class FfmpegService {
                     .setInput(listOfFiles.toAbsolutePath().toString()).setFormat("concat");
 
             FFmpegOutputBuilder outputBuilder = inputBuilder.done()
-                    .addOutput(mediaInfoDTO.getOutputPath())
+                    .addOutput(outputPath)
                     .setVideoCodec("copy")
                     .setAudioCodec("copy");
 
@@ -148,7 +174,7 @@ public class FfmpegService {
             ffmpegManager.createJob(fFmpegBuilder).run();
 
             // 获取转换后文件大小
-            long size = Files.size(Paths.get(mediaInfoDTO.getOutputPath()));
+            long size = Files.size(Paths.get(outputPath));
             mediaInfoDTO.setProcessedSize(size);
         } finally {
             // 删除临时文件
@@ -185,5 +211,29 @@ public class FfmpegService {
 
     public String getTmpPath() {
         return System.getProperty("java.io.tmpdir");
+    }
+
+    public String handlerVolumeBind(String path) {
+        path = String.valueOf(path);
+        if (propertiesConfig.getVolumeBind() != null && !propertiesConfig.getVolumeBind().isEmpty()) {
+            // 卷路径映射处理
+            for (String item : propertiesConfig.getVolumeBind()) {
+                String[] split = item.trim().split("->");
+                if (split.length != 2) {
+                    throw new BusinessException("Volume bind exception!");
+                }
+                String hostVolume = split[0];
+                String embyVolume = split[1];
+                if (path.startsWith(hostVolume)) {
+                    return path;
+                }
+                if (path.startsWith(embyVolume)) {
+                    String realPath = path.replaceFirst(embyVolume, hostVolume.replace(File.separatorChar, '/'));
+                    log.info("Volume path replace : {} ->{}", path, realPath);
+                    return realPath.replace('/', File.separatorChar);
+                }
+            }
+        }
+        return path;
     }
 }

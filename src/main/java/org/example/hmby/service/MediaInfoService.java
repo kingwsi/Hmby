@@ -35,6 +35,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -75,7 +76,6 @@ public class MediaInfoService {
         if (exist != null) {
             mediaInfo.setId(exist.getId());
         }
-        mediaInfo.setInputPath(this.handlerVolumeBind(mediaInfo.getInputPath()));
         mediaInfoRepository.save(mediaInfo);
         if (mediainfoDTO.getMarks() != null && !mediainfoDTO.getMarks().isEmpty()) {
             checkTime(mediainfoDTO.getMarks());
@@ -150,19 +150,15 @@ public class MediaInfoService {
                 throw new RuntimeException(e);
             }
         }
-        String outputAbsolutePath = Paths.get(folderPath.toString(), mediaInfo.getFileName() + ".mp4").toString();
+        String outputPath = Paths.get(folderPath.toString(), mediaInfo.getFileName() + ".mp4").toString();
         if (!StringUtils.isEmpty(mediaInfo.getMetaTitle())) {
-            outputAbsolutePath = Paths.get(folderPath.toString(), mediaInfo.getMetaTitle() + ".mp4").toString();
+            outputPath = Paths.get(folderPath.toString(), mediaInfo.getMetaTitle() + ".mp4").toString();
         }
         // 二次处理已经处理过的文件，要重命名
         if (mediaInfo.getInputPath().contains(propertiesConfig.getOutputMediaPath())) {
-            outputAbsolutePath = Paths.get(folderPath.toString(), mediaInfo.getFileName() + "_1.mp4").toString();
+            outputPath = Paths.get(folderPath.toString(), mediaInfo.getFileName() + "_1.mp4").toString();
         }
-        if (mediaInfo.getOutputPath() == null) {
-            String realPath = this.handlerVolumeBind(outputAbsolutePath);
-            mediaInfo.setOutputPath(realPath);
-        }
-        mediaInfo.setOutputPath(outputAbsolutePath);
+        mediaInfo.setOutputPath(outputPath.replace(File.separator, "/"));
         mediaInfo.setStatus(MediaStatus.PROCESSING);
         mediaInfoRepository.save(mediaInfo);
         String result = null;
@@ -179,7 +175,7 @@ public class MediaInfoService {
                 case MOVE:
                     ffmpegService.moveAndTitle(mediaInfo);
                     mediaInfo.setRemark(null);
-                    mediaInfo.setStatus(MediaStatus.DELETED);
+                    mediaInfo.setStatus(MediaStatus.DONE);
                     break;
                 case ENCODE:
                     result = ffmpegService.encoding(mediaInfo);
@@ -240,34 +236,38 @@ public class MediaInfoService {
     @Transactional(rollbackOn = Exception.class)
     public void moveMedia(Long id, boolean override) throws ChangeSetPersister.NotFoundException, IOException {
         MediaInfo mediaInfo = mediaInfoRepository.findById(id).orElseThrow(ChangeSetPersister.NotFoundException::new);
-        Path source = Paths.get(mediaInfo.getInputPath());
-        if (Files.exists(source)) {
-            Path recyclePath = Paths.get(propertiesConfig.getOutputMediaPath(), "recycle");
-            if (!Files.exists(recyclePath)) {
-                Files.createDirectories(recyclePath);
+        String outputPath = ffmpegService.handlerVolumeBind(mediaInfo.getOutputPath());
+        String inputPath = ffmpegService.handlerVolumeBind(mediaInfo.getInputPath());
+
+        Path source = Paths.get(inputPath);
+        if (!Files.exists(source)) {
+            throw new ChangeSetPersister.NotFoundException();
+        }
+        Path recyclePath = Paths.get(propertiesConfig.getOutputMediaPath(), "recycle");
+        if (!Files.exists(recyclePath)) {
+            Files.createDirectories(recyclePath);
+        }
+
+        Path target = Paths.get(propertiesConfig.getOutputMediaPath(), "recycle", "done_" + mediaInfo.getFileName() + "." + mediaInfo.getSuffix());
+        if (override) {
+            // 覆盖源文件
+            source = Paths.get(outputPath);
+            target = Paths.get(inputPath);
+        }
+        try {
+            Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+            String nfo = inputPath.substring(0, outputPath.lastIndexOf("."))+".nfo";
+            Path nfoPath = Paths.get(nfo);
+            if (Files.exists(nfoPath)) {
+                Files.delete(nfoPath);
             }
-            
-            Path target = Paths.get(propertiesConfig.getOutputMediaPath(), "recycle", "done_" + mediaInfo.getFileName() + "." + mediaInfo.getSuffix());
-            if (override) {
-                // 覆盖源文件
-                source = Paths.get(mediaInfo.getOutputPath());
-                target = Paths.get(mediaInfo.getInputPath());
-            }
-            try {
-                Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
-                String nfo = mediaInfo.getInputPath().substring(0, mediaInfo.getInputPath().lastIndexOf("."))+".nfo";
-                Path nfoPath = Paths.get(nfo);
-                if (Files.exists(nfoPath)) {
-                    Files.delete(nfoPath);
-                }
-            } catch (IOException e) {
-                throw new BusinessException("移动文件失败！");
-            }
+        } catch (IOException e) {
+            throw new BusinessException("移动文件失败！");
         }
         if (override) {
             mediaMarkRepository.deleteMediaMarksByMediaId(id);
         }
-        mediaInfo.setStatus(MediaStatus.SUCCESS);
+        mediaInfo.setStatus(MediaStatus.DONE);
         mediaInfoRepository.save(mediaInfo);
     }
 
@@ -307,39 +307,19 @@ public class MediaInfoService {
         }
     }
 
-    public MediaInfo getByAbsolutePath(String absolutePath) {
-        return mediaInfoRepository.findByInputPath(absolutePath);
+    public MediaInfo getByInputPath(String inputPath) {
+        return mediaInfoRepository.findByInputPath(inputPath);
     }
 
-    public MediaInfoDTO getMediaDetail(String absolutePath) {
-        String realPath = this.handlerVolumeBind(absolutePath);
-        MediaInfo mediaInfo = mediaInfoRepository.findByOutputPath(realPath);
+    public MediaInfo getByOutputPath(String outputPath) {
+        return mediaInfoRepository.findByOutputPath(outputPath);
+    }
+
+    public MediaInfoDTO getMediaDetail(String inputPath) {
+        MediaInfo mediaInfo = mediaInfoRepository.findByInputPathOrOutputPath(inputPath, inputPath);
         if (mediaInfo == null) {
             return null;
         }
         return this.getMediaAndMarks(mediaInfo.getId());
-    }
-    
-    public String handlerVolumeBind(String path) {
-        if (propertiesConfig.getVolumeBind() != null && !propertiesConfig.getVolumeBind().isEmpty()) {
-            // 卷路径映射处理
-            for (String item : propertiesConfig.getVolumeBind()) {
-                String[] split = item.trim().split("->");
-                if (split.length != 2) {
-                    throw new BusinessException("Volume bind exception!");
-                }
-                String hostVolume = split[0];
-                String embyVolume = split[1];
-                if (path.startsWith(hostVolume)) {
-                    return path;
-                }
-                if (path.startsWith(embyVolume)) {
-                    String realPath = path.replaceFirst(embyVolume, hostVolume);
-                    log.info("Volume path replace : {} ->{}", path, realPath);
-                    return realPath;
-                }
-            }
-        }
-        return path;
     }
 }

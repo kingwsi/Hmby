@@ -5,9 +5,14 @@
         <a-row :gutter="[16, 16]">
           <a-col>
             <a-form-item label="媒体库">
-              <a-select v-model:value="queryParam.parentId" style="width: 200px; margin-right: 16px" placeholder="请选择媒体库"
+              <a-select v-model:value="queryParam.parentId"
+              style="width: 200px; margin-right: 16px"
+              :allowClear="true"
+              placeholder="请选择媒体库"
                 @change="handleSearch">
-                <a-select-option v-for="lib in libraries" :key="lib.Id" :value="lib.Id">
+                <a-select-option v-for="lib in libraries"
+                :key="lib.Id"
+                :value="lib.Id">
                   {{ lib.Name }}
                 </a-select-option>
               </a-select>
@@ -15,8 +20,10 @@
           </a-col>
           <a-col>
             <a-form-item label="关键字">
-              <a-input-search v-model:value="queryParam.keyword" placeholder="请输入关键词搜索" style="width: 200px"
-                @search="handleSearch" />
+              <a-input v-model:value="queryParam.keyword"
+              placeholder="请输入关键词搜索" style="width: 200px"
+              :allowClear="true"
+                @change="handleSearch" />
             </a-form-item>
           </a-col>
           <a-col>
@@ -39,6 +46,11 @@
                   {{ tag.label }}
                 </a-select-option>
               </a-select>
+            </a-form-item>
+          </a-col>
+          <a-col>
+            <a-form-item>
+              <a-button type="primary" @click="handleSearch">搜索</a-button>
             </a-form-item>
           </a-col>
         </a-row>
@@ -89,21 +101,19 @@
           @change="handlePageChange" />
     </div>
     
-    <Drawer ref="drawer" />
+    <EmbyViewDrawer ref="drawer" @update="handleSearch()" />
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted, onActivated } from 'vue';
-import { message } from 'ant-design-vue';
 import MediaStatusTag from '@/components/MediaStatusTag.vue';
 import router from '@/router';
-import VideoPlayer from '@/components/VideoPlayer.vue';
 import request from '@/utils/request';
 import Ellipsis from '@/components/Ellipsis.vue';
 import { EditOutlined, MenuUnfoldOutlined, EyeOutlined } from '@ant-design/icons-vue';
 import { useRoute } from 'vue-router'
-import Drawer from '@/components/Drawer.vue';
+import EmbyViewDrawer from '@/components/EmbyViewDrawer.vue';
 
 // 状态管理
 const mediaList = ref([]);
@@ -234,7 +244,6 @@ const handleOpenDrawer = (itemId) => {
   drawer.value.handleOpenDrawer(itemId);
 };
 
-
 </script>
 
 <style scoped lang="less">
@@ -244,7 +253,6 @@ const handleOpenDrawer = (itemId) => {
   flex-wrap: wrap;
   overflow-y: auto;
   height: 100%;
-
   &::-webkit-scrollbar {
     width: 4px;
   }

@@ -73,7 +73,7 @@ const handleLogout = () => {
 
 const themeConfig = {
       token: {
-        borderRadius: 0,
+        // borderRadius: 0,
         colorPrimary: '52C41A',
         fontSize: 12,
         wireframe: false

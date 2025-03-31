@@ -11,4 +11,6 @@ public interface MediaInfoRepository extends JpaRepository<MediaInfo, Long>, Jpa
     MediaInfo findByInputPath(String absolutePath);
 
     MediaInfo findByOutputPath(String outputPath);
+
+    MediaInfo findByInputPathOrOutputPath(String inputPath, String outputPath);
 }
