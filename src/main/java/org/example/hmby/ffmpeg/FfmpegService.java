@@ -13,11 +13,10 @@ import org.apache.commons.lang3.StringUtils;
 import org.example.hmby.config.PropertiesConfig;
 import org.example.hmby.entity.MediaInfo;
 import org.example.hmby.entity.MediaMark;
+import org.example.hmby.enumerate.CacheKey;
+import org.example.hmby.enumerate.MediaCodec;
 import org.example.hmby.exception.BusinessException;
-import org.example.hmby.service.MediaInfoService;
 import org.example.hmby.vo.MediaInfoDTO;
-import org.springframework.beans.BeanUtils;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
@@ -28,6 +27,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 import static java.util.stream.Collectors.joining;
@@ -43,22 +43,23 @@ import static java.util.stream.Collectors.joining;
 public class FfmpegService {
 
     private final FFmpegManager ffmpegManager;
-    private final SimpMessagingTemplate messagingTemplate;
     private final PropertiesConfig propertiesConfig;
+    private final ConcurrentHashMap<Object, Object> localCache;
 
 
     public String encoding(MediaInfo mediaInfo) throws IOException {
-
         String inputPath = this.handlerVolumeBind(mediaInfo.getInputPath());
         String outputPath = this.handlerVolumeBind(mediaInfo.getOutputPath());
         FFmpegFileInputBuilder inputBuilder = new FFmpegBuilder()
                 .setInput(inputPath)
-                .setVideoCodec("h264_cuvid")
-                .addExtraArgs("-hwaccel", "cuvid")
                 .setStrict(Strict.EXPERIMENTAL);
+        if (mediaInfo.getCodec() == MediaCodec.hevc_nvenc) {
+            inputBuilder.setVideoCodec("h264_cuvid")
+                    .addExtraArgs("-hwaccel", "cuvid");
+        }
 
         FFmpegOutputBuilder fFmpegOutputBuilder = inputBuilder.done().addOutput(outputPath)
-                .setVideoCodec("hevc_nvenc")
+                .setVideoCodec(mediaInfo.getCodec().name())
                 .setFormat("mp4");
         if (mediaInfo.getBitRate() != null && mediaInfo.getBitRate() > 1000) {
             fFmpegOutputBuilder.setVideoBitRate(mediaInfo.getBitRate())
@@ -72,8 +73,6 @@ public class FfmpegService {
 
         FFmpegProbeResult in = ffmpegManager.getFfprobe().probe(inputPath);
 
-        ProgressInfo progressInfo = new ProgressInfo();
-        progressInfo.setMediaName(mediaInfo.getFileName());
 
         FFmpegJob job = ffmpegManager.createJob(fFmpegBuilder, progress -> {
             if (progress.out_time_ns < 0) {
@@ -95,17 +94,15 @@ public class FfmpegService {
                     progress.speed,
                     leftTime
             ));
-            HashMap<String, Object> progressMap = new HashMap<>();
-            progressMap.put("percentage", String.format("%.0f%%", percentage * 100));
-            progressMap.put("status", progress.status);
-            progressMap.put("fileName", mediaInfo.getFileName());
-            progressMap.put("frame", progress.frame);
-            progressMap.put("time", timecode);
-            progressMap.put("fps", progress.fps.doubleValue());
-            progressMap.put("speed", progress.speed);
-            progressMap.put("bitrate", progress.bitrate);
-            progressMap.put("leftTime", leftTime);
-            messagingTemplate.convertAndSend("/topic/encode-progress", progressMap);
+            localCache.put(CacheKey.CACHE_ENCODING_PROGRESS, new ProgressInfo(
+                    mediaInfo.getFileName(),
+                    progress.getStatus(),
+                    progress.fps.doubleValue(),
+                    String.format("%.0f%%", percentage * 100),
+                    progress.speed,
+                    "",
+                    leftTime
+            ));
         });
         try {
             job.run();

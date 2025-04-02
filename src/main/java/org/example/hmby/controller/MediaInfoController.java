@@ -3,15 +3,21 @@ package org.example.hmby.controller;
 
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.bramp.ffmpeg.info.Codec;
+import net.bramp.ffmpeg.progress.Progress;
+import net.bramp.ffmpeg.shared.CodecType;
 import org.apache.commons.lang3.StringUtils;
 import org.example.hmby.Response;
 import org.example.hmby.config.PropertiesConfig;
 import org.example.hmby.emby.MovieItem;
 import org.example.hmby.entity.MediaInfo;
 import org.example.hmby.enumerate.CacheKey;
+import org.example.hmby.enumerate.MediaCodec;
 import org.example.hmby.enumerate.MediaStatus;
 import org.example.hmby.exception.BusinessException;
+import org.example.hmby.ffmpeg.FFmpegManager;
 import org.example.hmby.ffmpeg.FfmpegExecutorRunnable;
+import org.example.hmby.ffmpeg.ProgressInfo;
 import org.example.hmby.service.MediaInfoService;
 import org.example.hmby.vo.MediaInfoDTO;
 import org.example.hmby.vo.MediaQueueVO;
@@ -22,16 +28,22 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
@@ -39,11 +51,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @RequestMapping("/api/media-info")
 public class MediaInfoController {
     private final MediaInfoService mediaInfoService;
-    
+
     private final ThreadPoolExecutor singleThreadExecutor;
 
     private final ConcurrentHashMap<Object, Object> localCache;
     private final PropertiesConfig propertiesConfig;
+    private final FFmpegManager ffmpegManager;
 
     @PostMapping
     public Response<String> save(@RequestBody MediaInfoDTO mediaInfoDTO) {
@@ -64,7 +77,7 @@ public class MediaInfoController {
     public Response<Page<MediaInfo>> listOfPage(MediaInfoDTO mediaInfoDTO, Pageable pageable) {
         return Response.success(mediaInfoService.listOfPage(mediaInfoDTO, pageable));
     }
-    
+
     @PostMapping("/execute/{id}")
     public Response<?> execute(@PathVariable Long id) {
         propertiesConfig.check();
@@ -97,52 +110,34 @@ public class MediaInfoController {
         return Response.success();
     }
 
+    @PutMapping("/progress")
+    public Response<Object> progress(@RequestBody Map<String, Object> progress) {
+        return Response.success(localCache.put(CacheKey.CACHE_ENCODING_PROGRESS.name(), progress));
+    }
+
     @GetMapping("/output/page")
     public Response<?> getOutputPage(Page<MovieItem> page) {
         return Response.success(mediaInfoService.listOutputMedia(page));
     }
 
-    @GetMapping("/progress/{id}")
-    public SseEmitter getEncodingProgress(@PathVariable("id") String id) {
-        SseEmitter emitter = new SseEmitter(10000L);
+    @GetMapping("/progress")
+    public Response<Object> progress() {
+//        ProgressInfo progressInfo = new ProgressInfo("Hello World.mp4", Progress.Status.CONTINUE, 12, String.format("%.0f%%", 0.89 * 100), 2, "", "00:12:21");
+        return Response.success(localCache.get(CacheKey.CACHE_ENCODING_PROGRESS.name()));
+    }
+    
+    @GetMapping("/codecs")
+    public Response<List<Codec>> codecs() throws IOException {
+        List<String> mediaCodecs = MediaCodec.getCodecs();
+        
+        List<Codec> codecs = ffmpegManager.getFfmpeg().codecs().stream()
+                .filter(codec -> codec.getType() == CodecType.VIDEO && mediaCodecs.contains(codec.getName()))
+                .toList();
+        return Response.success(codecs);
+    }
 
-        AtomicBoolean isCompleted = new AtomicBoolean(false);
-
-        emitter.onTimeout(() -> {
-            isCompleted.set(true);
-            log.info("连接超时！{}", id);
-            emitter.complete();
-        });
-
-        emitter.onCompletion(() -> {
-            isCompleted.set(true);
-            log.info("连接已完成！{}", id);
-        });
-
-        // 启动后台线程，每秒发送一次进度
-        new Thread(() -> {
-            try {
-                while (!isCompleted.get()) {
-                    Object encodingProgress = localCache.get(String.format("%s-%s", CacheKey.CACHE_ENCODING_PROGRESS.name(), id));
-                    if (encodingProgress != null) {
-                        emitter.send(SseEmitter.event()
-                                .name("progress")
-                                .data(encodingProgress));
-                    }
-                    TimeUnit.SECONDS.sleep(1);
-                }
-            } catch (IOException e) {
-                // 处理发送异常（例如客户端断开连接）
-                isCompleted.set(true);
-                log.error("SseEmitter encountered IOException for ID: {}", id);
-                emitter.completeWithError(e);
-            } catch (InterruptedException e) {
-                // 处理线程中断
-                Thread.currentThread().interrupt();
-                log.error("SseEmitter thread interrupted for ID: {}", id);
-                emitter.completeWithError(e);
-            }
-        }).start();
-        return emitter;
+    @GetMapping("/status")
+    public Response<?> status() throws IOException {
+        return Response.success(MediaStatus.values());
     }
 }

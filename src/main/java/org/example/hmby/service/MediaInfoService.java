@@ -17,7 +17,7 @@ import org.example.hmby.enumerate.MediaConvertType;
 import org.example.hmby.enumerate.MediaStatus;
 import org.example.hmby.enumerate.ParamCode;
 import org.example.hmby.exception.BusinessException;
-import org.example.hmby.feign.EmbyFeignClient;
+import org.example.hmby.emby.EmbyFeignClient;
 import org.example.hmby.ffmpeg.FfmpegExecutorRunnable;
 import org.example.hmby.ffmpeg.FfmpegService;
 import org.example.hmby.mapstract.MediaInfoConvertMapper;

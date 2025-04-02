@@ -13,7 +13,7 @@ import org.example.hmby.emby.request.EmbyItemRequest;
 import org.example.hmby.emby.request.MetadataRequest;
 import org.example.hmby.entity.MediaInfo;
 import org.example.hmby.exception.BusinessException;
-import org.example.hmby.feign.EmbyFeignClient;
+import org.example.hmby.emby.EmbyFeignClient;
 import org.example.hmby.sceurity.EmbyUser;
 import org.example.hmby.service.MediaInfoService;
 import org.example.hmby.service.TagService;

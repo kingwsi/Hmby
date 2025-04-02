@@ -23,7 +23,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         String authHeader = request.getHeader("Authorization");
 
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+        if (authHeader != null) {
             String token = authHeader.replace("Bearer ", "");
             if (!SecurityUtils.validateToken(token)) {
                 throw new AccountExpiredException("Invalid token");

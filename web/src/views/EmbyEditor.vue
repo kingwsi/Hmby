@@ -64,10 +64,7 @@
             </a-form-item>
             <a-form-item label="编码" v-if="mediaInfo.type === 'ENCODE'">
               <a-radio-group v-model:value="mediaInfo.codec" default-value="h264" button-style="solid">
-                <a-radio value="hevc_qsv">hevc_qsv</a-radio>
-                <a-radio value="libx265">h265</a-radio>
-                <a-radio value="h264_qsv">h264_qsv</a-radio>
-                <a-radio value="h264">h264</a-radio>
+                <a-radio v-for="codec in codecs" :key="codec.name" :value="codec.name">{{ codec.name }}</a-radio>
               </a-radio-group>
             </a-form-item>
             <a-form-item label="比特率" v-if="mediaInfo.type === 'ENCODE'">
@@ -101,8 +98,8 @@
                 </a-radio>
               </a-radio-group>
             </a-form-item>
-            <a-form-item label="水印">
-              <a-input v-model:value="mediaInfo.watermark" placeholder="水印"/>
+            <a-form-item label="标题">
+              <a-input v-model:value="mediaInfo.watermark" placeholder="标题"/>
             </a-form-item>
           </a-form>
         </a-col>
@@ -151,6 +148,7 @@ const mediaStream = reactive({
 })
 const expectSize = ref(0)
 const duration = ref(0)
+const codecs = ref([])
 
 // 表单布局
 const formLayout = {
@@ -181,6 +179,7 @@ watch(marks, () => {
 
 onActivated(() => {
   loadMetaInfo()
+  loadCodecs()
 })
 
 onDeactivated(() => {
@@ -342,6 +341,13 @@ const getExpectSize = () => {
   })
   const size = totalSecond / duration.value * (mediaSource.Size / 1024 / 1024)
   expectSize.value = size.toFixed(2)
+}
+
+// 方法
+const loadCodecs = async () => {
+  await request.get('/api/media-info/codecs').then(response => {
+    codecs.value = response.data
+  })
 }
 </script>
 

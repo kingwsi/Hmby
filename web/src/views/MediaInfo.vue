@@ -39,8 +39,31 @@
                 </a-row>
             </a-form>
         </div>
+        <!-- 进度信息展示 -->
+        <a-card v-if="progressInfo" style="margin-bottom: 8px; background-color: #f5f5f5">
+            <a-row :gutter="[16, 8]" align="middle">
+                <a-col :xs="24" :sm="12" :md="8" :lg="6">
+                    <span style="margin-right: 8px">{{ progressInfo.fileName }}</span>
+                </a-col>
+                <a-col :xs="12" :sm="6" :md="4" :lg="3">
+                    <span>进度: {{ progressInfo.percentage }}</span>
+                </a-col>
+                <a-col :xs="12" :sm="6" :md="4" :lg="3">
+                    <span>{{ progressInfo.fps }} FPS</span>
+                </a-col>
+                <a-col :xs="12" :sm="6" :md="4" :lg="3">
+                    <span>速度: {{ progressInfo.speed }}x</span>
+                </a-col>
+                <a-col :xs="12" :sm="6" :md="4" :lg="4">
+                    <span>比特率: {{ progressInfo.bitrate }}</span>
+                </a-col>
+                <a-col :xs="12" :sm="6" :md="4" :lg="5">
+                    <span>剩余时间: {{ progressInfo.leftTime }}</span>
+                </a-col>
+            </a-row>
+        </a-card>
         <!-- 数据表格 -->
-        <a-table :columns="columns" :data-source="tableData" :pagination="pagination" :scroll="{ x: 1300 }"
+        <a-table :columns="columns" :data-source="tableData" :pagination="pagination" :scroll="{ x: 600 }"
             :loading="loading" @change="handleTableChange" row-key="id">
             <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'action'">
@@ -50,31 +73,29 @@
                         </a-popconfirm>
                         <a-button type="link" @click="() => $router.push(`/emby-editor/${record.embyId}`)">编辑</a-button>
                         <a-button type="link" @click="execute(record.id)">开始</a-button>
-                        <a-tooltip v-if="record.status === 'PROCESSING'">
-                            <template #title>
-                                <div class="progress-content" v-if="progressInfo">
-                                    <p>{{ progressInfo.mediaName }}</p>
-                                    <p><span>剩余时间:</span>{{ progressInfo.leftTime }}</p>
-                                    <p><span>速度:</span>{{ progressInfo.speed }}x</p>
-                                    <p><span>FPS:</span>{{ progressInfo.fps }}</p>
-                                    <p><span>比特率:</span>{{ progressInfo.bitrate }}</p>
-                                    <p><span>进度:</span>{{ progressInfo.percentage }}</p>
-                                </div>
-                            </template>
-                            <a style="color:#52c41a">{{ progressInfo ? progressInfo.percentage : '-' }}</a>
-                        </a-tooltip>
+                        <a-button type="link" @click="showDetail(record)">详情</a-button>
                     </a-space>
                 </template>
             </template>
         </a-table>
+
+        <!-- 详情弹窗 -->
+        <a-modal v-model:open="detailVisible" title="详细信息" :footer="null" width="800px">
+            <a-descriptions bordered>
+                <a-descriptions-item label="处理耗时" :span="3">{{ currentRecord?.timeCost }}</a-descriptions-item>
+                <a-descriptions-item label="输入路径" :span="3">{{ currentRecord?.inputPath }}</a-descriptions-item>
+                <a-descriptions-item label="输出路径" :span="3">{{ currentRecord?.outputPath }}</a-descriptions-item>
+                <a-descriptions-item label="创建时间" :span="3">{{ currentRecord?.createdDate }}</a-descriptions-item>
+                <a-descriptions-item label="修改时间" :span="3">{{ currentRecord?.lastModifiedDate }}</a-descriptions-item>
+            </a-descriptions>
+        </a-modal>
     </div>
 </template>
 
 <script setup>
 import { ref, reactive, onDeactivated, h, onActivated } from 'vue'
 import { message } from 'ant-design-vue'
-import SockJS from 'sockjs-client'
-import Stomp from 'stompjs'
+import { eventStream } from '@/utils/request'
 import request from '@/utils/request'
 import MediaStatusTag from '@/components/MediaStatusTag.vue'
 import Ellipsis from '@/components/Ellipsis.vue'
@@ -95,9 +116,9 @@ const columns = [
         width: 250,
         customRender: ({ text }) => {
             return h(Ellipsis, {
-                length: 30,
+                length: 120,
                 tooltip: true
-            }, () => text)  // 修改这里，将 text 包装在函数中
+            }, () => text)
         }
     },
     {
@@ -106,12 +127,7 @@ const columns = [
         key: 'status',
         customRender: ({ text }) => {
             return h(MediaStatusTag, { status: text })
-        }
-    },
-    {
-        title: '处理耗时',
-        dataIndex: 'timeCost',
-        key: 'timeCost',
+        },
         width: 120
     },
     {
@@ -121,48 +137,10 @@ const columns = [
         width: 120
     },
     {
-        title: '路径',
-        dataIndex: 'inputPath',
-        key: 'inputPath',
-        ellipsis: true,
-        customRender: ({ text }) => {
-            return h(Ellipsis, {
-                length: 30,
-                tooltip: true
-            }, () => text)  // 修改这里，将 text 包装在函数中
-        }
-    },
-    {
-        title: '输出路径',
-        dataIndex: 'outputPath',
-        key: 'outputPath',
-        ellipsis: true,
-        customRender: ({ text }) => {
-            return h(Ellipsis, {
-                length: 30,
-                tooltip: true
-            }, () => text)  // 修改这里，将 text 包装在函数中
-        }
-    },
-    {
-        title: '创建时间',
-        dataIndex: 'createdDate',
-        key: 'createdDate',
-        width: 120,
-        sorter: true
-    },
-    {
-        title: '修改时间',
-        dataIndex: 'lastModifiedDate',
-        key: 'lastModifiedDate',
-        width: 120,
-        sorter: true
-    },
-    {
         title: '操作',
         key: 'action',
         fixed: 'right',
-        width: 200
+        width: 250
     }
 ]
 
@@ -194,8 +172,6 @@ const loadData = async () => {
         })
         tableData.value = response.data.content
         pagination.total = response.data.totalElements
-    } catch (error) {
-        // 错误处理已在request拦截器中统一处理
     } finally {
         loading.value = false
     }
@@ -228,44 +204,47 @@ const execute = async (id) => {
     loadData()
 }
 
-const webSocket = ref(null)
+// 详情弹窗相关变量
+const detailVisible = ref(false)
+const currentRecord = ref(null)
+
+// 显示详情弹窗
+const showDetail = (record) => {
+    currentRecord.value = record
+    detailVisible.value = true
+}
+
 const progressInfo = ref(null)
-const stompClient = ref(null)
 
-
-const initStompClient = () => {
-    try {
-        console.log('Initializing WebSocket...');
-        const socket = new SockJS("/ws")
-        // 获取STOMP子协议的客户端对象
-        stompClient.value = Stomp.over(socket)
-        // 开启 debug 日志
-        stompClient.value.debug = (msg) => console.log("[STOMP DEBUG] " + msg);
-        stompClient.value.connect({}, () => {
-            stompClient.value.subscribe('/topic/encode-progress', (message) => {
-                progressInfo.value = JSON.parse(message.body)
-                if (progressInfo.value?.status === 'END') {
-                    progressInfo.value = null
-                    loadData()
-                }
-            })
-        })
-    } catch (error) {
-        console.error('订阅消息失败:', error);
+const loadProgressInfo = async () => {
+    const response = await request.get('/api/media-info/progress')
+    if (!response.data) {
+        clearInterval(progressTimer);
+        progressTimer = null;
+        progressInfo.value = null
+        return
+    }
+    progressInfo.value = response.data
+    if (response.data?.status === 'END') {
+        progressTimer = null
+        message.success('完成')
+        loadData()
     }
 }
+
+let progressTimer = null
 
 // 初始加载
 onActivated(() => {
     loadData();
-    initStompClient();
+    loadProgressInfo();
+    progressTimer = setInterval(loadProgressInfo, 2000);
 })
 
 onDeactivated(() => {
-    // 组件销毁时关闭WebSocket连接
-    if (webSocket.value) {
-        webSocket.value.close();
-        webSocket.value = null;
+    if (progressTimer) {
+        clearInterval(progressTimer);
+        progressTimer = null;
     }
 })
 </script>

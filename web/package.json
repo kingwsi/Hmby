@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@ant-design/icons-vue": "^7.0.1",
+    "@microsoft/fetch-event-source": "^2.0.1",
     "@stomp/stompjs": "^7.1.0",
     "ant-design-vue": "^4.2.6",
     "axios": "^1.8.2",

@@ -14,12 +14,6 @@ const routes = [
     meta: { requiresAuth: true, hideInNav: false, keepAlive: true }
   },
   {
-    path: '/stomp',
-    name: 'Stomp',
-    component: () => import('@/views/Stomp.vue'),
-    meta: { requiresAuth: true, hideInNav: false, keepAlive: true }
-  },
-  {
     path: '/media-info',
     name: '媒体信息',
     component: () => import('../views/MediaInfo.vue'),

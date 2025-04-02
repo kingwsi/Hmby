@@ -1,14 +1,7 @@
-package org.example.hmby.feign;
+package org.example.hmby.emby;
 
 import feign.Response;
 import org.example.hmby.config.EmbyFeignClientConfig;
-import org.example.hmby.emby.EmbyAuthResult;
-import org.example.hmby.emby.ItemTag;
-import org.example.hmby.emby.Library;
-import org.example.hmby.emby.Metadata;
-import org.example.hmby.emby.MovieItem;
-import org.example.hmby.emby.PageWrapper;
-import org.example.hmby.emby.SpecialFeature;
 import org.example.hmby.emby.request.EmbyItemRequest;
 import org.example.hmby.emby.request.MetadataRequest;
 import org.example.hmby.emby.request.UpdateItemRequest;

@@ -12,7 +12,7 @@ import org.example.hmby.emby.request.EmbyItemRequest;
 import org.example.hmby.emby.request.MetadataRequest;
 import org.example.hmby.entity.Tag;
 import org.example.hmby.exception.BusinessException;
-import org.example.hmby.feign.EmbyFeignClient;
+import org.example.hmby.emby.EmbyFeignClient;
 import org.example.hmby.repository.TagRepository;
 import org.example.hmby.sceurity.SecurityUtils;
 import org.example.hmby.vo.TagVO;

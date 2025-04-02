@@ -6,7 +6,7 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
 @EnableJpaAuditing
-@EnableFeignClients(basePackages = "org.example.hmby.feign")
+@EnableFeignClients(basePackages = "org.example.hmby")
 @SpringBootApplication
 public class HmbyApplication {
 

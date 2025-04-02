@@ -1,25 +1,62 @@
 <template>
-  <a-config-provider
-  :theme="themeConfig">
+  <a-config-provider :theme="themeConfig">
     <a-layout class="layout">
-    <a-layout-header v-if="!isLoginPage">
-      <div class="logo">
-        <span class="logo-text">Hmby</span>
+    <a-layout-header v-if="!isLoginPage" class="header">
+      <div class="header-content">
+        <menu-outlined
+          v-if="isMobile"
+          class="menu-trigger"
+          @click="showDrawer = true"
+        />
+        <div class="logo">
+          <span class="logo-text">Hmby</span>
+        </div>
+        <a-menu
+          v-if="!isMobile"
+          v-model:selectedKeys="selectedKeys"
+          theme="dark"
+          mode="horizontal"
+          :style="{ lineHeight: '64px' }"
+          class="desktop-menu"
+        >
+          <a-menu-item v-for="route in routes" :key="route.path">
+            <router-link :to="route.path">{{ route.name }}</router-link>
+          </a-menu-item>
+          <a-menu-item style="margin-left: auto" @click="handleLogout">
+            <a>登出</a>
+          </a-menu-item>
+        </a-menu>
+        <a-button
+          v-if="isMobile"
+          type="link"
+          class="mobile-logout"
+          @click="handleLogout"
+        >
+          登出
+        </a-button>
       </div>
+    </a-layout-header>
+
+    <a-drawer
+      v-if="isMobile"
+      v-model:visible="showDrawer"
+      placement="left"
+      :closable="false"
+      width="250"
+    >
       <a-menu
         v-model:selectedKeys="selectedKeys"
-        theme="dark"
-        mode="horizontal"
-        :style="{ lineHeight: '64px' }"
+        theme="light"
+        mode="inline"
       >
         <a-menu-item v-for="route in routes" :key="route.path">
-          <router-link :to="route.path">{{ route.name }}</router-link>
-        </a-menu-item>
-        <a-menu-item style="margin-left: auto" @click="handleLogout">
-          <a>登出</a>
+          <router-link :to="route.path" @click="showDrawer = false">
+            {{ route.name }}
+          </router-link>
         </a-menu-item>
       </a-menu>
-    </a-layout-header>
+    </a-drawer>
+
     <a-layout-content :style="contentStyle">
       <!-- <a-breadcrumb v-if="!isLoginPage" style="margin: 16px 0">
         <a-breadcrumb-item>{{ currentRoute.name }}</a-breadcrumb-item>
@@ -40,7 +77,8 @@
   </a-config-provider>
 </template>
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { MenuOutlined } from '@ant-design/icons-vue';
 import { useRouter, useRoute } from 'vue-router';
 
 const router = useRouter();
@@ -62,8 +100,27 @@ const isLoginPage = computed(() => {
   return route.path === '/login';
 });
 
+const isMobile = ref(false);
+const showDrawer = ref(false);
+
 const contentStyle = computed(() => {
-  return isLoginPage.value ? {} : { padding: '0 50px' };
+  if (isLoginPage.value) return {};
+  return {
+    padding: isMobile.value ? '0 16px' : '0 50px'
+  };
+});
+
+const checkMobile = () => {
+  isMobile.value = window.innerWidth <= 768;
+};
+
+onMounted(() => {
+  checkMobile();
+  window.addEventListener('resize', checkMobile);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile);
 });
 
 const handleLogout = () => {
@@ -86,25 +143,66 @@ const themeConfig = {
   padding: 24px;
   background: #fff;
 }
+.header {
+  padding: 0 !important;
+}
+
+.header-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+}
+
+.menu-trigger {
+  font-size: 18px;
+  color: #fff;
+  margin-right: 16px;
+  cursor: pointer;
+}
+
 .logo {
-  float: left;
-  width: 120px;
   height: 31px;
-  margin: 16px 24px 16px 0;
-  /* background: rgba(255, 255, 255, 0.3); */
+  margin-right: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
+
 .logo-text {
   color: #fff;
   font-size: 18px;
   font-weight: bold;
   letter-spacing: 2px;
 }
-.ant-row-rtl .logo {
-  float: right;
-  margin: 16px 0 16px 24px;
+
+.desktop-menu {
+  flex: 1;
+}
+
+.mobile-logout {
+  color: #fff !important;
+  margin-left: auto;
+  padding: 0 15px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .header-content {
+    padding: 0 12px;
+    height: 64px;
+  }
+
+  .logo {
+    margin-right: 12px;
+  }
+
+  .logo-text {
+    font-size: 16px;
+  }
 }
 
 [data-theme='dark'] .site-layout-content {

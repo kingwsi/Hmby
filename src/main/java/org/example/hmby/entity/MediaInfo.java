@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import lombok.Getter;
 import lombok.Setter;
+import org.example.hmby.enumerate.MediaCodec;
 import org.example.hmby.enumerate.MediaConvertType;
 import org.example.hmby.enumerate.MediaStatus;
 
@@ -82,8 +83,9 @@ public class MediaInfo extends AuditableEntity {
     /**
      * 编码类型
      */
-    @Column(name = "codec", length = 50)
-    private String codec;
+    @Column(name = "codec")
+    @Enumerated(EnumType.STRING)
+    private MediaCodec codec;
 
 
     /**
