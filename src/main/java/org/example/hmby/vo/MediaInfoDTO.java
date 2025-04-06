@@ -65,7 +65,7 @@ public class MediaInfoDTO extends AuditableDTO {
     /**
      * 视频码率
      */
-    private Long videoBitRate;
+    private Long bitRate;
 
     private String metaTitle;
 }

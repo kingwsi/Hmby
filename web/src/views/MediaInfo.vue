@@ -40,10 +40,10 @@
             </a-form>
         </div>
         <!-- 进度信息展示 -->
-        <a-card v-if="progressInfo" style="margin-bottom: 8px; background-color: #f5f5f5">
+        <a-card v-if="progressInfo" :bodyStyle="{'padding': '15px'}" style="margin-bottom: 8px; background-color: #f5f5f5">
             <a-row :gutter="[16, 8]" align="middle">
                 <a-col :xs="24" :sm="12" :md="8" :lg="6">
-                    <span style="margin-right: 8px">{{ progressInfo.fileName }}</span>
+                    <span style="margin-right: 8px">{{ progressInfo.mediaName }}</span>
                 </a-col>
                 <a-col :xs="12" :sm="6" :md="4" :lg="3">
                     <span>进度: {{ progressInfo.percentage }}</span>
@@ -55,10 +55,10 @@
                     <span>速度: {{ progressInfo.speed }}x</span>
                 </a-col>
                 <a-col :xs="12" :sm="6" :md="4" :lg="4">
-                    <span>比特率: {{ progressInfo.bitrate }}</span>
+                    <span>比特率: {{ progressInfo.bitRate }}</span>
                 </a-col>
                 <a-col :xs="12" :sm="6" :md="4" :lg="5">
-                    <span>剩余时间: {{ progressInfo.leftTime }}</span>
+                    <span>剩余时间: {{ progressInfo.timeLeft }}</span>
                 </a-col>
             </a-row>
         </a-card>
@@ -72,7 +72,7 @@
                             <a-button type="link" danger>删除</a-button>
                         </a-popconfirm>
                         <a-button type="link" @click="() => $router.push(`/emby-editor/${record.embyId}`)">编辑</a-button>
-                        <a-button type="link" @click="execute(record.id)">开始</a-button>
+                        <a-button type="link" @click="execute(record.id)" :disabled="record.status==='DONE'">开始</a-button>
                         <a-button type="link" @click="showDetail(record)">详情</a-button>
                     </a-space>
                 </template>
@@ -82,11 +82,25 @@
         <!-- 详情弹窗 -->
         <a-modal v-model:open="detailVisible" title="详细信息" :footer="null" width="800px">
             <a-descriptions bordered>
-                <a-descriptions-item label="处理耗时" :span="3">{{ currentRecord?.timeCost }}</a-descriptions-item>
+                <a-descriptions-item label="处理耗时" :span="3">
+                    {{ currentRecord?.timeCost }}
+                    <template v-if="currentRecord.fileSize && currentRecord.fileSize">
+                        <a-divider type="vertical" /> {{ (currentRecord.processedSize / 1024 / 1024).toFixed(2) }}MB
+                        / {{ (currentRecord.fileSize / 1024 / 1024).toFixed(2) }}MB
+                        <a-divider type="vertical" /> {{ (currentRecord.processedSize * 100 / currentRecord.fileSize).toFixed(2) }}%
+                    </template>
+                </a-descriptions-item>
+                <a-descriptions-item label="类型" :span="3">
+                    {{currentRecord.type}}
+                    <template v-if="currentRecord?.type === 'ENCODE'">
+                        <a-divider type="vertical" /> {{ currentRecord.codec }}
+                        <a-divider type="vertical" /> {{ currentRecord.bitRate }} K
+                    </template>
+                </a-descriptions-item>
                 <a-descriptions-item label="输入路径" :span="3">{{ currentRecord?.inputPath }}</a-descriptions-item>
                 <a-descriptions-item label="输出路径" :span="3">{{ currentRecord?.outputPath }}</a-descriptions-item>
                 <a-descriptions-item label="创建时间" :span="3">{{ currentRecord?.createdDate }}</a-descriptions-item>
-                <a-descriptions-item label="修改时间" :span="3">{{ currentRecord?.lastModifiedDate }}</a-descriptions-item>
+                <a-descriptions-item label="修改时间" :span="3">{{ currentRecord?.lastUpdateDate }}</a-descriptions-item>
             </a-descriptions>
         </a-modal>
     </div>
@@ -95,7 +109,6 @@
 <script setup>
 import { ref, reactive, onDeactivated, h, onActivated } from 'vue'
 import { message } from 'ant-design-vue'
-import { eventStream } from '@/utils/request'
 import request from '@/utils/request'
 import MediaStatusTag from '@/components/MediaStatusTag.vue'
 import Ellipsis from '@/components/Ellipsis.vue'
@@ -116,7 +129,7 @@ const columns = [
         width: 250,
         customRender: ({ text }) => {
             return h(Ellipsis, {
-                length: 120,
+                length: 30,
                 tooltip: true
             }, () => text)
         }
@@ -201,6 +214,10 @@ const handleDelete = async (record) => {
 const execute = async (id) => {
     await request.post(`/api/media-info/execute/${id}`)
     message.success('执行成功')
+    setTimeout(() => {
+        loadData()
+        progressTimer = setInterval(loadProgressInfo, 2000);
+    }, 1000)
     loadData()
 }
 
@@ -219,20 +236,24 @@ const progressInfo = ref(null)
 const loadProgressInfo = async () => {
     const response = await request.get('/api/media-info/progress')
     if (!response.data) {
-        clearInterval(progressTimer);
-        progressTimer = null;
-        progressInfo.value = null
+        clearProgressInterval()
         return
     }
     progressInfo.value = response.data
     if (response.data?.status === 'END') {
-        progressTimer = null
         message.success('完成')
         loadData()
+        clearProgressInterval()
     }
 }
 
 let progressTimer = null
+
+const clearProgressInterval = () => {
+    clearInterval(progressTimer);
+    progressTimer = null;
+    progressInfo.value = null;
+}
 
 // 初始加载
 onActivated(() => {

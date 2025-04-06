@@ -4,7 +4,7 @@
     <a-layout-header v-if="!isLoginPage" class="header">
       <div class="header-content">
         <menu-outlined
-          v-if="isMobile"
+          v-if="deviceStore.isMobile"
           class="menu-trigger"
           @click="showDrawer = true"
         />
@@ -12,7 +12,7 @@
           <span class="logo-text">Hmby</span>
         </div>
         <a-menu
-          v-if="!isMobile"
+          v-if="!deviceStore.isMobile"
           v-model:selectedKeys="selectedKeys"
           theme="dark"
           mode="horizontal"
@@ -27,7 +27,7 @@
           </a-menu-item>
         </a-menu>
         <a-button
-          v-if="isMobile"
+          v-if="deviceStore.isMobile"
           type="link"
           class="mobile-logout"
           @click="handleLogout"
@@ -38,7 +38,7 @@
     </a-layout-header>
 
     <a-drawer
-      v-if="isMobile"
+      v-if="deviceStore.isMobile"
       v-model:visible="showDrawer"
       placement="left"
       :closable="false"
@@ -77,9 +77,10 @@
   </a-config-provider>
 </template>
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed } from 'vue';
 import { MenuOutlined } from '@ant-design/icons-vue';
 import { useRouter, useRoute } from 'vue-router';
+import { useDeviceStore } from '../stores/device';
 
 const router = useRouter();
 const route = useRoute();
@@ -100,27 +101,14 @@ const isLoginPage = computed(() => {
   return route.path === '/login';
 });
 
-const isMobile = ref(false);
+const deviceStore = useDeviceStore();
 const showDrawer = ref(false);
 
 const contentStyle = computed(() => {
   if (isLoginPage.value) return {};
   return {
-    padding: isMobile.value ? '0 16px' : '0 50px'
+    padding: deviceStore.isMobile ? '0 16px' : '0 50px'
   };
-});
-
-const checkMobile = () => {
-  isMobile.value = window.innerWidth <= 768;
-};
-
-onMounted(() => {
-  checkMobile();
-  window.addEventListener('resize', checkMobile);
-});
-
-onUnmounted(() => {
-  window.removeEventListener('resize', checkMobile);
 });
 
 const handleLogout = () => {
@@ -130,8 +118,7 @@ const handleLogout = () => {
 
 const themeConfig = {
       token: {
-        // borderRadius: 0,
-        colorPrimary: '52C41A',
+        colorPrimary: '52b54b',
         fontSize: 12,
         wireframe: false
       }

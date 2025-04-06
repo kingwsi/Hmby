@@ -4,7 +4,6 @@ package org.example.hmby.controller;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.bramp.ffmpeg.info.Codec;
-import net.bramp.ffmpeg.progress.Progress;
 import net.bramp.ffmpeg.shared.CodecType;
 import org.apache.commons.lang3.StringUtils;
 import org.example.hmby.Response;
@@ -17,7 +16,6 @@ import org.example.hmby.enumerate.MediaStatus;
 import org.example.hmby.exception.BusinessException;
 import org.example.hmby.ffmpeg.FFmpegManager;
 import org.example.hmby.ffmpeg.FfmpegExecutorRunnable;
-import org.example.hmby.ffmpeg.ProgressInfo;
 import org.example.hmby.service.MediaInfoService;
 import org.example.hmby.vo.MediaInfoDTO;
 import org.example.hmby.vo.MediaQueueVO;
@@ -32,17 +30,13 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -104,9 +98,9 @@ public class MediaInfoController {
         return Response.success();
     }
 
-    @PostMapping("/move-media/{id}")
-    public Response<String> moveMedia(@PathVariable("id") Long id, boolean override) throws ChangeSetPersister.NotFoundException, IOException {
-        mediaInfoService.moveMedia(id, override);
+    @PostMapping("/source-file/{id}/{operate}")
+    public Response<String> handlerSourceMedia(@PathVariable("id") Long id, @PathVariable("operate") String operate) throws ChangeSetPersister.NotFoundException, IOException {
+        mediaInfoService.handlerSourceMedia(id, operate);
         return Response.success();
     }
 
@@ -123,17 +117,19 @@ public class MediaInfoController {
     @GetMapping("/progress")
     public Response<Object> progress() {
 //        ProgressInfo progressInfo = new ProgressInfo("Hello World.mp4", Progress.Status.CONTINUE, 12, String.format("%.0f%%", 0.89 * 100), 2, "", "00:12:21");
-        return Response.success(localCache.get(CacheKey.CACHE_ENCODING_PROGRESS.name()));
+        return Response.success(localCache.get(CacheKey.CACHE_ENCODING_PROGRESS));
     }
-    
+
     @GetMapping("/codecs")
-    public Response<List<Codec>> codecs() throws IOException {
-        List<String> mediaCodecs = MediaCodec.getCodecs();
-        
-        List<Codec> codecs = ffmpegManager.getFfmpeg().codecs().stream()
+    public Response<List<String>> codecs() throws IOException {
+        List<String> mediaCodecs = new ArrayList<>(MediaCodec.getCodecs());
+
+        String codecString = ffmpegManager.getFfmpeg().codecs().stream()
                 .filter(codec -> codec.getType() == CodecType.VIDEO && mediaCodecs.contains(codec.getName()))
-                .toList();
-        return Response.success(codecs);
+                .map(Codec::toString)
+                .collect(Collectors.joining(","));
+        mediaCodecs.removeIf(codecName -> !codecString.contains(codecName));
+        return Response.success(mediaCodecs);
     }
 
     @GetMapping("/status")

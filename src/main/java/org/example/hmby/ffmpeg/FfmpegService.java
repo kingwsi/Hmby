@@ -62,8 +62,8 @@ public class FfmpegService {
                 .setVideoCodec(mediaInfo.getCodec().name())
                 .setFormat("mp4");
         if (mediaInfo.getBitRate() != null && mediaInfo.getBitRate() > 1000) {
-            fFmpegOutputBuilder.setVideoBitRate(mediaInfo.getBitRate())
-                    .addExtraArgs("-bufsize", mediaInfo.getBitRate().toString());
+            fFmpegOutputBuilder.setVideoBitRate(mediaInfo.getBitRate() * 1000)
+                    .addExtraArgs("-bufsize", mediaInfo.getBitRate().toString()+"k");
         }
         if (!StringUtils.isEmpty(mediaInfo.getMetaTitle())) {
             fFmpegOutputBuilder.addMetaTag("title", mediaInfo.getMetaTitle());
@@ -106,6 +106,13 @@ public class FfmpegService {
         });
         try {
             job.run();
+            new Thread(() -> {
+                try {
+                    TimeUnit.SECONDS.sleep(5);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+                localCache.remove(CacheKey.CACHE_ENCODING_PROGRESS);}).start();
             return null;
         } catch (Exception e) {
             return e.getMessage();
@@ -190,15 +197,17 @@ public class FfmpegService {
      * 移动文件并添加水印
      */
     public void moveAndTitle(MediaInfo mediaInfo) throws IOException {
+        Path inputPath = Paths.get(handlerVolumeBind(mediaInfo.getInputPath()));
+        Path outputPath = Paths.get(handlerVolumeBind(mediaInfo.getOutputPath()));
         if (StringUtils.isEmpty(mediaInfo.getMetaTitle())) {
-            Files.move(Paths.get(mediaInfo.getInputPath()),
-                    Paths.get(mediaInfo.getOutputPath()),
+            Files.move(inputPath,
+                    outputPath,
                     StandardCopyOption.REPLACE_EXISTING);
             return;
         }
         FFmpegBuilder fFmpegBuilder = new FFmpegBuilder()
-                .setInput(mediaInfo.getInputPath())
-                .done().addOutput(mediaInfo.getOutputPath())
+                .setInput(inputPath.toAbsolutePath().toString())
+                .done().addOutput(outputPath.toAbsolutePath().toString())
                 .addMetaTag("title", mediaInfo.getMetaTitle())
                 .setVideoCodec("copy")
                 .done().overrideOutputFiles(true);

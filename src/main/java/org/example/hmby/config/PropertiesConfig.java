@@ -13,7 +13,6 @@ import java.util.List;
 @Data
 public class PropertiesConfig {
     private String embyServer;
-    private String recyclePath;
     private String outputMediaPath;
     private String deviceId = "999";
     private String ffmpegPath;

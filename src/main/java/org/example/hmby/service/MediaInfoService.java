@@ -4,6 +4,7 @@ import jakarta.persistence.criteria.Predicate;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.RandomUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.example.hmby.config.PropertiesConfig;
 import org.example.hmby.emby.Metadata;
@@ -76,6 +77,9 @@ public class MediaInfoService {
         if (exist != null) {
             mediaInfo.setId(exist.getId());
         }
+        if (mediaInfo.getType() != MediaConvertType.ENCODE) {
+            mediaInfo.setCodec(null);
+        }
         mediaInfoRepository.save(mediaInfo);
         if (mediainfoDTO.getMarks() != null && !mediainfoDTO.getMarks().isEmpty()) {
             checkTime(mediainfoDTO.getMarks());
@@ -141,8 +145,8 @@ public class MediaInfoService {
         long startTime = System.currentTimeMillis();
         MediaInfoDTO mediaInfoAndMarks = this.getMediaAndMarks(id);
         MediaInfo mediaInfo = mediainfoConvertMapper.toMediaInfo(mediaInfoAndMarks);
-        LocalDateTime now = LocalDateTime.now();
-        Path folderPath = Paths.get(propertiesConfig.getOutputMediaPath(), now.format(DateTimeFormatter.ofPattern("yyyyMM")));
+        String outputDir = propertiesConfig.getOutputMediaPath() + "/" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMM"));
+        Path folderPath = Paths.get(ffmpegService.handlerVolumeBind(outputDir));
         if (!Files.exists(folderPath)) {
             try {
                 Files.createDirectories(folderPath);
@@ -150,13 +154,13 @@ public class MediaInfoService {
                 throw new RuntimeException(e);
             }
         }
-        String outputPath = Paths.get(folderPath.toString(), mediaInfo.getFileName() + ".mp4").toString();
+        String outputPath = Paths.get(outputDir, mediaInfo.getFileName() + ".mp4").toString();
         if (!StringUtils.isEmpty(mediaInfo.getMetaTitle())) {
-            outputPath = Paths.get(folderPath.toString(), mediaInfo.getMetaTitle() + ".mp4").toString();
+            outputPath = Paths.get(outputDir, mediaInfo.getMetaTitle() + ".mp4").toString();
         }
         // 二次处理已经处理过的文件，要重命名
         if (mediaInfo.getInputPath().contains(propertiesConfig.getOutputMediaPath())) {
-            outputPath = Paths.get(folderPath.toString(), mediaInfo.getFileName() + "_1.mp4").toString();
+            outputPath = Paths.get(outputDir, mediaInfo.getFileName() + "_1.mp4").toString();
         }
         mediaInfo.setOutputPath(outputPath.replace(File.separator, "/"));
         mediaInfo.setStatus(MediaStatus.PROCESSING);
@@ -183,8 +187,7 @@ public class MediaInfoService {
                     mediaInfo.setStatus(MediaStatus.SUCCESS);
                     break;
             }
-            long size = Files.size(Paths.get(ffmpegService.handlerVolumeBind(mediaInfo.getOutputPath())));
-            mediaInfo.setProcessedSize(size);
+            mediaInfo.setProcessedSize(Files.size(Paths.get(ffmpegService.handlerVolumeBind(mediaInfo.getOutputPath()))));
         } catch (Exception e) {
             log.error("处理失败", e);
             result = e.toString();
@@ -230,11 +233,11 @@ public class MediaInfoService {
     }
 
     /**
-     * 移动媒体 覆盖
+     * @param operate OVERRIDE / DELETE
      *
      */
     @Transactional(rollbackOn = Exception.class)
-    public void moveMedia(Long id, boolean override) throws ChangeSetPersister.NotFoundException, IOException {
+    public void handlerSourceMedia(Long id, String operate) throws ChangeSetPersister.NotFoundException, IOException {
         MediaInfo mediaInfo = mediaInfoRepository.findById(id).orElseThrow(ChangeSetPersister.NotFoundException::new);
         String outputPath = ffmpegService.handlerVolumeBind(mediaInfo.getOutputPath());
         String inputPath = ffmpegService.handlerVolumeBind(mediaInfo.getInputPath());
@@ -243,29 +246,24 @@ public class MediaInfoService {
         if (!Files.exists(source)) {
             throw new ChangeSetPersister.NotFoundException();
         }
-        Path recyclePath = Paths.get(propertiesConfig.getOutputMediaPath(), "recycle");
-        if (!Files.exists(recyclePath)) {
-            Files.createDirectories(recyclePath);
+        String recycleTargetPath = Paths.get(ffmpegService.handlerVolumeBind(propertiesConfig.getOutputMediaPath()), 
+                "recycle").toAbsolutePath().toString();
+        Path path1 = Paths.get(recycleTargetPath);
+        if (!Files.exists(path1)) {
+            Files.createDirectories(path1);
+        }
+        
+        if ("DELETE".equals(operate)) {
+            // 删除源文件
+            Files.move(source, Paths.get(recycleTargetPath, "done_" + mediaInfo.getFileName() + "_" + RandomUtils.insecure().randomInt(100, 999) + "." + mediaInfo.getSuffix()), StandardCopyOption.REPLACE_EXISTING);
+        } else if ("OVERRIDE".equals(operate)) {
+            Files.move(Paths.get(outputPath), source, StandardCopyOption.REPLACE_EXISTING);
         }
 
-        Path target = Paths.get(propertiesConfig.getOutputMediaPath(), "recycle", "done_" + mediaInfo.getFileName() + "." + mediaInfo.getSuffix());
-        if (override) {
-            // 覆盖源文件
-            source = Paths.get(outputPath);
-            target = Paths.get(inputPath);
-        }
-        try {
-            Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
-            String nfo = inputPath.substring(0, outputPath.lastIndexOf("."))+".nfo";
-            Path nfoPath = Paths.get(nfo);
-            if (Files.exists(nfoPath)) {
-                Files.delete(nfoPath);
-            }
-        } catch (IOException e) {
-            throw new BusinessException("移动文件失败！");
-        }
-        if (override) {
-            mediaMarkRepository.deleteMediaMarksByMediaId(id);
+        String nfo = inputPath.substring(0, outputPath.lastIndexOf("."))+".nfo";
+        Path nfoPath = Paths.get(nfo);
+        if (Files.exists(nfoPath)) {
+            Files.delete(nfoPath);
         }
         mediaInfo.setStatus(MediaStatus.DONE);
         mediaInfoRepository.save(mediaInfo);

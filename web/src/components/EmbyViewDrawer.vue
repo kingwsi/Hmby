@@ -1,6 +1,6 @@
 <template>
     <a-drawer v-model:open="drawerVisible" :title="`${mediaDetail.SortName} - (ID:${mediaDetail.Id})`"
-        @close="drawerClose" placement="right" :width="800" :destroyOnClose="true">
+        @close="drawerClose" placement="right" :width="deviceStore.isMobile ? 350 : 800" :destroyOnClose="true">
         <a-spin :spinning="loading" tip="加载中...">
 
             <!-- <MediaStatusTag v-if="mediaDetail.mediaInfo?.status" :status="mediaDetail.mediaInfo.status" class="status-tag" /> -->
@@ -30,12 +30,12 @@
                     </a-descriptions-item>
                     <a-descriptions-item label="操作" v-if="mediaDetail.outputMedia && mediaDetail.mediaInfo?.status!== 'DONE'">
                         <a-popconfirm title="确认删除源文件？" ok-text="确认" okType="danger" cancel-text="取消"
-                            @confirm="handleMove(false)" placement="left">
+                            @confirm="handleSourceMedia('DELETE')" placement="left">
                             <a-button primary v-if="mediaDetail.mediaInfo" size="small">删除源文件</a-button>
                         </a-popconfirm>
                         <a-divider type="vertical" />
                         <a-popconfirm title="覆盖删除源文件？" ok-text="确认" okType="danger" cancel-text="取消"
-                            @confirm="handleMove(true)" placement="left">
+                            @confirm="handleSourceMedia('OVERRIDE')" placement="left">
                             <a-button primary v-if="mediaDetail.mediaInfo" size="small">覆盖源文件</a-button>
                         </a-popconfirm>
                     </a-descriptions-item>
@@ -126,7 +126,7 @@
                     @confirm="deleteItemHandle(mediaDetail.Id)" placement="left">
                     <a-button danger size="small" :loading="confirmLoading">删除</a-button>
                 </a-popconfirm>
-                <a-button primary size="small" @click="openEmbyPage">查看更多</a-button>
+                <a-button primary size="small" @click="openEmbyPage">Emby</a-button>
             </a-space>
         </template>
     </a-drawer>
@@ -139,18 +139,20 @@ import VideoPlayer from '@/components/VideoPlayer.vue';
 import { PlusOutlined } from '@ant-design/icons-vue';
 import { message } from 'ant-design-vue';
 import Ellipsis from '@/components/Ellipsis.vue'
-import MediaStatusTag from '@/components/MediaStatusTag.vue';
+import { useDeviceStore } from '@/stores/device';
 
 const emit = defineEmits(['update']);
 const drawerVisible = ref(false);
 const mediaDetail = ref({});
 const tagInputRef = ref();
+const deviceStore = useDeviceStore();
 const playerId = ref(null);
 const loading = ref(false); // 添加loading状态变量
 
 const typeMap = {
     'CUT': '剪切',
     'ENCODE': '编码',
+    'MOVE': '移动',
 }
 
 // 标签状态管理
@@ -254,6 +256,7 @@ const saveTagChanges = async () => {
     tagState.data = [...tagState.tags];
     // 提示保存成功
     message.success('标签保存成功');
+    emit('update');
 };
 
 const handleOpenDrawer = (itemId) => {
@@ -265,8 +268,6 @@ const drawerClose = () => {
     drawerVisible.value = false;
     mediaDetail.value = {};
     playerId.value = null;
-    console.log('Drawer closed');
-    emit('update');
 };
 // 删除
 const confirmLoading = ref(false);
@@ -276,12 +277,13 @@ const deleteItemHandle = async (id) => {
         await request.delete(`/api/emby-item/${id}`);
         message.success('删除成功');
         drawerClose();
+        emit('update');
     } finally {
         confirmLoading.value = false;
     }
 };
 
-const openEmbyPage = () => window.open(`${mediaDetail.value.embyServer}/web/index.html#!/item?id=${mediaDetail.Id}`, '_blank');
+const openEmbyPage = () => window.open(`${mediaDetail.value.embyServer}/web/index.html#!/item?id=${mediaDetail.value.Id}&serverId=${mediaDetail.value.ServerId}`, '_blank');
 
 const getPlayerPoter = () => {
     if (mediaDetail.value.ImageTags?.Thumb) {
@@ -293,19 +295,19 @@ const getPlayerPoter = () => {
     return null;
 };
 
-const overriteLoading = ref(false);
-const handleMove = async (override) => {
+const moveLoading = ref(false);
+const handleSourceMedia = async (operate) => {
     try {
-        overriteLoading.value = true;
-        await request.post(`/api/media-info/move-media/${mediaDetail.value.mediaInfo.id}?override=${override}`);
+        moveLoading.value = true;
+        await request.post(`/api/media-info/source-file/${mediaDetail.value.mediaInfo.id}/${operate}`);
         message.success('处理成功');
-        if (override) {
-            drawerClose();
-        }
+        emit('update');
+        drawerClose();
     } finally {
-        overriteLoading.value = false;
+        moveLoading.value = false;
     }
 };
+
 
 defineExpose({
     handleOpenDrawer

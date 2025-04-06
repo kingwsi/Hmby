@@ -87,7 +87,7 @@ public class EmbyAuthenticationProvider implements AuthenticationProvider {
             }
             throw new InsufficientAuthenticationException(response.code() + " " + response.message());
         } catch (Exception e) {
-            throw new InsufficientAuthenticationException(e.getMessage());
+            throw new InsufficientAuthenticationException("账号验证异常：" + e.getMessage());
         }
     }
 }

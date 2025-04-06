@@ -95,7 +95,11 @@ public class EmbyController {
                 }
             }
             item.setDetailPage(String.format(propertiesConfig.getEmbyServer() + "/web/index.html#!/item?id=%s&serverId=%s", item.getId(), item.getServerId()));
-            item.setMediaInfo(mediaInfoService.getByInputPath(item.getPath()));
+            MediaInfo mediaInfo = mediaInfoService.getByInputPath(item.getPath());
+            if (mediaInfo == null) {
+                mediaInfo = mediaInfoService.getByOutputPath(item.getPath());
+            }
+            item.setMediaInfo(mediaInfo);
         }
         pageWrapper.setSize(pageSize);
         pageWrapper.setNumber(page);

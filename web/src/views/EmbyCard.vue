@@ -82,7 +82,9 @@
                         @click="tagFilterHandler(tag.Name)">{{ tag.Name }}
                       </span>
                     </div>
-                    <span v-else>{{ item.Name }}</span>
+                    <div v-else>
+                      <span> {{ item.Name }} </span>
+                    </div>
                   </a-space>
                 </div>
               </template>
@@ -102,27 +104,25 @@
     </div>
     
     <EmbyViewDrawer ref="drawer" @update="handleSearch()" />
+    <EmbyEditorDrawer ref="editorDrawer" @update="handleSearch()" />
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted, onActivated } from 'vue';
 import MediaStatusTag from '@/components/MediaStatusTag.vue';
-import router from '@/router';
 import request from '@/utils/request';
 import Ellipsis from '@/components/Ellipsis.vue';
-import { EditOutlined, MenuUnfoldOutlined, EyeOutlined } from '@ant-design/icons-vue';
+import { EditOutlined, EyeOutlined } from '@ant-design/icons-vue';
 import { useRoute } from 'vue-router'
 import EmbyViewDrawer from '@/components/EmbyViewDrawer.vue';
+import EmbyEditorDrawer from '@/components/EmbyEditorDrawer.vue';
 
 // 状态管理
 const mediaList = ref([]);
 const total = ref(0);
 const loading = ref(true);
-const showEditor = ref(false);
-const confirmLoading = ref(false);
 const libraries = ref([]);
-const mdl = ref({});
 
 // 查询参数
 const queryParam = reactive({
@@ -194,7 +194,9 @@ const saveQueryParamToStorage = () => {
 };
 
 const handleSearch = () => {
-  queryParam.page = 1;
+  if (!queryParam.page) {
+    queryParam.page = 1;
+  }
   fetchData();
   // 保存查询参数到localStorage
   saveQueryParamToStorage();
@@ -206,7 +208,7 @@ const handlePageChange = (page, size) => {
   fetchData();
 };
 
-const handleEditVideo = (id) => router.push(`/emby-editor/${id}`);
+
 
 // 生命周期
 onMounted(async () => {
@@ -234,14 +236,19 @@ onActivated(async () => {
   if (route.query.tag) {
     queryParam.tag = route.query.tag;
     queryParam.parentId = null;
-    await fetchData();
   }
+  await fetchData();
 });
 
 const drawer = ref(null);
+const editorDrawer = ref(null);
 
 const handleOpenDrawer = (itemId) => {
   drawer.value.handleOpenDrawer(itemId);
+};
+
+const handleEditVideo = (id) => {
+  editorDrawer.value.handleOpenDrawer(id);
 };
 
 </script>
@@ -252,7 +259,7 @@ const handleOpenDrawer = (itemId) => {
   cursor: pointer;
   flex-wrap: wrap;
   overflow-y: auto;
-  height: 100%;
+  height: 80px;
   &::-webkit-scrollbar {
     width: 4px;
   }
@@ -260,6 +267,7 @@ const handleOpenDrawer = (itemId) => {
 
 .card-cover {
   height: 180px;
+  width: 100%;
   overflow: hidden;
   position: relative;
   background-size: cover;
@@ -304,7 +312,6 @@ const handleOpenDrawer = (itemId) => {
   cursor: pointer;
   flex-wrap: wrap;
   overflow-y: auto;
-  max-height: 100px;
 
   &::-webkit-scrollbar {
     width: 4px;
