@@ -32,12 +32,6 @@ const routes = [
     meta: { requiresAuth: true, hideInNav: false, keepAlive: true }
   },
   {
-    path: '/emby-editor/:id',
-    name: 'Editor',
-    component: () => import('../views/EmbyEditor.vue'),
-    meta: { requiresAuth: true, hideInNav: true, keepAlive: true }
-  },
-  {
     path: '/login',
     name: '登录',
     component: () => import('../views/Login.vue'),

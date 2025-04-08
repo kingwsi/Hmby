@@ -71,7 +71,7 @@
                         <a-popconfirm title="确定要删除这条记录吗？" @confirm="handleDelete(record)" ok-text="确定" cancel-text="取消">
                             <a-button type="link" danger>删除</a-button>
                         </a-popconfirm>
-                        <a-button type="link" @click="() => $router.push(`/emby-editor/${record.embyId}`)">编辑</a-button>
+                        <a-button type="link" @click="openEditorDrawer(record.embyId)">编辑</a-button>
                         <a-button type="link" @click="execute(record.id)" :disabled="record.status==='DONE'">开始</a-button>
                         <a-button type="link" @click="showDetail(record)">详情</a-button>
                     </a-space>
@@ -103,6 +103,8 @@
                 <a-descriptions-item label="修改时间" :span="3">{{ currentRecord?.lastUpdateDate }}</a-descriptions-item>
             </a-descriptions>
         </a-modal>
+
+        <EmbyEditorDrawer ref="editorDrawer" @update="loadData()" />
     </div>
 </template>
 
@@ -112,6 +114,7 @@ import { message } from 'ant-design-vue'
 import request from '@/utils/request'
 import MediaStatusTag from '@/components/MediaStatusTag.vue'
 import Ellipsis from '@/components/Ellipsis.vue'
+import EmbyEditorDrawer from '@/components/EmbyEditorDrawer.vue';
 
 // 表格列定义
 const columns = [
@@ -219,6 +222,11 @@ const execute = async (id) => {
         progressTimer = setInterval(loadProgressInfo, 2000);
     }, 1000)
     loadData()
+}
+
+const editorDrawer = ref(null);
+const openEditorDrawer = async (embyId) => {
+    editorDrawer.value.handleOpenDrawer(embyId)
 }
 
 // 详情弹窗相关变量
