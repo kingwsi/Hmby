@@ -91,7 +91,7 @@
             </a-card-meta>
             <template #actions>
               <eye-outlined @click="openEmbyPage(item.DetailPage)" />
-              <edit-outlined @click="handleEditVideo(item.Id)" />
+              <edit-outlined @click="handleOpenEditDrawer(item.Id)" />
             </template>
           </a-card>
         </a-col>
@@ -247,7 +247,7 @@ const handleOpenDrawer = (itemId) => {
   drawer.value.handleOpenDrawer(itemId);
 };
 
-const handleEditVideo = (id) => {
+const handleOpenEditDrawer = (id) => {
   editorDrawer.value.handleOpenDrawer(id);
 };
 

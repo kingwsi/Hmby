@@ -55,12 +55,14 @@ const stompClient = ref(null)
 const duration = ref(null)
 const hls = ref(localStorage.getItem('PLAYER_TYPE') === 'true')
 
-// 确保插件只注册一次
-let pluginRegistered = false
+// 暴露播放器实例
+defineExpose({
+  player: () => player.value
+})
 
 // 创建时间线标记插件
 const registerTimelinePlugin = () => {
-  if (pluginRegistered) return
+  if (videojs.getPlugin('timelineMarker')) return
   
   const Plugin = videojs.getPlugin('plugin')
 
@@ -81,7 +83,7 @@ const registerTimelinePlugin = () => {
     }
 
     drawMarkers() {
-      if (!this.options.intervals || !this.options.intervals.length) return
+      if (!this.options || !this.options.intervals || !this.options.intervals.length) return
 
       this.timelineElement.innerHTML = ''
       const duration = this.player.duration()
@@ -120,7 +122,6 @@ const registerTimelinePlugin = () => {
   }
 
   videojs.registerPlugin('timelineMarker', TimelineMarker)
-  pluginRegistered = true
 }
 
 // 初始化播放器

@@ -71,7 +71,7 @@
                         <a-popconfirm title="确定要删除这条记录吗？" @confirm="handleDelete(record)" ok-text="确定" cancel-text="取消">
                             <a-button type="link" danger>删除</a-button>
                         </a-popconfirm>
-                        <a-button type="link" @click="() => $router.push(`/emby-editor/${record.embyId}`)">编辑</a-button>
+                        <a-button type="link" @click="handleOpenEditDrawer(record.embyId)">编辑</a-button>
                         <a-button type="link" @click="execute(record.id)" :disabled="record.status==='DONE'">开始</a-button>
                         <a-button type="link" @click="showDetail(record)">详情</a-button>
                     </a-space>
@@ -80,7 +80,13 @@
         </a-table>
 
         <!-- 详情弹窗 -->
-        <a-modal v-model:open="detailVisible" title="详细信息" :footer="null" width="800px">
+        <a-modal v-model:open="detailVisible" title="详细信息" :footer="null" width="800px" :destroyOnClose="true">
+            <!-- 视频流区域 -->
+            <div class="media-streams-section">
+                <video-player v-if="playerId" :key="playerId" :item-id="playerId" style="height: 350px;"
+                    :poster="getPlayerPoter()" />
+            </div>
+            <a-divider />
             <a-descriptions bordered>
                 <a-descriptions-item label="处理耗时" :span="3">
                     {{ currentRecord?.timeCost }}
@@ -103,6 +109,8 @@
                 <a-descriptions-item label="修改时间" :span="3">{{ currentRecord?.lastUpdateDate }}</a-descriptions-item>
             </a-descriptions>
         </a-modal>
+
+        <EmbyEditorDrawer ref="editorDrawer" @update="loadData()" />
     </div>
 </template>
 
@@ -112,6 +120,8 @@ import { message } from 'ant-design-vue'
 import request from '@/utils/request'
 import MediaStatusTag from '@/components/MediaStatusTag.vue'
 import Ellipsis from '@/components/Ellipsis.vue'
+import VideoPlayer from '@/components/VideoPlayer.vue';
+import EmbyEditorDrawer from '@/components/EmbyEditorDrawer.vue';
 
 // 表格列定义
 const columns = [
@@ -229,6 +239,7 @@ const currentRecord = ref(null)
 const showDetail = (record) => {
     currentRecord.value = record
     detailVisible.value = true
+    playerId.value = record.embyId
 }
 
 const progressInfo = ref(null)
@@ -254,6 +265,12 @@ const clearProgressInterval = () => {
     progressTimer = null;
     progressInfo.value = null;
 }
+
+const editorDrawer = ref(null);
+
+const handleOpenEditDrawer = (id) => {
+  editorDrawer.value.handleOpenDrawer(id);
+};
 
 // 初始加载
 onActivated(() => {

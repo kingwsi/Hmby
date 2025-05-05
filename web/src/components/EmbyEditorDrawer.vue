@@ -19,110 +19,95 @@
             </a-row>
             <a-row>
                 <a-col :md="24" :sm="24" style="width: 100%;height: 300px;">
-                    <video-player v-if="metaInfo && metaInfo.Id" :item-id="metaInfo.Id" :options="videoOptions"
+                    <video-player ref="videoPlayerRef" v-if="metaInfo && metaInfo.Id" :item-id="metaInfo.Id" :options="videoOptions"
                         :intervals="marks"
                         :poster="metaInfo.embyServer + '/emby/Items/' + metaInfo.Id + '/Images/Primary?maxWidth=700&quality=100'"
                         class="player-view" @delete-interval="handlerRemover" />
                 </a-col>
             </a-row>
             <a-row :gutter="[24, 24]" style="margin-top: 24px">
-                <a-col :xl="10" :lg="14" :md="12" :sm="24">
-                    <a-card :bordered="false" class="settings-panel">
-                        <template #title>媒体设置</template>
-                        <a-form ref="form" :model="mediaInfo" layout="vertical">
-                            <a-form-item label="处理类型">
-                                <a-radio-group v-model:value="mediaInfo.type" default-value="ENCODE"
-                                    button-style="solid" size="large">
-                                    <a-radio-button value="ENCODE">编码</a-radio-button>
-                                    <a-radio-button value="CUT">剪辑</a-radio-button>
-                                    <a-radio-button value="MOVE">移动</a-radio-button>
-                                </a-radio-group>
-                            </a-form-item>
-                            <a-form-item label="编码设置" v-if="mediaInfo.type === 'ENCODE'">
-                                <a-space direction="vertical" style="width: 100%">
-                                    <a-radio-group v-model:value="mediaInfo.codec" default-value="h264"
-                                        button-style="solid">
-                                        <a-radio-button v-for="codec in codecs" :key="codec" :value="codec">{{ codec
-                                            }}</a-radio-button>
-                                    </a-radio-group>
-                                    <a-input-number v-model:value="mediaInfo.bitRate" :formatter="value => `${value}K`"
-                                        :parser="value => value.replace('K', '')" default-value="1000" :min="1000"
-                                        :max="5000" step="500" style="width: 200px" addon-after="码率" />
-                                </a-space>
-                            </a-form-item>
-                            <a-form-item label="处理状态">
-                                <a-select v-model:value="mediaInfo.status" style="width: 100%">
-                                    <a-select-option value="NONE">不处理</a-select-option>
-                                    <a-select-option value="PENDING">待处理</a-select-option>
-                                    <a-select-option value="PROCESSING">处理中</a-select-option>
-                                    <a-select-option value="SUCCESS">完成</a-select-option>
-                                    <a-select-option value="FAIL">失败</a-select-option>
-                                    <a-select-option value="DELETED">已删除</a-select-option>
-                                </a-select>
-                            </a-form-item>
-                            <a-form-item label="视频标题">
-                                <a-input v-model:value="mediaInfo.metaTitle" placeholder="视频标题" allow-clear />
-                            </a-form-item>
-                        </a-form>
-                    </a-card>
-                </a-col>
-                <a-col :xl="8" :lg="10" :md="12" :sm="24">
-                    <a-card :bordered="false" class="control-panel">
-                        <template #title>视频控制</template>
-                        <a-form ref="form" :model="mediaInfo" layout="vertical">
-                            <a-form-item v-if="mediaInfo.type === 'CUT'">
-                                <div class="time-control">
-                                    <div class="time-display">
-                                        <span>开始时间: {{ formatDuring(mark.start) }}</span>
-                                        <span>结束时间: {{ formatDuring(mark.end) }}</span>
+                <a-card :bordered="false" style="width: 100%">
+                    <template #title>媒体设置</template>
+                    <a-form ref="form" :model="mediaInfo" layout="vertical">
+                        <a-form-item v-if="mediaInfo.type === 'CUT'">
+                            <div class="time-control">
+                                <div class="time-display">
+                                    <span>开始时间: {{ formatDuring(mark.start) }}</span>
+                                    <span>结束时间: {{ formatDuring(mark.end) }}</span>
+                                </div>
+                                <div class="button-controls">
+                                    <div class="control-row">
+                                        <a-button-group>
+                                            <a-button @click="modifyPlay(-5)">
+                                                <template #icon><step-backward-outlined /></template>
+                                                -5s
+                                            </a-button>
+                                            <a-button @click="modifyPlay(+5)">
+                                                <template #icon><step-forward-outlined /></template>
+                                                +5s
+                                            </a-button>
+                                        </a-button-group>
                                     </div>
-                                    <div class="button-controls">
-                                        <div class="control-row">
-                                            <a-button-group>
-                                                <a-button @click="modifyPlay(-5)">
-                                                    <template #icon><step-backward-outlined /></template>
-                                                    -5s
-                                                </a-button>
-                                                <a-button @click="modifyPlay(+5)">
-                                                    <template #icon><step-forward-outlined /></template>
-                                                    +5s
-                                                </a-button>
-                                            </a-button-group>
-                                        </div>
-                                        <div class="control-row">
-                                            <a-button type="primary" @click="selectFrame(0)">
-                                                <template #icon><scissor-outlined /></template>
-                                                选择关键帧
-                                            </a-button>
-                                            <a-button type="primary" @click="handlerAdd">
-                                                <template #icon><plus-outlined /></template>
-                                                添加片段
-                                            </a-button>
-                                        </div>
+                                    <div class="control-row">
+                                        <a-button type="primary" @click="selectFrame(0)">
+                                            <template #icon><scissor-outlined /></template>
+                                            选择关键帧
+                                        </a-button>
+                                        <a-button type="primary" @click="handlerAdd">
+                                            <template #icon><plus-outlined /></template>
+                                            添加片段
+                                        </a-button>
                                     </div>
                                 </div>
-                            </a-form-item>
-                            <a-form-item>
-                                <a-space>
-                                    <a-button type="primary" @click="saveMediaInfo()">
-                                        <template #icon><save-outlined /></template>
-                                        保存
-                                    </a-button>
-                                    <a-button @click="drawerClose">
-                                        <template #icon><rollback-outlined /></template>
-                                        返回
-                                    </a-button>
-                                    <a-button @click="loadMetaInfo()">
-                                        <template #icon><reload-outlined /></template>
-                                        刷新
-                                    </a-button>
-                                </a-space>
-                            </a-form-item>
-                        </a-form>
-                    </a-card>
-                </a-col>
+                            </div>
+                        </a-form-item>
+                        <a-form-item label="编码设置" v-if="mediaInfo.type === 'ENCODE'">
+                            <a-space direction="vertical" style="width: 100%">
+                                <a-radio-group v-model:value="mediaInfo.codec" default-value="h264"
+                                    button-style="solid">
+                                    <a-radio-button v-for="codec in codecs" :key="codec" :value="codec">{{ codec
+                                        }}</a-radio-button>
+                                </a-radio-group>
+                                <a-input-number v-model:value="mediaInfo.bitRate" :formatter="value => `${value}K`"
+                                    :parser="value => value.replace('K', '')" default-value="1000" :min="1000"
+                                    :max="5000" step="500" style="width: 200px" addon-after="码率" />
+                            </a-space>
+                        </a-form-item>
+                        <a-form-item label="处理状态">
+                            <a-select v-model:value="mediaInfo.status" style="width: 100%">
+                                <a-select-option value="NONE">不处理</a-select-option>
+                                <a-select-option value="PENDING">待处理</a-select-option>
+                                <a-select-option value="PROCESSING">处理中</a-select-option>
+                                <a-select-option value="SUCCESS">完成</a-select-option>
+                                <a-select-option value="FAIL">失败</a-select-option>
+                                <a-select-option value="DELETED">已删除</a-select-option>
+                            </a-select>
+                        </a-form-item>
+                        <a-form-item label="视频标题">
+                            <a-input v-model:value="mediaInfo.metaTitle" placeholder="视频标题" allow-clear />
+                        </a-form-item>
+                    </a-form>
+                </a-card>
             </a-row>
         </a-spin>
+        <template #footer>
+            <a-space size="large">
+                <a-button size="small" @click="saveMediaInfo()">
+                    <template #icon><save-outlined /></template>
+                    保存
+                </a-button>
+                <a-button size="small" @click="loadMetaInfo()">
+                    <template #icon><reload-outlined /></template>
+                    刷新
+                </a-button>
+                <a-radio-group v-model:value="mediaInfo.type" default-value="ENCODE" button-style="solid"
+                                size="small">
+                                <a-radio-button value="ENCODE">编码</a-radio-button>
+                                <a-radio-button value="CUT">剪辑</a-radio-button>
+                                <a-radio-button value="MOVE">移动</a-radio-button>
+                            </a-radio-group>
+            </a-space>
+        </template>
     </a-drawer>
 </template>
 
@@ -177,6 +162,9 @@ watch(marks, () => {
     getExpectSize()
 })
 
+const videoPlayerRef = ref(null)
+const player = computed(() => videoPlayerRef.value?.player())
+
 // 方法
 const loadMetaInfo = async () => {
     loading.value = true
@@ -220,8 +208,7 @@ const loadMetaInfo = async () => {
                 fileName: `${fileName}`,
                 suffix: `${suffix}`,
                 bitRate: b,
-                marks: marks.value,
-                codec: 'h264'
+                marks: marks.value
             })
         }
     }).finally(() => {
@@ -250,6 +237,7 @@ const saveMediaInfo = async () => {
 }
 
 const drawerClose = () => {
+    metaInfo.value = {}
     drawerVisible.value = false
 }
 
@@ -277,17 +265,19 @@ const handlerRemover = (index) => {
     marks.value.splice(index, 1)
 }
 
-const selectFrame = (type) => {
-    if (type === 0) {
-        mark.start = player.currentTime()
+const selectFrame = () => {
+    if (!player.value) return
+    if (mark.start && mark.start > 0) {
+        mark.end = player.value.currentTime()
     } else {
-        mark.end = player.currentTime()
+        mark.start = player.value.currentTime()
     }
 }
 
 const modifyPlay = (seconds) => {
-    const currentTime = player.currentTime()
-    player.currentTime(currentTime + seconds)
+    if (!player.value) return
+    const currentTime = player.value.currentTime()
+    player.value.currentTime(currentTime + seconds)
 }
 
 const formatDuring = (time) => {
