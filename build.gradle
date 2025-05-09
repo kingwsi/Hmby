@@ -46,7 +46,6 @@ dependencies {
     implementation 'net.bramp.ffmpeg:ffmpeg:0.8.1-SNAPSHOT'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation platform("org.springframework.ai:spring-ai-bom:1.0.0-SNAPSHOT")
-    implementation 'org.springframework.ai:spring-ai-starter-model-ollama'
     // Replace the following with the starter dependencies of specific modules you wish to use
     implementation 'org.springframework.ai:spring-ai-openai'
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
