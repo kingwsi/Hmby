@@ -145,7 +145,7 @@ const mark = reactive({
 })
 const marks = ref([])
 const metaInfo = ref({})
-const mediaInfo = reactive({})
+const mediaInfo = ref({})
 const loading = ref(true)
 const mediaStream = reactive({
     Width: 0,
@@ -179,9 +179,8 @@ const loadMetaInfo = async () => {
         Object.assign(mediaStream, response.data.MediaStreams[0])
 
         if (response.data && response.data.mediaInfo) {
-            const existMediaInfo = response.data.mediaInfo;
-            Object.assign(mediaInfo, existMediaInfo)
-            marks.value = existMediaInfo.marks
+            mediaInfo.value = response.data.mediaInfo;
+            marks.value = response.data.mediaInfo.marks
         } else {
             const { ServerId, MediaSources } = metaInfo.value
             const { Path, Size, Bitrate } = MediaSources[0]
@@ -199,7 +198,8 @@ const loadMetaInfo = async () => {
             } else if (b > 3000) {
                 b = 2000
             }
-            Object.assign(mediaInfo, {
+
+            mediaInfo.value = {
                 inputPath: Path,
                 hash: ServerId,
                 status: 'PENDING',
@@ -207,9 +207,8 @@ const loadMetaInfo = async () => {
                 type: 'ENCODE',
                 fileName: `${fileName}`,
                 suffix: `${suffix}`,
-                bitRate: b,
-                marks: marks.value
-            })
+                bitRate: b
+            }
         }
     }).finally(() => {
         loading.value = false
@@ -225,7 +224,7 @@ const loadCodecs = async () => {
 const saveMediaInfo = async () => {
     loading.value = true
     await request.post('/api/media-info', {
-        ...mediaInfo,
+        ...mediaInfo.value,
         embyId: metaInfo.value.Id,
         marks: marks.value
     }).then(() => {
@@ -267,7 +266,10 @@ const handlerRemover = (index) => {
 
 const selectFrame = () => {
     if (!player.value) return
-    if (mark.start && mark.start > 0) {
+    if (mark.start && mark.start > 0 && mark.end && mark.end > 0) {
+        mark.start = null
+        mark.end = null
+    } else if (mark.start && mark.start){
         mark.end = player.value.currentTime()
     } else {
         mark.start = player.value.currentTime()

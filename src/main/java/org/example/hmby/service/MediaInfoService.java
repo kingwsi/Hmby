@@ -29,6 +29,7 @@ import org.example.hmby.sceurity.EmbyUser;
 import org.example.hmby.sceurity.SecurityUtils;
 import org.example.hmby.vo.MediaInfoDTO;
 import org.springframework.data.crossstore.ChangeSetPersister;
+import org.springframework.data.domain.Example;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -66,6 +67,7 @@ public class MediaInfoService {
     private final ConcurrentHashMap<Object, Object> localCache;
     private final ThreadPoolExecutor singleThreadExecutor;
     private final ParamRepository paramRepository;
+    private final SubtitleService subtitleService;
 
     @Transactional(rollbackOn = Exception.class)
     public void save(MediaInfoDTO mediainfoDTO) {
@@ -108,7 +110,7 @@ public class MediaInfoService {
                 predicates.add(criteriaBuilder.equal(root.get("status"), params.getStatus()));
             }
             if (params.getType() != null) {
-                predicates.add(criteriaBuilder.equal(root.get("convertType"), params.getType()));
+                predicates.add(criteriaBuilder.equal(root.get("type"), params.getType()));
             }
             String userId = SecurityUtils.getUserInfo().map(EmbyUser::getUserId).orElse("Unknown");
             predicates.add(criteriaBuilder.equal(root.get("userId"), userId));
@@ -175,19 +177,26 @@ public class MediaInfoService {
                     mediaInfoAndMarks.setOutputPath(mediaInfo.getOutputPath());
                     ffmpegService.cutAndConcat(mediaInfoAndMarks);
                     mediaInfo.setStatus(MediaStatus.SUCCESS);
+                    mediaInfo.setProcessedSize(Files.size(Paths.get(ffmpegService.handlerVolumeBind(mediaInfo.getOutputPath()))));
                     break;
                 case MOVE:
                     ffmpegService.moveAndTitle(mediaInfo);
                     mediaInfo.setRemark(null);
                     mediaInfo.setStatus(MediaStatus.DONE);
+                    mediaInfo.setProcessedSize(Files.size(Paths.get(ffmpegService.handlerVolumeBind(mediaInfo.getOutputPath()))));
                     break;
                 case ENCODE:
                     result = ffmpegService.encoding(mediaInfo);
                     mediaInfo.setRemark(null);
                     mediaInfo.setStatus(MediaStatus.SUCCESS);
+                    mediaInfo.setProcessedSize(Files.size(Paths.get(ffmpegService.handlerVolumeBind(mediaInfo.getOutputPath()))));
+                    break;
+                case TRANSLATE:
+                    result = subtitleService.translateHandler(mediaInfo.getId());
+                    mediaInfo.setRemark(null);
+                    mediaInfo.setStatus(MediaStatus.SUCCESS);
                     break;
             }
-            mediaInfo.setProcessedSize(Files.size(Paths.get(ffmpegService.handlerVolumeBind(mediaInfo.getOutputPath()))));
         } catch (Exception e) {
             log.error("处理失败", e);
             result = e.toString();
@@ -319,5 +328,13 @@ public class MediaInfoService {
             return null;
         }
         return this.getMediaAndMarks(mediaInfo.getId());
+    }
+
+    public MediaInfoDTO getSubtitleMediaInfo(Long embyId, String language) {
+        MediaInfo query = new MediaInfo();
+        query.setEmbyId(embyId);
+        query.setSuffix(language);
+        return mediaInfoRepository.findAll(Example.of(query))
+                .stream().findFirst().map(mediainfoConvertMapper::toMediaInfoDTO).orElse(null);
     }
 }

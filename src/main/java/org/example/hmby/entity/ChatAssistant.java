@@ -3,10 +3,13 @@ package org.example.hmby.entity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 import org.example.hmby.entity.converter.EncryptionConverter;
+import org.example.hmby.enumerate.AssistantType;
 import org.hibernate.annotations.ColumnDefault;
 
 @Getter
@@ -14,6 +17,10 @@ import org.hibernate.annotations.ColumnDefault;
 @Entity
 @Table(name = "chat_assistants")
 public class ChatAssistant extends AuditableEntity {
+
+    @Column(name = "type", unique = true)
+    @Enumerated(EnumType.STRING)
+    private AssistantType type;
 
     @Column(name = "model_name", nullable = false, length = 100)
     private String modelName;

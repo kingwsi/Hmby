@@ -1,10 +1,10 @@
 package org.example.hmby.service;
 
 import org.example.hmby.entity.ChatAssistant;
+import org.example.hmby.enumerate.AssistantType;
 import org.example.hmby.repository.ChatAssistantRepository;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
-import org.springframework.ai.model.ApiKey;
 import org.springframework.ai.model.NoopApiKey;
 import org.springframework.ai.model.SimpleApiKey;
 import org.springframework.ai.openai.OpenAiChatModel;
@@ -27,9 +27,12 @@ public class AssistantService {
     public AssistantService(ChatAssistantRepository chatAssistantRepository) {
         this.chatAssistantRepository = chatAssistantRepository;
     }
+    
+    public ChatAssistant getAssistantByType(AssistantType type) {
+        return chatAssistantRepository.findByType(type).orElseThrow(() -> new IllegalArgumentException("No chat assistant found for type: " + type));
+    }
 
-    public ChatClient getChatClient(Long assistantId) {
-        ChatAssistant chatAssistant = chatAssistantRepository.findById(assistantId).orElseThrow();
+    public ChatClient buildChatClient(ChatAssistant chatAssistant) {
         String apiKey = chatAssistant.getApiKey();
         String model = chatAssistant.getModelName();
         String baseUrl = chatAssistant.getBaseUrl();
@@ -42,13 +45,13 @@ public class AssistantService {
                         // Force HTTP/1.1 for streaming
                         .clientConnector(new JdkClientHttpConnector(HttpClient.newBuilder()
                                 .version(HttpClient.Version.HTTP_1_1)
-                                .connectTimeout(Duration.ofSeconds(30))
+                                .connectTimeout(Duration.ofSeconds(100))
                                 .build())))
                 .restClientBuilder(RestClient.builder()
                         // Force HTTP/1.1 for non-streaming
                         .requestFactory(new JdkClientHttpRequestFactory(HttpClient.newBuilder()
                                 .version(HttpClient.Version.HTTP_1_1)
-                                .connectTimeout(Duration.ofSeconds(30))
+                                .connectTimeout(Duration.ofSeconds(100))
                                 .build())))
                 .build();
 
@@ -57,7 +60,7 @@ public class AssistantService {
                 .openAiApi(openAiApi).build();
 
         return ChatClient.builder(build)
-                .defaultSystem("You are useful assistant")
+                .defaultSystem(chatAssistant.getPrompt())
                 .defaultAdvisors(new SimpleLoggerAdvisor())
                 .build();
     }

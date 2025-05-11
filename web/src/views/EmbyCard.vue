@@ -90,7 +90,6 @@
               </template>
             </a-card-meta>
             <template #actions>
-              <eye-outlined @click="openEmbyPage(item.DetailPage)" />
               <edit-outlined @click="handleOpenEditDrawer(item.Id)" />
             </template>
           </a-card>

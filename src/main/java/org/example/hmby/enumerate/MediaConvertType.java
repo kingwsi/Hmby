@@ -5,4 +5,5 @@ public enum MediaConvertType {
     ENCODE,
     MOVE,
     DELETE,
+    TRANSLATE
 }

@@ -32,6 +32,12 @@ const routes = [
     meta: { requiresAuth: true, hideInNav: false, keepAlive: true }
   },
   {
+    path: '/subtitle-manager',
+    name: '字幕管理',
+    component: () => import('../views/SubtitleManager.vue'),
+    meta: { requiresAuth: true, hideInNav: true, keepAlive: false }
+  },
+  {
     path: '/login',
     name: '登录',
     component: () => import('../views/Login.vue'),

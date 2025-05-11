@@ -1,8 +1,15 @@
 package org.example.hmby.entity;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
 import lombok.Getter;
 import lombok.Setter;
+import org.example.hmby.enumerate.SubtitleStatus;
 
 import java.math.BigDecimal;
 
@@ -13,12 +20,23 @@ import java.math.BigDecimal;
 @Getter
 @Setter
 @Entity(name = "subtitles")
-public class Subtitle extends AuditableEntity {
+public class Subtitle {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @Column(nullable = false)
     private Long mediaId;
-    private String language;
-    private String sequence;
-    private BigDecimal startTime;
-    private BigDecimal endTime;
-    private String title;
-    private String status;
+
+    @Column(nullable = false)
+    private Integer sequence;
+    
+    private String startTime;
+    private String endTime;
+    private String text;
+    private String translatedText;
+
+    @Enumerated(EnumType.STRING)
+    private SubtitleStatus status;
 }

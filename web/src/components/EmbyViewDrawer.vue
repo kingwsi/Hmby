@@ -15,7 +15,12 @@
                 </a-descriptions-item>
                 <a-descriptions-item label="字幕语言" v-if="subtitleLanguages && subtitleLanguages.length > 0">
                     <a-space size="large">
-                        <span v-for="item in subtitleLanguages" :key="item"> {{ item }}</span>
+                        <a-space size="large">
+                        <a-tag v-for="item in subtitleLanguages"
+                        style="cursor: pointer;"
+                        @click="openSubtitle(mediaDetail.Id, item)"
+                        :key="item"> {{ item }}</a-tag>
+                    </a-space>
                     </a-space>
                 </a-descriptions-item>
                 <template v-if="mediaDetail.mediaInfo">
@@ -140,6 +145,7 @@ import { PlusOutlined } from '@ant-design/icons-vue';
 import { message } from 'ant-design-vue';
 import Ellipsis from '@/components/Ellipsis.vue'
 import { useDeviceStore } from '@/stores/device';
+import { useRouter } from 'vue-router';
 
 const emit = defineEmits(['update']);
 const drawerVisible = ref(false);
@@ -148,6 +154,7 @@ const tagInputRef = ref();
 const deviceStore = useDeviceStore();
 const playerId = ref(null);
 const loading = ref(false); // 添加loading状态变量
+const router = useRouter();
 
 const typeMap = {
     'CUT': '剪切',
@@ -307,6 +314,18 @@ const handleSourceMedia = async (operate) => {
         moveLoading.value = false;
     }
 };
+
+const openSubtitle = (itemId, subtitleLanguage) => {
+    drawerClose();
+    router.push({
+        path: '/subtitle-manager',
+        query: {
+            itemId,
+            subtitleLanguage
+        }
+    });
+}
+
 
 
 defineExpose({

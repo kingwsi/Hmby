@@ -40,7 +40,8 @@
             </a-form>
         </div>
         <!-- 进度信息展示 -->
-        <a-card v-if="progressInfo" :bodyStyle="{'padding': '15px'}" style="margin-bottom: 8px; background-color: #f5f5f5">
+        <a-card v-if="progressInfo" :bodyStyle="{ 'padding': '15px' }"
+            style="margin-bottom: 8px; background-color: #f5f5f5">
             <a-row :gutter="[16, 8]" align="middle">
                 <a-col :xs="24" :sm="12" :md="8" :lg="6">
                     <span style="margin-right: 8px">{{ progressInfo.mediaName }}</span>
@@ -71,8 +72,9 @@
                         <a-popconfirm title="确定要删除这条记录吗？" @confirm="handleDelete(record)" ok-text="确定" cancel-text="取消">
                             <a-button type="link" danger>删除</a-button>
                         </a-popconfirm>
-                        <a-button type="link" @click="handleOpenEditDrawer(record.embyId)">编辑</a-button>
-                        <a-button type="link" @click="execute(record.id)" :disabled="record.status==='DONE'">开始</a-button>
+                        <a-button type="link" @click="handleOpenEditDrawer(record)">编辑</a-button>
+                        <a-button type="link" @click="execute(record.id)"
+                            :disabled="record.status === 'DONE'">开始</a-button>
                         <a-button type="link" @click="showDetail(record)">详情</a-button>
                     </a-space>
                 </template>
@@ -81,11 +83,6 @@
 
         <!-- 详情弹窗 -->
         <a-modal v-model:open="detailVisible" title="详细信息" :footer="null" width="800px" :destroyOnClose="true">
-            <!-- 视频流区域 -->
-            <div class="media-streams-section">
-                <video-player v-if="playerId" :key="playerId" :item-id="playerId" style="height: 350px;"
-                    :poster="getPlayerPoter()" />
-            </div>
             <a-divider />
             <a-descriptions bordered>
                 <a-descriptions-item label="处理耗时" :span="3">
@@ -93,11 +90,12 @@
                     <template v-if="currentRecord.fileSize && currentRecord.fileSize">
                         <a-divider type="vertical" /> {{ (currentRecord.processedSize / 1024 / 1024).toFixed(2) }}MB
                         / {{ (currentRecord.fileSize / 1024 / 1024).toFixed(2) }}MB
-                        <a-divider type="vertical" /> {{ (currentRecord.processedSize * 100 / currentRecord.fileSize).toFixed(2) }}%
+                        <a-divider type="vertical" /> {{ (currentRecord.processedSize * 100 /
+                    currentRecord.fileSize).toFixed(2) }}%
                     </template>
                 </a-descriptions-item>
                 <a-descriptions-item label="类型" :span="3">
-                    {{currentRecord.type}}
+                    {{ currentRecord.type }}
                     <template v-if="currentRecord?.type === 'ENCODE'">
                         <a-divider type="vertical" /> {{ currentRecord.codec }}
                         <a-divider type="vertical" /> {{ currentRecord.bitRate }} K
@@ -115,13 +113,13 @@
 </template>
 
 <script setup>
-import { ref, reactive, onDeactivated, h, onActivated } from 'vue'
+import { ref, reactive, onDeactivated, h, onActivated, onUnmounted } from 'vue'
 import { message } from 'ant-design-vue'
 import request from '@/utils/request'
 import MediaStatusTag from '@/components/MediaStatusTag.vue'
 import Ellipsis from '@/components/Ellipsis.vue'
-import VideoPlayer from '@/components/VideoPlayer.vue';
 import EmbyEditorDrawer from '@/components/EmbyEditorDrawer.vue';
+import { useRouter } from 'vue-router';
 
 // 表格列定义
 const columns = [
@@ -166,6 +164,8 @@ const columns = [
         width: 250
     }
 ]
+
+const router = useRouter();
 
 // 查询参数
 const queryParam = reactive({
@@ -239,7 +239,6 @@ const currentRecord = ref(null)
 const showDetail = (record) => {
     currentRecord.value = record
     detailVisible.value = true
-    playerId.value = record.embyId
 }
 
 const progressInfo = ref(null)
@@ -268,8 +267,20 @@ const clearProgressInterval = () => {
 
 const editorDrawer = ref(null);
 
-const handleOpenEditDrawer = (id) => {
-  editorDrawer.value.handleOpenDrawer(id);
+const handleOpenEditDrawer = (record) => {
+    if (record.type === 'TRANSLATE') {
+        const itemId = record.embyId;
+        const subtitleLanguage = record.suffix;
+        router.push({
+            path: '/subtitle-manager',
+            query: {
+                itemId,
+                subtitleLanguage
+            }
+        });
+    } else {
+        editorDrawer.value.handleOpenDrawer(id);
+    }
 };
 
 // 初始加载
@@ -280,10 +291,11 @@ onActivated(() => {
 })
 
 onDeactivated(() => {
-    if (progressTimer) {
-        clearInterval(progressTimer);
-        progressTimer = null;
-    }
+    clearProgressInterval()
+})
+
+onUnmounted(() => {
+    clearProgressInterval()
 })
 </script>
 

@@ -191,12 +191,7 @@ public class EmbyController {
 
     @GetMapping("/detail/{itemId}")
     public Response<Metadata> getItemDetail(@PathVariable Long itemId) {
-        String token = SecurityUtils.getUserInfo().map(EmbyUser::getThirdPartyToken).orElseThrow(() -> new BusinessException("Emby token is null"));
         Metadata itemMetadata = embyClient.getItemMetadata(itemId);
-        itemMetadata.setStreamUrl(String.format("%s/Videos/%s/stream.mp4?static=true&api_key=%s",
-                propertiesConfig.getEmbyServer(),
-                itemMetadata.getId(),
-                token));
         Optional.ofNullable(embyClient.getSpecialFeatures(itemId))
                 .map(ResponseEntity::getBody)
                 .ifPresent(itemMetadata::setSpecialFeatures);
@@ -205,6 +200,14 @@ public class EmbyController {
             itemMetadata.setMediaInfo(mediaInfoService.getMediaDetail(itemMetadata.getPath()));
         }
         itemMetadata.setEmbyServer(propertiesConfig.getEmbyServer());
+        return Response.success(itemMetadata);
+    }
+
+    @GetMapping("/subtitle/detail/{embyId}/{language}")
+    public Response<Metadata> getSubtitleDetail(@PathVariable Long embyId, @PathVariable String language) {
+        Metadata itemMetadata = embyClient.getItemMetadata(embyId);
+        itemMetadata.setEmbyServer(propertiesConfig.getEmbyServer());
+        itemMetadata.setMediaInfo(mediaInfoService.getSubtitleMediaInfo(embyId, language));
         return Response.success(itemMetadata);
     }
 

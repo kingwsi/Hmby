@@ -1,7 +1,6 @@
 <template>
   <div class="video-container">
     <video ref="videoPlayer" class="video-js"></video>
-    <div class="video-btn" @click="togglePlayerType">{{ hls ? 'HLS' : 'MP4' }}</div>
     <TimeLine v-if="duration > 0" :intervals="intervals" :timeLength="duration"/>
   </div>
 </template>
@@ -53,7 +52,6 @@ const videoPlayer = ref(null)
 const player = ref(null)
 const stompClient = ref(null)
 const duration = ref(null)
-const hls = ref(localStorage.getItem('PLAYER_TYPE') === 'true')
 
 // 暴露播放器实例
 defineExpose({
@@ -125,10 +123,7 @@ const registerTimelinePlugin = () => {
 }
 
 // 初始化播放器
-const initPlayer = async (useHls) => {
-  // 保存播放器类型选择
-  localStorage.setItem('PLAYER_TYPE', useHls)
-  hls.value = useHls
+const initPlayer = async () => {
   
   // 如果播放器已存在，先销毁
   if (player.value) {
@@ -142,7 +137,8 @@ const initPlayer = async (useHls) => {
   const options = {
     ...props.options,
     controls: true,
-    poster: props.poster
+    poster: props.poster,
+    crossorigin: 'anonymous'
   }
 
   player.value = videojs(videoPlayer.value, options)
@@ -157,14 +153,11 @@ const initPlayer = async (useHls) => {
 
   try {
     // 获取视频源
-    const response = await request.get(`/api/emby-item/player/${props.itemId}`, {
-      params: { hls: hls.value }
-    })
+    const response = await request.get(`/api/emby-item/player/${props.itemId}`)
     
     // 设置视频源
     player.value.src({ 
-      src: response.data, 
-      type: hls.value ? 'application/x-mpegURL' : null,
+      src: response.data,
       poster: props.poster
     })
     
@@ -173,11 +166,6 @@ const initPlayer = async (useHls) => {
   } catch (error) {
     console.error('Failed to fetch video source:', error)
   }
-}
-
-// 切换播放器类型 (HLS/MP4)
-const togglePlayerType = () => {
-  initPlayer(!hls.value)
 }
 
 // WebSocket 连接
@@ -239,8 +227,7 @@ watch(() => props.intervals, (newVal) => {
 
 // 生命周期钩子
 onMounted(() => {
-  initPlayer(hls.value)
-  connection()
+  initPlayer()
 })
 
 onUnmounted(disconnect)
