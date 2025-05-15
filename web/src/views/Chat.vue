@@ -7,12 +7,12 @@
                         <a-button type="primary" @click="handleNewChat">新建会话</a-button>
                     </template>
                     <a-table :dataSource="historyMessages" :columns="historyColumns" :pagination="{
-            current: pagination.current,
-            pageSize: pagination.pageSize,
-            total: pagination.total,
-            onChange: handlePageChange,
-            size: 'small'
-        }" :loading="historyLoading" size="small">
+                        current: pagination.current,
+                        pageSize: pagination.pageSize,
+                        total: pagination.total,
+                        onChange: handlePageChange,
+                        size: 'small'
+                    }" :loading="historyLoading" size="small">
                         <template #bodyCell="{ column, record }">
                             <template v-if="column.key === 'title'">
                                 <a-tooltip :title="record.title">
@@ -37,9 +37,9 @@
                     <template #extra>
                         <a-space>
                             <a-select v-model:value="selectedAssistant" style="width: 200px" placeholder="选择预设提示词"
-                                @change="handleAssistantChange" :disabled="activatedTopic?.id != null">
+                                @change="handleAssistantChange" :disabled="activatedConversation?.id != null">
                                 <a-select-option v-for="item in assistants" :key="item.id" :value="item.id">
-                                    {{ item.title }}
+                                    {{ item.type }}
                                 </a-select-option>
                             </a-select>
                             <a-button type="link" @click="showAssistantDrawer = true">管理预设</a-button>
@@ -48,16 +48,24 @@
                     <div class="chat-messages" ref="messagesContainer">
                         <template v-if="messages.length > 0">
                             <div v-for="(message, index) in messages" :key="index" class="message-item"
-                                :class="message.role">
+                                :class="message.type">
                                 <div class="message-content">
                                     <div class="message-avatar">
                                         <a-avatar :size="40"
-                                            :style="{ backgroundColor: message.role === 'user' ? '#1890ff' : '#52c41a' }">
-                                            {{ message.role === 'user' ? 'U' : 'AI' }}
+                                            :style="{ backgroundColor: message.type === 'USER' ? '#1890ff' : '#52c41a' }">
+                                            {{ message.type === 'USER' ? 'U' : 'AI' }}
                                         </a-avatar>
                                     </div>
                                     <div class="message-text">
-                                        <div v-html="formatMessage(message.content)"></div>
+                                        <div v-if="message.think" class="thinking">
+                                            <a-collapse ghost>
+                                                <a-collapse-panel key="1" header="Tinking">
+                                                    <p>{{ message.think }}</p>
+                                                </a-collapse-panel>
+                                            </a-collapse>
+                                        </div>
+
+                                        <MarkdownRenderer :content="parseXmlTags(message.content)" />
                                     </div>
                                 </div>
                             </div>
@@ -69,7 +77,15 @@
                                         </a-avatar>
                                     </div>
                                     <div class="message-text">
-                                        {{ receivingMessage }}
+                                        <div v-if="receivingMessage && receivingMessage.think">
+                                            <a-collapse ghost>
+                                                <a-collapse-panel key="1" header="Tinking">
+                                                    <p>{{ receivingMessage.think }}</p>
+                                                </a-collapse-panel>
+                                            </a-collapse>
+                                            {{ thinkingMessage }}
+                                        </div>
+                                        <MarkdownRenderer :content="receivingMessage.content" />
                                     </div>
                                 </div>
                             </div>
@@ -118,8 +134,8 @@
         @cancel="handleAssistantModalCancel">
         <a-form :model="assistantForm" :rules="assistantRules" ref="assistantFormRef" :label-col="{ span: 4 }"
             :wrapper-col="{ span: 20 }">
-            <a-form-item label="标题" name="title">
-                <a-input v-model:value="assistantForm.title" placeholder="请输入标题" style="width: 100%" />
+            <a-form-item label="类型" name="type">
+                <a-input v-model:value="assistantForm.type" placeholder="请输入类型" style="width: 100%" />
             </a-form-item>
             <a-form-item label="模型名称" name="modelName">
                 <a-input v-model:value="assistantForm.modelName" placeholder="请输入模型名称" style="width: 100%" />
@@ -140,24 +156,92 @@
 
 <script setup>
 import { ref, reactive, onMounted, nextTick } from 'vue';
-import { chatStream, eventStream } from '@/utils/request';
+import { eventStream } from '@/utils/request';
 import { message as antMessage } from 'ant-design-vue';
 import request from '@/utils/request';
+import MarkdownRenderer from '@/components/MarkdownRenderer.vue';
 
 // 响应式状态
 const inputMessage = ref('');
 const messages = ref([]);
 const loading = ref(false);
 const messagesContainer = ref(null);
-let eventSource = null;
+const thinkingMessage = ref('');
 
 // 处理新建会话
 const handleNewChat = () => {
     messages.value = [];
     inputMessage.value = '';
     selectedAssistant.value = null;
-    activatedTopic.value = null;
-    receivingMessage.value = '';
+    activatedConversation.value = null;
+    receivingMessage.value = {};
+};
+
+const parseThinkingMessage = (text) => {
+    if (!text) return { think: '', content: text || '' };
+
+    let thinkContent = '';
+    let content = text;
+
+    // 检查是否包含完整的<think>标签
+    const hasOpenTag = text.includes('<think>');
+    const hasCloseTag = text.includes('</think>');
+
+    if (hasOpenTag && hasCloseTag) {
+        // 完整标签情况 - 提取<think>...</think>中的内容
+        const thinkMatch = text.match(/<think>([\s\S]*?)<\/think>/);
+        if (thinkMatch) {
+            thinkContent = thinkMatch[1].trim();
+            // 移除<think>...</think>标签和其中内容
+            content = text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+        }
+    } else if (hasOpenTag) {
+        thinkContent = text.replace('<think>', '').trim();
+        content = '';
+    }
+
+    return {
+        think: thinkContent,
+        content: content
+    };
+};
+
+
+// 解析XML标签
+const parseXmlTags = (text) => {
+    if (!text) return text;
+
+    // 解析<mcreference>标签
+    text = text.replace(/<mcreference\s+link="([^"]+)"\s+index="([^"]+)">([^<]+)<\/mcreference>/g,
+        (match, link, index, content) => {
+            return `<a href="${link}" target="_blank" class="reference-link">[${content}]</a>`;
+        });
+
+    // 解析<mcfile>标签
+    text = text.replace(/<mcfile\s+name="([^"]+)"\s+path="([^"]+)"><\/mcfile>/g,
+        (match, name, path) => {
+            return `<code class="file-reference">${name}</code>`;
+        });
+
+    // 解析<mcsymbol>标签
+    text = text.replace(/<mcsymbol\s+name="([^"]+)"\s+filename="([^"]+)"\s+path="([^"]+)"\s+(?:startline|lines)="([^"]+)"(?:\s+type="([^"]+)")?><\/mcsymbol>/g,
+        (match, name, filename, path, line, type) => {
+            return `<code class="symbol-reference">${name}</code>`;
+        });
+
+    // 解析<mcurl>标签
+    text = text.replace(/<mcurl\s+name="([^"]+)"\s+url="([^"]+)"><\/mcurl>/g,
+        (match, name, url) => {
+            return `<a href="${url}" target="_blank" class="url-reference">${name}</a>`;
+        });
+
+    // 解析<mcfolder>标签
+    text = text.replace(/<mcfolder\s+name="([^"]+)"\s+path="([^"]+)"><\/mcfolder>/g,
+        (match, name, path) => {
+            return `<code class="folder-reference">${name}</code>`;
+        });
+
+    return text;
 };
 
 // 历史消息列表状态
@@ -186,24 +270,19 @@ const historyColumns = [
 
 // 加载历史对话内容
 const loadChatMessage = async (record) => {
-    try {
-        const { data } = await request.get(`/api/chat-message/messages/${record.id}`);
-        if (data) {
-            // 确保数据格式正确
-            const formattedMessages = data.map(msg => ({
-                role: msg.role || 'user',
-                content: msg.content || ''
-            }));
-            messages.value = formattedMessages;
-            selectedAssistant.value = record.assistantId
-            activatedTopic.value = record;
-            inputMessage.value = '';
-            await nextTick();
-            scrollToBottom();
-        }
-    } catch (error) {
-        console.error('加载历史对话失败:', error);
-        antMessage.error('加载历史对话失败');
+    const { data } = await request.get(`/api/chat/conversation/${record.id}/messages`);
+    if (data) {
+        messages.value = data;
+        messages.value.forEach(item => {
+            const { think, content } = parseThinkingMessage(item.content);
+            item.think = think;
+            item.content = content;
+        });
+        selectedAssistant.value = record.assistantId
+        activatedConversation.value = record;
+        inputMessage.value = '';
+        await nextTick();
+        scrollToBottom();
     }
 };
 
@@ -211,7 +290,7 @@ const loadChatMessage = async (record) => {
 const loadHistoryMessages = async (page = 1) => {
     historyLoading.value = true;
     try {
-        const response = await request.get(`/api/chat-message/topics?page=${page - 1}&size=${pagination.pageSize}`);
+        const response = await request.get(`/api/chat/conversation-list?page=${page - 1}&size=${pagination.pageSize}`);
         const { content, totalElements } = response.data;
         historyMessages.value = content;
         pagination.total = totalElements;
@@ -232,10 +311,10 @@ const handlePageChange = (page) => {
 // 处理删除历史记录
 const handleDeleteHistory = async (record) => {
     try {
-        await request.delete(`/api/chat-message/topics/${record.id}`);
+        await request.delete(`/api/chat/conversation/${record.id}`);
         antMessage.success('删除成功');
         loadHistoryMessages(pagination.current);
-        if (record.id === activatedTopic.value?.id) {
+        if (record.id === activatedConversation.value?.id) {
             handleNewChat();
         }
     } catch (error) {
@@ -244,35 +323,30 @@ const handleDeleteHistory = async (record) => {
     }
 };
 
-const receivingMessage = ref('')
+const receivingMessage = ref({})
 
 // 发送消息处理
 const handleSend = async () => {
     if (!inputMessage.value.trim() || loading.value) return;
 
     // 检查是否选择了预设提示词
-    if (!selectedAssistant.value && !activatedTopic.value?.id) {
+    if (!selectedAssistant.value && !activatedConversation.value?.id) {
         antMessage.warning('请先选择预设提示词');
         return;
     }
 
     // 添加用户消息
     const userMessage = {
-        role: 'user',
+        type: 'USER',
         content: inputMessage.value
     };
     messages.value.push(userMessage);
-
-    // 关闭之前的连接
-    if (eventSource) {
-        eventSource.close();
-    }
 
     // 构建请求参数
     const requestParams = {
         content: inputMessage.value,
         assistantId: selectedAssistant.value || null,
-        topicId: activatedTopic.value?.id
+        conversationId: activatedConversation.value?.id
     };
 
     // 清空输入框并滚动到底部
@@ -285,15 +359,13 @@ const handleSend = async () => {
 
     try {
         eventStream(requestParams,
-            (data) => {
-                if (data.choices && data.choices.length > 0) {
-                    const choice = data.choices[0];
-                    if (choice.delta && choice.delta.content) {
-                        receivingMessage.value += choice.delta.content
-                    }
-                } else if (data.topicId) {
-                    activatedTopic.value.id = data.topicId;
-                    handlePageChange(1)
+            (res) => {
+                if (res.event === 'MESSAGE') {
+                    // 解析XML标签并添加到接收消息中
+                    const { think, content } = parseThinkingMessage(receivingMessage.value.raw);
+                    receivingMessage.value.content = content;
+                    receivingMessage.value.think = think;
+                    receivingMessage.value.raw = (receivingMessage.value.raw || '') + res.data;
                 }
             },
             (error) => {
@@ -304,10 +376,11 @@ const handleSend = async () => {
             () => {
                 loading.value = false;
                 messages.value.push({
-                    role: 'assistant',
-                    content: receivingMessage.value
+                    type: 'ASSISTANT',
+                    content: receivingMessage.value.content,
+                    think: thinkingMessage.value.think
                 });
-                receivingMessage.value = '';
+                receivingMessage.value = {};
             },
             "/api/chat/completions")
     } catch (error) {
@@ -315,19 +388,6 @@ const handleSend = async () => {
         antMessage.error('发送消息失败，请重试');
         loading.value = false;
     }
-};
-
-// 格式化消息内容（支持简单的Markdown格式）
-const formatMessage = (content) => {
-    if (!content) return '';
-
-    // 处理换行
-    let formatted = content.replace(/\n/g, '<br>');
-
-    // 处理代码块
-    formatted = formatted.replace(/```([\s\S]*?)```/g, '<pre class="code-block">$1</pre>');
-
-    return formatted;
 };
 
 // 滚动到底部
@@ -342,7 +402,7 @@ const scrollToBottom = () => {
 // 预设提示词相关状态
 const assistants = ref([]);
 const selectedAssistant = ref(null);
-const activatedTopic = ref({
+const activatedConversation = ref({
     id: null,
     title: ''
 });
@@ -351,7 +411,7 @@ const showAssistantDrawer = ref(false);
 // 加载预设提示词列表
 const loadAssistants = async () => {
     try {
-        const { data } = await request.get('/api/chat-message/assistants');
+        const { data } = await request.get('/api/chat/assistants');
         if (data) {
             assistants.value = data;
         }
@@ -361,8 +421,11 @@ const loadAssistants = async () => {
     }
 };
 
-// 处理预设提示词变更
-const handleAssistantChange = (value) => {
+const handleAssistantChange = async (value) => {
+    const { data } = await request.get(`/api/chat/conversation?assistantId=${value}`)
+    if (data) {
+        activatedConversation.value = data
+    }
     const selected = assistants.value.find(item => item.id === value);
     if (selected) {
         // 这里可以根据需求处理选中的预设提示词
@@ -373,14 +436,14 @@ const handleAssistantChange = (value) => {
 // 组件挂载时初始化
 onMounted(() => {
     loadHistoryMessages();
-    loadAssistants(); // 加载预设提示词列表
+    loadAssistants();
 });
 // 预设提示词表格列定义
 const assistantColumns = [
     {
-        title: '标题',
-        dataIndex: 'title',
-        key: 'title'
+        title: '类型',
+        dataIndex: 'type',
+        key: 'type'
     },
     {
         title: '模型',
@@ -404,14 +467,14 @@ const assistantModalVisible = ref(false);
 const assistantModalTitle = ref('');
 const assistantForm = reactive({
     id: null,
-    title: '',
+    type: '',
     modelName: '',
     temperature: 0.8,
     prompt: ''
 });
 const assistantFormRef = ref(null);
 const assistantRules = {
-    title: [{ required: true, message: '请输入标题' }],
+    title: [{ required: true, message: '请输入类型' }],
     modelName: [{ required: true, message: '请输入模型名称' }],
     temperature: [{ required: true, message: '请输入温度值' }],
     prompt: [{ required: true, message: '请输入提示词' }]
@@ -476,7 +539,7 @@ const handleAssistantDrawerClose = () => {
 };
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .chat-container {
     display: flex;
     justify-content: center;
@@ -519,6 +582,11 @@ const handleAssistantDrawerClose = () => {
     border-radius: 8px;
     max-width: 80%;
     word-break: break-word;
+
+    .thinking {
+        color: #999;
+        font-style: italic;
+    }
 }
 
 .user .message-content {
@@ -564,5 +632,36 @@ const handleAssistantDrawerClose = () => {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+/* XML标签引用样式 */
+.reference-link {
+    color: #1890ff;
+    font-weight: 500;
+    text-decoration: none;
+    margin: 0 2px;
+}
+
+.reference-link:hover {
+    text-decoration: underline;
+}
+
+.file-reference,
+.symbol-reference,
+.folder-reference {
+    background-color: #f5f5f5;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: monospace;
+    color: #d56161;
+}
+
+.url-reference {
+    color: #1890ff;
+    text-decoration: none;
+}
+
+.url-reference:hover {
+    text-decoration: underline;
 }
 </style>

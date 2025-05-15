@@ -4,28 +4,32 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.Instant;
+
 @Getter
 @Setter
 @Entity
-@Table(name = "chat_messages")
-public class ChatMessage extends AuditableEntity {
-
-    @Column(name = "topic_id", nullable = false)
-    private Long topicId;
+@Table(name = "ai_chat_memory")
+public class ChatMessage {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @Column(name = "conversation_id", nullable = false)
+    private String conversationId;
 
     @Column(name = "content", length = Integer.MAX_VALUE)
     private String content;
 
-    @Column(name = "role", nullable = false, length = 20)
-    @Enumerated(EnumType.STRING)
-    private MessageRole role;
-
+    @Column(name = "type")
+    private String type;
     
-    public enum MessageRole {
-        system,user,assistant,tool
-    }
+    private Instant timestamp;
 }

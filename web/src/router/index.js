@@ -32,6 +32,12 @@ const routes = [
     meta: { requiresAuth: true, hideInNav: false, keepAlive: true }
   },
   {
+    path: '/chat',
+    name: 'Chat',
+    component: () => import('../views/Chat.vue'),
+    meta: { requiresAuth: true, hideInNav: false, keepAlive: true }
+  },
+  {
     path: '/subtitle-manager',
     name: '字幕管理',
     component: () => import('../views/SubtitleManager.vue'),

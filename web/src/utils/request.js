@@ -70,14 +70,15 @@ request.interceptors.response.use(
     }
 );
 
-export const eventStream = async (method, path, params, onData, onError, onComplete) => {
+export const eventStream = async (params, onData, onError, onComplete, path) => {
     // 使用正则去除多余的斜杠，确保只有一个斜杠连接baseURL和path
     const url = `${import.meta.env.VITE_API_BASE_URL.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}`;
     const token = localStorage.getItem('token');
+    console.log('url:', url);
 
     try {
         await fetchEventSource(url, {
-            method: method,
+            method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 ...(token ? { 'Authorization': token } : {})
@@ -86,10 +87,12 @@ export const eventStream = async (method, path, params, onData, onError, onCompl
             onopen(response) {
                 if (!response.ok) {
                     const errMsg = response?.data?.message || '网络错误';
-                    toast.error(errMsg);
+                    message.error(errMsg);
                     if (response.status === 401 || response.status === 403) {
                         localStorage.removeItem('token');
-                        router.push('/login');
+                        localStorage.removeItem('unitInfo');
+                        router.push('/auth');
+                        console.log('路由跳转执行，目标：/auth');
                     }
                     throw new Error(errMsg || '网络错误');
                 }
@@ -97,12 +100,10 @@ export const eventStream = async (method, path, params, onData, onError, onCompl
             onmessage(res) {
                 try {
                     if (res.data) {
-                        console.log('处理数据:', res);
-                        
                         // 根据不同的事件类型处理不同的业务逻辑
-                        if(res.event === 'error') {
+                        if (res.event === 'error') {
                             const data = JSON.parse(res.data);
-                            toast.error(data.content || data.message || '未知错误');
+                            message.error(data.content || data.message || '未知错误');
                             onError && onError(data);
                         }
                         onData && onData(res);
@@ -117,12 +118,7 @@ export const eventStream = async (method, path, params, onData, onError, onCompl
                 onComplete && onComplete();
             },
             onerror(error) {
-                console.error('Error:', err);
-                if (err.status === 500) {
-                console.log('Client error, stopping retries.');
-                throw err; // 停止重试
-                }
-                onError && onError(error);
+                throw error;
             }
         });
     } catch (error) {
@@ -130,5 +126,6 @@ export const eventStream = async (method, path, params, onData, onError, onCompl
         onError && onError(error);
     }
 };
+
 
 export default request;
