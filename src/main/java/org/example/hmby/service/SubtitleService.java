@@ -10,7 +10,7 @@ import org.example.hmby.emby.Metadata;
 import org.example.hmby.entity.ChatAssistant;
 import org.example.hmby.entity.MediaInfo;
 import org.example.hmby.entity.Subtitle;
-import org.example.hmby.enumerate.AssistantType;
+import org.example.hmby.enumerate.AssistantCode;
 import org.example.hmby.enumerate.MediaConvertType;
 import org.example.hmby.enumerate.MediaStatus;
 import org.example.hmby.enumerate.SubtitleStatus;
@@ -28,7 +28,6 @@ import org.springframework.util.StringUtils;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -67,7 +66,7 @@ public class SubtitleService {
         int chunkSize = 20;
         List<Subtitle> fullSubtitles = subtitleRepository.findAllByMediaId(mediaId, Sort.by(Sort.Direction.ASC, "sequence"));
         FixedSizeQueue<Subtitle> fixedSizeQueue = new FixedSizeQueue<>(chunkSize);
-        ChatAssistant assistant = assistantService.getAssistantByType(AssistantType.TRANSLATE_SUBTITLE);
+        ChatAssistant assistant = assistantService.getAssistantByCode(AssistantCode.TRANSLATE_SUBTITLE.name());
         int beginIndex = 0;
         int size = fullSubtitles.size();
         while (beginIndex < size) {
@@ -111,7 +110,7 @@ public class SubtitleService {
                         if (!StringUtils.hasText(text)) {
                             log.warn("翻译失败,尝试补偿: {}", s.getText());
                             s.setStatus(SubtitleStatus.ERROR);
-                            text = translateBySubtitleId(s.getId(), AssistantType.TRANSLATE_SINGLE);
+                            text = translateBySubtitleId(s.getId(), AssistantCode.TRANSLATE_SINGLE);
                             if (!StringUtils.hasText(text)) {
                                 log.warn("翻译失败: {}", s.getText());
                                 errNum++;
@@ -172,8 +171,8 @@ public class SubtitleService {
     /**
      * 单条翻译
      */
-    public String translateBySubtitleId(Long subtitleId, AssistantType type) {
-        ChatAssistant assistant = assistantService.getAssistantByType(type);
+    public String translateBySubtitleId(Long subtitleId, AssistantCode type) {
+        ChatAssistant assistant = assistantService.getAssistantByCode(type.name());
         Subtitle subtitle = subtitleRepository.findById(subtitleId).orElseThrow(() -> new RuntimeException("No subtitle found"));
         List<Subtitle> translatedSubtitles = subtitleRepository.findChunks(subtitle.getMediaId(), subtitle.getSequence() - 5, subtitle.getSequence() + 5);
         String translatedText = translatedSubtitles.stream().map(Subtitle::getText).collect(Collectors.joining("\n"));
@@ -283,8 +282,8 @@ public class SubtitleService {
         mediaInfoRepository.save(mediaInfo);
     }
     
-    public String commonTranslate(String input, AssistantType type) {
-        ChatAssistant assistant = assistantService.getAssistantByType(type);
+    public String commonTranslate(String input, AssistantCode type) {
+        ChatAssistant assistant = assistantService.getAssistantByCode(type.name());
         ChatClient chatClient = assistantService.buildChatClient(assistant);
         ChatClient.ChatClientRequestSpec chatClientRequestSpec = chatClient.prompt(assistant.getPrompt())
                 .user(input);

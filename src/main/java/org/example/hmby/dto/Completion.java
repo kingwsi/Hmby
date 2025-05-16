@@ -10,4 +10,5 @@ import lombok.Data;
 public class Completion {
     private String conversationId;
     private String content;
+    private String assistantCode;
 }

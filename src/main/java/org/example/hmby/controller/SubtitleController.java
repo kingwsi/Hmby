@@ -1,13 +1,11 @@
 package org.example.hmby.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.example.hmby.Response;
-import org.example.hmby.emby.EmbyFeignClient;
 import org.example.hmby.entity.MediaInfo;
 import org.example.hmby.entity.Subtitle;
-import org.example.hmby.enumerate.AssistantType;
+import org.example.hmby.enumerate.AssistantCode;
 import org.example.hmby.repository.SubtitleRepository;
 import org.example.hmby.service.SubtitleService;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -72,12 +70,12 @@ public class SubtitleController {
     }
 
     @GetMapping("/translate-single/{subtitleId}")
-    public Response<String> translateBySubtitleId(@PathVariable Long subtitleId, @RequestParam(defaultValue = "TRANSLATE_COMMON") AssistantType type) throws JsonProcessingException {
+    public Response<String> translateBySubtitleId(@PathVariable Long subtitleId, @RequestParam(defaultValue = "TRANSLATE_COMMON") AssistantCode type) throws JsonProcessingException {
         return Response.success(subtitleService.translateBySubtitleId(subtitleId, type));
     }
 
     @GetMapping("/translate-common")
-    public Response<String> translateCommon(@RequestParam String input, @RequestParam(defaultValue = "TRANSLATE_COMMON") AssistantType type) {
+    public Response<String> translateCommon(@RequestParam String input, @RequestParam(defaultValue = "TRANSLATE_COMMON") AssistantCode type) {
         return Response.success(subtitleService.commonTranslate(input, type));
     }
 }

@@ -49,8 +49,8 @@ public class ChatController {
     }
 
     @GetMapping("/conversation")
-    public Response<ChatConversation> getConversation(Long assistantId) {
-        return Response.success(chatService.getConversation(assistantId));
+    public Response<ChatConversation> getConversation(String assistantCode) {
+        return Response.success(chatService.getConversation(assistantCode));
     }
 
     @GetMapping("/conversation/{conversationId}/messages")

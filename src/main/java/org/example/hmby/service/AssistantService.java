@@ -2,13 +2,8 @@ package org.example.hmby.service;
 
 import lombok.AllArgsConstructor;
 import org.example.hmby.entity.ChatAssistant;
-import org.example.hmby.enumerate.AssistantType;
 import org.example.hmby.repository.ChatAssistantRepository;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
-import org.springframework.ai.chat.memory.ChatMemory;
-import org.springframework.ai.chat.memory.MessageWindowChatMemory;
-import org.springframework.ai.chat.memory.jdbc.JdbcChatMemoryRepository;
 import org.springframework.ai.model.NoopApiKey;
 import org.springframework.ai.model.SimpleApiKey;
 import org.springframework.ai.openai.OpenAiChatModel;
@@ -29,8 +24,8 @@ public class AssistantService {
 
     private final ChatAssistantRepository chatAssistantRepository;
 
-    public ChatAssistant getAssistantByType(AssistantType type) {
-        return chatAssistantRepository.findByType(type).orElseThrow(() -> new IllegalArgumentException("No chat assistant found for type: " + type));
+    public ChatAssistant getAssistantByCode(String code) {
+        return chatAssistantRepository.findByCode(code).orElseThrow(() -> new IllegalArgumentException("No chat assistant found for type: " + code));
     }
     
     public ChatClient buildChatClient(ChatAssistant chatAssistant) {

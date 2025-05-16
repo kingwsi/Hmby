@@ -23,6 +23,6 @@ public class ExceptionHandlerConfig {
     public ResponseEntity<Response<String>> handleException(Exception ex) {
         Response<String> response = Response.fail(ex.getMessage());
         log.error(ex.getMessage(), ex);
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
 }

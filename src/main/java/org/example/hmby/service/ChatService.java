@@ -6,7 +6,7 @@ import org.example.hmby.dto.Completion;
 import org.example.hmby.entity.ChatAssistant;
 import org.example.hmby.entity.ChatConversation;
 import org.example.hmby.entity.ChatMessage;
-import org.example.hmby.enumerate.AssistantType;
+import org.example.hmby.enumerate.AssistantCode;
 import org.example.hmby.enumerate.SseEventType;
 import org.example.hmby.repository.ChatConversationRepository;
 import org.example.hmby.repository.ChatMessageRepository;
@@ -28,7 +28,6 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-import reactor.core.scheduler.Schedulers;
 
 import java.util.List;
 import java.util.Optional;
@@ -57,7 +56,7 @@ public class ChatService {
         sseEmitter.onError(ex -> log.error("SSE error", ex));
         new Thread(() -> {
             try {
-                ChatAssistant assistant = assistantService.getAssistantByType(AssistantType.CHAT);
+                ChatAssistant assistant = assistantService.getAssistantByCode(completion.getAssistantCode());
                 ChatClient chatClient = assistantService.buildChatClient(assistant);
                 ChatMemory chatMemory = MessageWindowChatMemory.builder()
                         .chatMemoryRepository(chatMemoryRepository)
@@ -105,14 +104,16 @@ public class ChatService {
         }
     }
 
-    public ChatConversation getConversation(Long assistantId) {
-        ChatConversation chatConversation = Optional.ofNullable(chatConversationRepository.findByAssistantIdAndActivated(assistantId, false))
+    public ChatConversation getConversation(String assistantCode) {
+        ChatAssistant chatAssistant = assistantService.getAssistantByCode(assistantCode);
+        ChatConversation chatConversation = Optional.ofNullable(chatConversationRepository.findByAssistantIdAndActivated(chatAssistant.getId(), false))
                 .flatMap(l -> l.stream().findFirst())
                 .orElse(null);
         if (chatConversation == null) {
             chatConversation = new ChatConversation();
-            chatConversation.setAssistantId(assistantId);
+            chatConversation.setAssistantId(chatAssistant.getId());
             chatConversation.setActivated(false);
+            chatConversation.setTitle("New Conversation");
             chatConversationRepository.save(chatConversation);
         }
         return chatConversation;
@@ -121,7 +122,7 @@ public class ChatService {
     public Page<ChatConversation> listConversation(Pageable pageable) {
         PageRequest pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.Direction.DESC, "lastUpdateDate", "createdDate");
         
-        return chatConversationRepository.findAll(pageRequest);
+        return chatConversationRepository.findByActivated(true, pageRequest);
     }
 
     public List<ChatMessage> listConversationMessage(String conversationId) {
@@ -141,7 +142,7 @@ public class ChatService {
         if (messageList != null && !messageList.isEmpty()) {
             String content = messageList.stream().map(m -> "%s: %s".formatted(m.getType(), TextUtil.removeXmlTag(m.getContent(), "think"))).collect(Collectors.joining("\n"));
             String prompt = "/no_think \n 请根据这段对话内容，总结一个简洁、准确的标题，能够概括主题，长度不超过12个字。";
-            ChatAssistant chatAssistant = assistantService.getAssistantByType(AssistantType.CHAT);
+            ChatAssistant chatAssistant = assistantService.getAssistantByCode(AssistantCode.CHAT.name());
             ChatClient chatClient = assistantService.buildChatClient(chatAssistant);
             String result = chatClient.prompt(prompt).user(content).call().content();
             if (result != null) {
@@ -149,6 +150,6 @@ public class ChatService {
             }
             return result;
         }
-        return "新会话";
+        return "New Conversation";
     }
 }

@@ -16,7 +16,7 @@
                         <template #bodyCell="{ column, record }">
                             <template v-if="column.key === 'title'">
                                 <a-tooltip :title="record.title">
-                                    <a @click="loadChatMessage(record)" class="history-title">{{ record.title }}</a>
+                                    <a @click="loadConversationMessages(record)" class="history-title">{{ record.title }}</a>
                                 </a-tooltip>
                             </template>
                             <template v-if="column.key === 'createdDate'">
@@ -36,10 +36,10 @@
                 <a-card class="chat-card" title="AI 助手">
                     <template #extra>
                         <a-space>
-                            <a-select v-model:value="selectedAssistant" style="width: 200px" placeholder="选择预设提示词"
+                            <a-select v-model:value="currentAssistantCode" style="width: 200px" placeholder="选择模型"
                                 @change="handleAssistantChange" :disabled="activatedConversation?.id != null">
-                                <a-select-option v-for="item in assistants" :key="item.id" :value="item.id">
-                                    {{ item.type }}
+                                <a-select-option v-for="item in assistants" :key="item.code" :value="item.code">
+                                    {{ item.code }}
                                 </a-select-option>
                             </a-select>
                             <a-button type="link" @click="showAssistantDrawer = true">管理预设</a-button>
@@ -134,8 +134,8 @@
         @cancel="handleAssistantModalCancel">
         <a-form :model="assistantForm" :rules="assistantRules" ref="assistantFormRef" :label-col="{ span: 4 }"
             :wrapper-col="{ span: 20 }">
-            <a-form-item label="类型" name="type">
-                <a-input v-model:value="assistantForm.type" placeholder="请输入类型" style="width: 100%" />
+            <a-form-item label="代码" name="type">
+                <a-input v-model:value="assistantForm.code" placeholder="请输入代码" style="width: 100%" />
             </a-form-item>
             <a-form-item label="模型名称" name="modelName">
                 <a-input v-model:value="assistantForm.modelName" placeholder="请输入模型名称" style="width: 100%" />
@@ -151,9 +151,6 @@
         </a-form>
     </a-modal>
 </template>
-
-
-
 <script setup>
 import { ref, reactive, onMounted, nextTick } from 'vue';
 import { eventStream } from '@/utils/request';
@@ -172,9 +169,10 @@ const thinkingMessage = ref('');
 const handleNewChat = () => {
     messages.value = [];
     inputMessage.value = '';
-    selectedAssistant.value = null;
+    currentAssistantCode.value = null;
     activatedConversation.value = null;
     receivingMessage.value = {};
+    loadAssistants();
 };
 
 const parseThinkingMessage = (text) => {
@@ -269,7 +267,7 @@ const historyColumns = [
 ];
 
 // 加载历史对话内容
-const loadChatMessage = async (record) => {
+const loadConversationMessages = async (record) => {
     const { data } = await request.get(`/api/chat/conversation/${record.id}/messages`);
     if (data) {
         messages.value = data;
@@ -278,7 +276,11 @@ const loadChatMessage = async (record) => {
             item.think = think;
             item.content = content;
         });
-        selectedAssistant.value = record.assistantId
+        assistants.value.forEach(item => {
+            if (item.id === record.assistantId) {
+                currentAssistantCode.value = item.code;
+            }
+        });
         activatedConversation.value = record;
         inputMessage.value = '';
         await nextTick();
@@ -287,7 +289,7 @@ const loadChatMessage = async (record) => {
 };
 
 // 加载历史消息
-const loadHistoryMessages = async (page = 1) => {
+const loadConversations = async (page = 1) => {
     historyLoading.value = true;
     try {
         const response = await request.get(`/api/chat/conversation-list?page=${page - 1}&size=${pagination.pageSize}`);
@@ -305,7 +307,7 @@ const loadHistoryMessages = async (page = 1) => {
 // 处理分页变化
 const handlePageChange = (page) => {
     pagination.current = page;
-    loadHistoryMessages(page);
+    loadConversations(page);
 };
 
 // 处理删除历史记录
@@ -313,7 +315,7 @@ const handleDeleteHistory = async (record) => {
     try {
         await request.delete(`/api/chat/conversation/${record.id}`);
         antMessage.success('删除成功');
-        loadHistoryMessages(pagination.current);
+        loadConversations(pagination.current);
         if (record.id === activatedConversation.value?.id) {
             handleNewChat();
         }
@@ -330,8 +332,8 @@ const handleSend = async () => {
     if (!inputMessage.value.trim() || loading.value) return;
 
     // 检查是否选择了预设提示词
-    if (!selectedAssistant.value && !activatedConversation.value?.id) {
-        antMessage.warning('请先选择预设提示词');
+    if (!currentAssistantCode.value && !activatedConversation.value?.type) {
+        antMessage.warning('请先选择模型');
         return;
     }
 
@@ -345,8 +347,8 @@ const handleSend = async () => {
     // 构建请求参数
     const requestParams = {
         content: inputMessage.value,
-        assistantId: selectedAssistant.value || null,
-        conversationId: activatedConversation.value?.id
+        assistantCode: currentAssistantCode.value,
+        conversationId: activatedConversation.value?.code
     };
 
     // 清空输入框并滚动到底部
@@ -401,7 +403,7 @@ const scrollToBottom = () => {
 
 // 预设提示词相关状态
 const assistants = ref([]);
-const selectedAssistant = ref(null);
+const currentAssistantCode = ref(null);
 const activatedConversation = ref({
     id: null,
     title: ''
@@ -410,19 +412,18 @@ const showAssistantDrawer = ref(false);
 
 // 加载预设提示词列表
 const loadAssistants = async () => {
-    try {
-        const { data } = await request.get('/api/chat/assistants');
-        if (data) {
-            assistants.value = data;
-        }
-    } catch (error) {
-        console.error('加载预设提示词失败:', error);
-        antMessage.error('加载预设提示词失败');
+    const { data } = await request.get('/api/chat/assistants');
+    if (data && data.length > 0) {
+        assistants.value = data;
+        currentAssistantCode.value = data[0].code;
+        handleAssistantChange(currentAssistantCode.value)
+    } else {
+        antMessage.warning('没有预设模型，请先添加');
     }
 };
 
 const handleAssistantChange = async (value) => {
-    const { data } = await request.get(`/api/chat/conversation?assistantId=${value}`)
+    const { data } = await request.get(`/api/chat/conversation?assistantCode=${value}`)
     if (data) {
         activatedConversation.value = data
     }
@@ -435,7 +436,7 @@ const handleAssistantChange = async (value) => {
 
 // 组件挂载时初始化
 onMounted(() => {
-    loadHistoryMessages();
+    loadConversations();
     loadAssistants();
 });
 // 预设提示词表格列定义
