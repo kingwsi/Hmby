@@ -195,6 +195,7 @@ public class MediaInfoService {
                     result = subtitleService.translateHandler(mediaInfo.getId());
                     mediaInfo.setRemark(null);
                     mediaInfo.setStatus(MediaStatus.SUCCESS);
+                    mediaInfo.setOutputPath(null);
                     break;
             }
         } catch (Exception e) {

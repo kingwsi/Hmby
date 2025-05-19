@@ -37,7 +37,7 @@
                     <template #extra>
                         <a-space>
                             <a-select v-model:value="currentAssistantCode" style="width: 200px" placeholder="选择模型"
-                                @change="handleAssistantChange" :disabled="activatedConversation?.id != null">
+                                @change="refreshConversation" :disabled="activatedConversation?.activated">
                                 <a-select-option v-for="item in assistants" :key="item.code" :value="item.code">
                                     {{ item.code }}
                                 </a-select-option>
@@ -78,12 +78,7 @@
                                     </div>
                                     <div class="message-text">
                                         <div v-if="receivingMessage && receivingMessage.think">
-                                            <a-collapse ghost>
-                                                <a-collapse-panel key="1" header="Tinking">
-                                                    <p>{{ receivingMessage.think }}</p>
-                                                </a-collapse-panel>
-                                            </a-collapse>
-                                            {{ thinkingMessage }}
+                                            {{ receivingMessage.think }}
                                         </div>
                                         <MarkdownRenderer :content="receivingMessage.content" />
                                     </div>
@@ -109,8 +104,8 @@
             </a-col>
         </a-row>
     </div>
-    <!-- 预设提示词管理抽屉 -->
-    <a-drawer v-model:open="showAssistantDrawer" title="预设提示词管理" width="600" @close="handleAssistantDrawerClose">
+    <!-- 模型管理抽屉 -->
+    <a-drawer v-model:open="showAssistantDrawer" title="模型管理" width="600" @close="handleAssistantDrawerClose">
 
         <a-button type="primary" style="margin-bottom: 16px" @click="handleAddAssistant">新增预设</a-button>
 
@@ -119,7 +114,7 @@
                 <template v-if="column.key === 'action'">
                     <a-space>
                         <a-button type="link" @click="handleEditAssistant(record)">编辑</a-button>
-                        <a-popconfirm title="确定要删除这个预设提示词吗？" @confirm="handleDeleteAssistant(record)" ok-text="确定"
+                        <a-popconfirm title="确定要删除这个模型吗？" @confirm="handleDeleteAssistant(record)" ok-text="确定"
                             cancel-text="取消">
                             <a-button type="link" danger>删除</a-button>
                         </a-popconfirm>
@@ -129,12 +124,12 @@
         </a-table>
     </a-drawer>
 
-    <!-- 预设提示词编辑对话框 -->
+    <!-- 模型编辑对话框 -->
     <a-modal v-model:open="assistantModalVisible" :title="assistantModalTitle" @ok="handleAssistantModalSubmit"
         @cancel="handleAssistantModalCancel">
         <a-form :model="assistantForm" :rules="assistantRules" ref="assistantFormRef" :label-col="{ span: 4 }"
             :wrapper-col="{ span: 20 }">
-            <a-form-item label="代码" name="type">
+            <a-form-item label="代码" name="code">
                 <a-input v-model:value="assistantForm.code" placeholder="请输入代码" style="width: 100%" />
             </a-form-item>
             <a-form-item label="模型名称" name="modelName">
@@ -157,13 +152,13 @@ import { eventStream } from '@/utils/request';
 import { message as antMessage } from 'ant-design-vue';
 import request from '@/utils/request';
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue';
+import { parseThinkingMessage } from '@/utils/chat-util.js'
 
 // 响应式状态
 const inputMessage = ref('');
 const messages = ref([]);
 const loading = ref(false);
 const messagesContainer = ref(null);
-const thinkingMessage = ref('');
 
 // 处理新建会话
 const handleNewChat = () => {
@@ -173,35 +168,6 @@ const handleNewChat = () => {
     activatedConversation.value = null;
     receivingMessage.value = {};
     loadAssistants();
-};
-
-const parseThinkingMessage = (text) => {
-    if (!text) return { think: '', content: text || '' };
-
-    let thinkContent = '';
-    let content = text;
-
-    // 检查是否包含完整的<think>标签
-    const hasOpenTag = text.includes('<think>');
-    const hasCloseTag = text.includes('</think>');
-
-    if (hasOpenTag && hasCloseTag) {
-        // 完整标签情况 - 提取<think>...</think>中的内容
-        const thinkMatch = text.match(/<think>([\s\S]*?)<\/think>/);
-        if (thinkMatch) {
-            thinkContent = thinkMatch[1].trim();
-            // 移除<think>...</think>标签和其中内容
-            content = text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-        }
-    } else if (hasOpenTag) {
-        thinkContent = text.replace('<think>', '').trim();
-        content = '';
-    }
-
-    return {
-        think: thinkContent,
-        content: content
-    };
 };
 
 
@@ -331,8 +297,8 @@ const receivingMessage = ref({})
 const handleSend = async () => {
     if (!inputMessage.value.trim() || loading.value) return;
 
-    // 检查是否选择了预设提示词
-    if (!currentAssistantCode.value && !activatedConversation.value?.type) {
+    // 检查是否选择了模型
+    if (!currentAssistantCode.value || !activatedConversation.value?.id) {
         antMessage.warning('请先选择模型');
         return;
     }
@@ -348,7 +314,7 @@ const handleSend = async () => {
     const requestParams = {
         content: inputMessage.value,
         assistantCode: currentAssistantCode.value,
-        conversationId: activatedConversation.value?.code
+        conversationId: activatedConversation.value?.id
     };
 
     // 清空输入框并滚动到底部
@@ -380,7 +346,7 @@ const handleSend = async () => {
                 messages.value.push({
                     type: 'ASSISTANT',
                     content: receivingMessage.value.content,
-                    think: thinkingMessage.value.think
+                    think: receivingMessage.value.think
                 });
                 receivingMessage.value = {};
             },
@@ -401,7 +367,7 @@ const scrollToBottom = () => {
     });
 };
 
-// 预设提示词相关状态
+// 模型相关状态
 const assistants = ref([]);
 const currentAssistantCode = ref(null);
 const activatedConversation = ref({
@@ -410,41 +376,36 @@ const activatedConversation = ref({
 });
 const showAssistantDrawer = ref(false);
 
-// 加载预设提示词列表
+// 加载模型列表
 const loadAssistants = async () => {
     const { data } = await request.get('/api/chat/assistants');
     if (data && data.length > 0) {
         assistants.value = data;
         currentAssistantCode.value = data[0].code;
-        handleAssistantChange(currentAssistantCode.value)
+        refreshConversation(currentAssistantCode.value)
     } else {
         antMessage.warning('没有预设模型，请先添加');
     }
 };
 
-const handleAssistantChange = async (value) => {
+const refreshConversation = async (value) => {
     const { data } = await request.get(`/api/chat/conversation?assistantCode=${value}`)
     if (data) {
         activatedConversation.value = data
-    }
-    const selected = assistants.value.find(item => item.id === value);
-    if (selected) {
-        // 这里可以根据需求处理选中的预设提示词
-        console.log('选中的预设提示词:', selected);
     }
 };
 
 // 组件挂载时初始化
 onMounted(() => {
     loadConversations();
-    loadAssistants();
+    handleNewChat();
 });
-// 预设提示词表格列定义
+// 模型表格列定义
 const assistantColumns = [
     {
-        title: '类型',
-        dataIndex: 'type',
-        key: 'type'
+        title: '代码',
+        dataIndex: 'code',
+        key: 'code'
     },
     {
         title: '模型',
@@ -463,7 +424,7 @@ const assistantColumns = [
     }
 ];
 
-// 预设提示词表单相关状态
+// 模型表单相关状态
 const assistantModalVisible = ref(false);
 const assistantModalTitle = ref('');
 const assistantForm = reactive({
@@ -481,9 +442,9 @@ const assistantRules = {
     prompt: [{ required: true, message: '请输入提示词' }]
 };
 
-// 处理新增预设提示词
+// 处理新增模型
 const handleAddAssistant = () => {
-    assistantModalTitle.value = '新增预设提示词';
+    assistantModalTitle.value = '新增模型';
     Object.assign(assistantForm, {
         id: null,
         title: '',
@@ -494,47 +455,47 @@ const handleAddAssistant = () => {
     assistantModalVisible.value = true;
 };
 
-// 处理编辑预设提示词
+// 处理编辑模型
 const handleEditAssistant = (record) => {
-    assistantModalTitle.value = '编辑预设提示词';
+    assistantModalTitle.value = '编辑模型';
     Object.assign(assistantForm, record);
     assistantModalVisible.value = true;
 };
 
-// 处理删除预设提示词
+// 处理删除模型
 const handleDeleteAssistant = async (record) => {
     try {
-        await request.delete(`/api/chat-message/assistants/${record.id}`);
+        await request.delete(`/api/chat/assistants/${record.id}`);
         antMessage.success('删除成功');
         loadAssistants();
     } catch (error) {
-        console.error('删除预设提示词失败:', error);
-        antMessage.error('删除预设提示词失败');
+        console.error('删除模型失败:', error);
+        antMessage.error('删除模型失败');
     }
 };
 
-// 处理提交预设提示词表单
+// 处理提交模型表单
 const handleAssistantModalSubmit = async () => {
     try {
         await assistantFormRef.value.validate();
-        const url = '/api/chat-message/assistants';
+        const url = '/api/chat/assistants';
         await request['post'](url, assistantForm);
         antMessage.success(`${assistantForm.id ? '更新' : '创建'}成功`);
         assistantModalVisible.value = false;
         loadAssistants();
     } catch (error) {
-        console.error('保存预设提示词失败:', error);
-        antMessage.error('保存预设提示词失败');
+        console.error('保存模型失败:', error);
+        antMessage.error('保存模型失败');
     }
 };
 
-// 处理取消预设提示词表单
+// 处理取消模型表单
 const handleAssistantModalCancel = () => {
     assistantModalVisible.value = false;
     assistantFormRef.value?.resetFields();
 };
 
-// 处理关闭预设提示词抽屉
+// 处理关闭模型抽屉
 const handleAssistantDrawerClose = () => {
     showAssistantDrawer.value = false;
 };

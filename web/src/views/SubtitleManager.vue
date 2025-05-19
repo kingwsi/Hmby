@@ -2,11 +2,19 @@
     <div class="subtitle-manager-container">
         <VideoPlayer ref="videoPlayerRef" :itemId="Number(route.query.itemId)" style="display: none;" />
         <canvas ref="canvasRef" style="display: none;"></canvas>
-        <a-page-header :title="`${mediaDetail?.SortName} - ${language}`" @back="handleBack" class="header-container">
+        <a-page-header @back="handleBack" class="header-container">
+            <template #title>
+                <div>
+                    <Ellipsis :tooltip="true" :line="1" :length="80">
+                        {{ mediaDetail?.SortName }}
+                    </Ellipsis>
+                    {{ language }}
+                </div>
+            </template>
             <div style="display: flex; gap: 8px; overflow-x: auto; padding: 8px 0;">
-                <div v-for="item in capturedImages" v-if="!capturedImagesLoading">
+                <div v-for="item in capturedImages" v-if="!capturedImagesLoading" class="captured-image-container">
                     <img :src="item.image" style="height: 200px;">
-                    <span>{{ item.subtitle.translation }}</span>
+                    <div class="subtitle-caption">{{ item.subtitle.translation }}</div>
                 </div>
                 <a-skeleton v-else />
             </div>
@@ -14,14 +22,19 @@
                 <MediaStatusTag :status="mediaDetail?.mediaInfo.status" />
             </template>
             <template #extra>
-                <!-- 保存按钮 -->
+                <a-space size="small">
+                    <a-button size="small" @click="execute()">翻译</a-button>
+                    <a-button size="small" @click="fetchSubtitleData()">刷新</a-button>
+                    <a-button size="small" @click="scrollToUntranslated()">下一条未翻译</a-button>
+                </a-space>
+                
             </template>
         </a-page-header>
 
         <a-spin :spinning="loading" tip="加载中...">
             <div class="subtitle-list">
                 <a-card v-for="(item, index) in subtitleData" :key="index" class="subtitle-card" size="small"
-                    :bordered="false">
+                    :bordered="false" :data-subtitle-id="item.id">
                     <div class="subtitle-content">
                         <div class="subtitle-row">
                             <a-space align="center" class="sequence">
@@ -40,8 +53,11 @@
                                 <a-input v-else v-model:value="item.translation" @blur="handleTranslationSave(item)"
                                     @pressEnter="handleTranslationSave(item)" class="translation-input"
                                     :autoFocus="true" />
-                                <a-button type="link" size="small" @click="showTranslateModal(item)" class="translate-btn">
-                                    <template #icon><TranslationOutlined /></template>
+                                <a-button type="link" size="small" @click="showTranslateModal(item)"
+                                    class="translate-btn">
+                                    <template #icon>
+                                        <TranslationOutlined />
+                                    </template>
                                     翻译
                                 </a-button>
                             </div>
@@ -76,23 +92,26 @@
             </a-form>
         </a-modal>
     </div>
-        <a-modal v-model:open="translateModalVisible" title="翻译" @cancel="translateModalVisible = false">
-            <template #footer>
-                <a-space>
-                    <a-button :loading="translating" @click="() => handleTranslate('TRANSLATE_REASONING')">推理翻译</a-button>
-                    <a-button :loading="translating" @click="() => handleTranslate('TRANSLATE_COMMON')">快速翻译</a-button>
-                    <a-button type="primary" :disabled="!translatedResult" @click="applyTranslation">应用翻译</a-button>
-                </a-space>
-            </template>
-            <div v-if="currentTranslateItem" class="translate-modal-content">
-                <div class="original-text">{{ currentTranslateItem.original }}</div>
-                <div class="translated-result" v-if="translatedResult">
-                    {{ translatedResult }}
-                </div>
-                <a-spin v-else-if="translating" />
-                <div v-else class="placeholder">选择翻译方式开始翻译</div>
+    <a-modal v-model:open="translateModalVisible" title="翻译" @cancel="translateModalVisible = false">
+        <template #footer>
+            <a-space>
+                <a-button :loading="translating" @click="() => handleTranslate(true)">推理翻译</a-button>
+                <a-button :loading="translating" @click="() => handleTranslate(false)">快速翻译</a-button>
+                <a-button type="primary" :disabled="!completionsResult.content" @click="applyTranslation">应用翻译</a-button>
+            </a-space>
+        </template>
+        <div v-if="currentTranslateItem" class="translate-modal-content">
+            <div class="original-text">{{ currentTranslateItem.original }}</div>
+            <div class="translated-think" v-if="completionsResult?.think">
+                {{ completionsResult.think }}
             </div>
-        </a-modal>
+            <div class="translated-result" v-if="completionsResult?.content">
+                {{ completionsResult.content }}
+            </div>
+            <a-spin v-else-if="translating" />
+            <div v-else class="placeholder">选择翻译方式开始翻译</div>
+        </div>
+    </a-modal>
 </template>
 
 <script setup>
@@ -103,6 +122,9 @@ import { TranslationOutlined } from '@ant-design/icons-vue';
 import request from '@/utils/request';
 import VideoPlayer from '@/components/VideoPlayer.vue';
 import MediaStatusTag from '@/components/MediaStatusTag.vue';
+import Ellipsis from '@/components/Ellipsis.vue'
+import { eventHandler } from '@/utils/request';
+import { parseThinkingMessage } from '@/utils/chat-util.js'
 
 const route = useRoute();
 const router = useRouter();
@@ -112,7 +134,6 @@ const subtitleData = ref([]);
 const editModalVisible = ref(false);
 const translateModalVisible = ref(false);
 const currentTranslateItem = ref(null);
-const translatedResult = ref('');
 const translating = ref(false);
 const videoPlayerRef = ref(null);
 
@@ -206,27 +227,68 @@ const handleTranslationSave = async (item) => {
 
 const showTranslateModal = (item) => {
     currentTranslateItem.value = item;
-    translatedResult.value = '';
+    completionsResult.value = {};
     translateModalVisible.value = true;
 };
 
-const handleTranslate = async (type) => {
+const completionsResult = ref({
+    think: '',
+    content: '',
+    raw: ''
+});
+const handleTranslate = (reasoning) => {
     try {
         translating.value = true;
-        const { data } = await request.get(`/api/subtitle/translate-single/${currentTranslateItem.value.id}?type=${type}`);
-        translatedResult.value = data;
-    } finally {
+        completionsResult.value = {};
+        
+        // 使用eventHandler处理SSE事件流
+        const controller = eventHandler({
+            path: `api/chat/translate/${currentTranslateItem.value.id}/completions?reasoning=${reasoning}`,
+            method: 'GET',
+            // 处理不同类型的事件
+            eventHandlers: {
+                // 处理翻译完成事件
+                'complete': (data) => {
+                    translating.value = false;
+                },
+                'MESSAGE': (data) => {
+                    console.log('Received message:', data);
+                    completionsResult.value.raw = (completionsResult.value.raw || '') + data
+                    completionsResult.value = parseThinkingMessage(completionsResult.value.raw)
+                },
+            },
+            // 处理错误
+            onError: (error) => {
+                console.error('翻译出错:', error);
+                translating.value = false;
+            },
+            // 连接关闭
+            onClose: () => {
+                translating.value = false;
+            }
+        });
+        
+        // 可以返回控制器，用于在需要时中断连接
+        return controller;
+    } catch (error) {
+        console.error('启动翻译失败:', error);
+        message.error('启动翻译失败');
         translating.value = false;
     }
 };
 
 const applyTranslation = () => {
-    if (currentTranslateItem.value && translatedResult.value) {
-        currentTranslateItem.value.translation = translatedResult.value;
+    if (currentTranslateItem.value && completionsResult.value.content) {
+        currentTranslateItem.value.translation = completionsResult.value.content;
         handleTranslationSave(currentTranslateItem.value);
         translateModalVisible.value = false;
     }
 };
+
+const execute = async (id) => {
+    await request.post(`/api/media-info/execute/${mediaDetail.value.mediaInfo.id}`)
+    message.success('执行成功')
+}
 
 
 const canvasRef = ref();
@@ -289,22 +351,22 @@ const captureFrame = async (item) => {
 
 // 时间解析函数：00:14:53,060 => 秒数
 function parseTimeString(timeStr) {
-  const [hms, ms] = timeStr.split(',');
-  const [hours, minutes, seconds] = hms.split(':').map(Number);
-  return hours * 3600 + minutes * 60 + seconds + (parseInt(ms) / 1000);
+    const [hms, ms] = timeStr.split(',');
+    const [hours, minutes, seconds] = hms.split(':').map(Number);
+    return hours * 3600 + minutes * 60 + seconds + (parseInt(ms) / 1000);
 }
 
-const cover = computed(() => {
-    if (mediaDetail.value?.embyServer && mediaDetail.value.ImageTags) {
-        const imageTags = mediaDetail.value.ImageTags;
-        if (imageTags.Thumb) {
-            return `${mediaDetail.value.embyServer}/emby/Items/${mediaDetail.value.Id}/Images/Thumb?maxWidth=300&quality=100`
-        } else if (imageTags.Primary) {
-            return `${mediaDetail.value.embyServer}/emby/Items/${mediaDetail.value.Id}/Images/Primary?maxWidth=300&quality=100`
+const scrollToUntranslated = () => {
+    const untranslatedItem = subtitleData.value.find(item => !item.translation);
+    if (untranslatedItem) {
+        const element = document.querySelector(`[data-subtitle-id="${untranslatedItem.id}"]`);
+        if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
+    } else {
+        message.info('没有未翻译的字幕');
     }
-    return null;
-});
+};
 
 watch(() => mediaDetail.value, (newVal) => {
     if (newVal) {
@@ -352,21 +414,25 @@ watch(() => mediaDetail.value, (newVal) => {
                         width: 8px;
                         height: 8px;
                         border-radius: 50%;
-                        
+
                         &.pending {
                             background-color: #faad14;
                         }
+
                         &.error {
                             background-color: #ff4d4f;
                         }
+
                         &.finished {
                             background-color: #52c41a;
                         }
+
                         &.compensate {
                             background-color: #1890ff;
                         }
                     }
                 }
+
                 .timestamp {
                     color: #666;
                     font-size: 11px;
@@ -438,7 +504,7 @@ watch(() => mediaDetail.value, (newVal) => {
 
 .text-content {
     position: relative;
-    
+
     .translate-btn {
         position: absolute;
         right: 0;
@@ -454,18 +520,36 @@ watch(() => mediaDetail.value, (newVal) => {
         background: #f5f5f5;
         border-radius: 4px;
     }
-    
+
     .translated-result {
         font-size: 14px;
         padding: 8px;
         background: #e6f7ff;
         border-radius: 4px;
     }
-    
+
     .placeholder {
         text-align: center;
         color: #999;
         padding: 16px;
+    }
+}
+
+.captured-image-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0 4px;
+    
+    .subtitle-caption {
+        margin-top: 4px;
+        max-width: 200px;
+        text-align: center;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 12px;
+        color: #666;
     }
 }
 </style>

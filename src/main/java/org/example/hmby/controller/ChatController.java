@@ -6,10 +6,12 @@ import org.example.hmby.dto.Completion;
 import org.example.hmby.entity.ChatAssistant;
 import org.example.hmby.entity.ChatConversation;
 import org.example.hmby.entity.ChatMessage;
+import org.example.hmby.entity.Subtitle;
 import org.example.hmby.repository.ChatAssistantRepository;
 import org.example.hmby.sceurity.SecurityUtils;
 import org.example.hmby.service.AssistantService;
 import org.example.hmby.service.ChatService;
+import org.example.hmby.service.SubtitleService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -18,22 +20,24 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/chat")
 @Slf4j
 public class ChatController {
-    private final AssistantService assistantService;
     private final ChatService chatService;
     private final ChatAssistantRepository chatAssistantRepository;
+    private final SubtitleService subtitleService;
 
-    public ChatController(AssistantService assistantService, ChatService chatService, ChatAssistantRepository chatAssistantRepository) {
-        this.assistantService = assistantService;
+    public ChatController(AssistantService assistantService, ChatService chatService, ChatAssistantRepository chatAssistantRepository, SubtitleService subtitleService) {
         this.chatService = chatService;
         this.chatAssistantRepository = chatAssistantRepository;
+        this.subtitleService = subtitleService;
     }
 
     @GetMapping("/assistants")
@@ -67,6 +71,13 @@ public class ChatController {
     @PostMapping("/completions")
     public SseEmitter completions(@RequestBody Completion completion) {
         return chatService.completions(completion);
+    }
+
+    @GetMapping("/translate/{subtitleId}/completions")
+    public SseEmitter translateCompletions(@PathVariable Long subtitleId, boolean reasoning) {
+        String subtitleContext = subtitleService.listSubtitleContext(subtitleId, 2);
+        Subtitle subtitle = subtitleService.findById(subtitleId);
+        return subtitleService.commonTranslate(subtitle.getText(), subtitleContext, reasoning);
     }
 
     @DeleteMapping("/conversation/{conversationId}")

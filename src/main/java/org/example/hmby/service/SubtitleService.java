@@ -13,17 +13,25 @@ import org.example.hmby.entity.Subtitle;
 import org.example.hmby.enumerate.AssistantCode;
 import org.example.hmby.enumerate.MediaConvertType;
 import org.example.hmby.enumerate.MediaStatus;
+import org.example.hmby.enumerate.SseEventType;
 import org.example.hmby.enumerate.SubtitleStatus;
 import org.example.hmby.ffmpeg.FfmpegService;
 import org.example.hmby.repository.MediaInfoRepository;
 import org.example.hmby.repository.SubtitleRepository;
 import org.example.hmby.utils.FixedSizeQueue;
 import org.example.hmby.utils.SRTParser;
+import org.example.hmby.utils.TextUtil;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor;
+import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
+import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
+import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -66,7 +74,7 @@ public class SubtitleService {
         int chunkSize = 20;
         List<Subtitle> fullSubtitles = subtitleRepository.findAllByMediaId(mediaId, Sort.by(Sort.Direction.ASC, "sequence"));
         FixedSizeQueue<Subtitle> fixedSizeQueue = new FixedSizeQueue<>(chunkSize);
-        ChatAssistant assistant = assistantService.getAssistantByCode(AssistantCode.TRANSLATE_SUBTITLE.name());
+        ChatAssistant assistant = assistantService.getAssistantByCode(AssistantCode.TRANSLATE_SUBTITLE);
         int beginIndex = 0;
         int size = fullSubtitles.size();
         while (beginIndex < size) {
@@ -99,7 +107,7 @@ public class SubtitleService {
 
             boolean finish = false;
             int retryCount = 0;
-            while (!finish && retryCount < 5) {
+            while (!finish && retryCount < 10) {
                 try {
                     int errNum = 0;
                     Map<String, String> resultMap = this.translateChunk(assistant, inputs, translatedText);
@@ -110,7 +118,7 @@ public class SubtitleService {
                         if (!StringUtils.hasText(text)) {
                             log.warn("翻译失败,尝试补偿: {}", s.getText());
                             s.setStatus(SubtitleStatus.ERROR);
-                            text = translateBySubtitleId(s.getId(), AssistantCode.TRANSLATE_SINGLE);
+                            text = translateBySubtitleId(s.getId());
                             if (!StringUtils.hasText(text)) {
                                 log.warn("翻译失败: {}", s.getText());
                                 errNum++;
@@ -171,20 +179,20 @@ public class SubtitleService {
     /**
      * 单条翻译
      */
-    public String translateBySubtitleId(Long subtitleId, AssistantCode type) {
-        ChatAssistant assistant = assistantService.getAssistantByCode(type.name());
+    public String translateBySubtitleId(Long subtitleId) {
+        ChatAssistant assistant = assistantService.getAssistantByCode(AssistantCode.TRANSLATE_SINGLE);
         Subtitle subtitle = subtitleRepository.findById(subtitleId).orElseThrow(() -> new RuntimeException("No subtitle found"));
-        List<Subtitle> translatedSubtitles = subtitleRepository.findChunks(subtitle.getMediaId(), subtitle.getSequence() - 5, subtitle.getSequence() + 5);
-        String translatedText = translatedSubtitles.stream().map(Subtitle::getText).collect(Collectors.joining("\n"));
+        String translatedText = this.listSubtitleContext(subtitleId, 10);
 
-        String prompt = assistant.getPrompt();
+        String prompt = "/no_think\n" + assistant.getPrompt();
         ChatClient chatClient = assistantService.buildChatClient(assistant);
         ChatClient.ChatClientRequestSpec chatClientRequestSpec = chatClient.prompt().user(subtitle.getText());
         if (StringUtils.hasText(translatedText)) {
-            prompt = prompt.replace("{TRANSLATED}", translatedText);
+            prompt = prompt + "\n ### 参考上下文（仅作参考 不用返回在结果中）" + translatedText;
         }
         chatClientRequestSpec.system(prompt);
-        return chatClientRequestSpec.call().content();
+        String content = chatClientRequestSpec.call().content();
+        return TextUtil.removeXmlTag(content, "think");
     }
 
     public Map<String, String> translateChunk(ChatAssistant assistant, List<String> inputs, String preContext) throws JsonProcessingException {
@@ -192,7 +200,7 @@ public class SubtitleService {
                 .collect(Collectors.joining(","));
         text = "[%s]".formatted(text);
         log.info("translateChunk: \n{}", text);
-        String prompt = assistant.getPrompt();
+        String prompt = "/no_think\n" + assistant.getPrompt();
         ChatClient chatClient = assistantService.buildChatClient(assistant);
         ChatClient.ChatClientRequestSpec chatClientRequestSpec = chatClient.prompt().user(text);
         if (StringUtils.hasText(preContext)) {
@@ -200,13 +208,9 @@ public class SubtitleService {
         }
         chatClientRequestSpec.system(prompt);
         String content = chatClientRequestSpec.call().content();
+        content = TextUtil.removeXmlTag(content, "think");
         if (content != null) {
-            if (content.contains("</think>")) {
-                int thinkIndex = content.indexOf("</think>") + 8;
-                String thinkContent = content.substring(0, thinkIndex);
-                log.info("<think>:\n{}", thinkContent);
-                content = content.substring(thinkIndex).trim();
-            }
+            content = content.trim();
         }
         log.info("translateChunk: \n{}", content);
         return objectMapper.readValue(content, new TypeReference<>() {
@@ -282,11 +286,65 @@ public class SubtitleService {
         mediaInfoRepository.save(mediaInfo);
     }
     
-    public String commonTranslate(String input, AssistantCode type) {
-        ChatAssistant assistant = assistantService.getAssistantByCode(type.name());
+    public SseEmitter commonTranslate(String content, String subtitleContext, boolean reasoning) {
+        ChatAssistant assistant = assistantService.getAssistantByCode(AssistantCode.TRANSLATE_COMMON);
         ChatClient chatClient = assistantService.buildChatClient(assistant);
-        ChatClient.ChatClientRequestSpec chatClientRequestSpec = chatClient.prompt(assistant.getPrompt())
-                .user(input);
-        return chatClientRequestSpec.call().content();
+        
+        SseEmitter sseEmitter = new SseEmitter(180000L); // 设置3分钟超时
+        sseEmitter.onCompletion(() -> log.info("SSE completed"));
+        sseEmitter.onTimeout(() -> log.warn("SSE timeout"));
+        sseEmitter.onError(ex -> log.error("SSE error", ex));
+        new Thread(() -> {
+            try {
+                String prompt = assistant.getPrompt();
+                if (StringUtils.hasText(subtitleContext)) {
+                    prompt = prompt + "\n 参考上下文（以下内容不需要翻译）\n" + subtitleContext;
+                }
+                if (!reasoning) {
+                    prompt = "/no_think \n" + prompt;
+                    ChatClient.ChatClientRequestSpec chatClientRequestSpec = chatClient.prompt(prompt)
+                            .user(content);
+                    String result = Optional.ofNullable(TextUtil.removeXmlTag(chatClientRequestSpec.call().content(), "think"))
+                            .orElse("No Content");
+                    sseEmitter.send(SseEmitter.event().name(SseEventType.MESSAGE.name()).data(result).build());
+                    sseEmitter.complete();
+                } else {
+                    chatClient.prompt(prompt)
+                            .advisors(new SimpleLoggerAdvisor())
+                            .user(content)
+                            .stream()
+                            .content()
+                            .doOnComplete(sseEmitter::complete)
+                            .doOnError(sseEmitter::completeWithError)
+                            .subscribe(t -> {
+                                try {
+                                    sseEmitter.send(SseEmitter.event().name(SseEventType.MESSAGE.name()).data(t).build());
+                                } catch (Exception e) {
+                                    log.error("Error sending SSE content", e);
+                                }
+                            });
+                }
+            } catch (Exception e) {
+                log.error("SSE error", e);
+                sseEmitter.completeWithError(e);
+            }
+        }).start();
+        return sseEmitter;
+    }
+    
+    public String listSubtitleContext(Long subtitleId, int contextSize) {
+        int n = contextSize / 2;
+        Subtitle subtitle = subtitleRepository.findById(subtitleId).orElseThrow(() -> new RuntimeException("No subtitle found"));
+        return subtitleRepository.findChunks(subtitle.getMediaId(), subtitle.getSequence() - n, subtitle.getSequence() + n)
+                .stream().map(s-> {
+                    if (StringUtils.hasText(s.getTranslatedText())) {
+                        return "%s -> %s".formatted(s.getText(), s.getTranslatedText());
+                    }
+                    return s.getText();
+                }).collect(Collectors.joining("\n"));
+    }
+
+    public Subtitle findById(Long subtitleId) {
+        return subtitleRepository.findById(subtitleId).orElseThrow(() -> new RuntimeException("No subtitle found"));
     }
 }

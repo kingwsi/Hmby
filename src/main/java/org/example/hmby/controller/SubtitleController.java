@@ -5,9 +5,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.hmby.Response;
 import org.example.hmby.entity.MediaInfo;
 import org.example.hmby.entity.Subtitle;
+import org.example.hmby.enumerate.SubtitleStatus;
 import org.example.hmby.enumerate.AssistantCode;
 import org.example.hmby.repository.SubtitleRepository;
 import org.example.hmby.service.SubtitleService;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -39,11 +41,11 @@ public class SubtitleController {
 
     @GetMapping("/{embyId}/{language}")
     public Response<?> initSubtitle(@PathVariable Long embyId, @PathVariable String language) throws IOException {
-        MediaInfo mediaInfo = subtitleService.initSubtitle(embyId, language);
+        MediaInfo mediaInfo = subtitleService.initSubtitle(embyId, "Japanese");
         List<Subtitle> subtitles = subtitleService.listSubtitles(mediaInfo.getId());
         return Response.success(subtitles);
     }
-    
+
     @PostMapping("/{id}")
     public Response<?> save(@RequestBody Subtitle subtitle) {
         if (subtitle.getId() == null) {
@@ -51,6 +53,7 @@ public class SubtitleController {
         }
         Subtitle existSubtitle = subtitleRepository.findById(subtitle.getId()).orElseThrow(() -> new IllegalArgumentException("Subtitle not found"));
         existSubtitle.setTranslatedText(subtitle.getTranslatedText());
+        existSubtitle.setStatus(StringUtils.hasText(subtitle.getTranslatedText()) ? SubtitleStatus.FINISHED : SubtitleStatus.PENDING);
         subtitleRepository.save(existSubtitle);
         return Response.success(existSubtitle);
     }
@@ -67,15 +70,5 @@ public class SubtitleController {
     public Response<?> outputToFile(@PathVariable Long mediaId) {
         subtitleService.outputToFile(mediaId);
         return Response.success();
-    }
-
-    @GetMapping("/translate-single/{subtitleId}")
-    public Response<String> translateBySubtitleId(@PathVariable Long subtitleId, @RequestParam(defaultValue = "TRANSLATE_COMMON") AssistantCode type) throws JsonProcessingException {
-        return Response.success(subtitleService.translateBySubtitleId(subtitleId, type));
-    }
-
-    @GetMapping("/translate-common")
-    public Response<String> translateCommon(@RequestParam String input, @RequestParam(defaultValue = "TRANSLATE_COMMON") AssistantCode type) {
-        return Response.success(subtitleService.commonTranslate(input, type));
     }
 }

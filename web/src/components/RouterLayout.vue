@@ -39,7 +39,7 @@
 
     <a-drawer
       v-if="deviceStore.isMobile"
-      v-model:visible="showDrawer"
+      v-model:open="showDrawer"
       placement="left"
       :closable="false"
       width="250"

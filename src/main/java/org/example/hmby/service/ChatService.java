@@ -18,7 +18,6 @@ import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.chat.memory.jdbc.JdbcChatMemoryRepository;
-import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.data.domain.Example;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -42,7 +41,6 @@ import java.util.stream.Collectors;
 @AllArgsConstructor
 public class ChatService {
     private final AssistantService assistantService;
-    private final ToolCallbackProvider toolCallbackProvider;
     private final ChatConversationRepository chatConversationRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final JdbcChatMemoryRepository chatMemoryRepository;
@@ -62,8 +60,7 @@ public class ChatService {
                         .chatMemoryRepository(chatMemoryRepository)
                         .maxMessages(50)
                         .build();
-                chatClient.prompt()
-                        .toolCallbacks(toolCallbackProvider)
+                chatClient.prompt(assistant.getPrompt())
                         .advisors(a -> a.param(AbstractChatMemoryAdvisor.CHAT_MEMORY_CONVERSATION_ID_KEY, conversationId)
                                 .advisors(MessageChatMemoryAdvisor.builder(chatMemory).build()))
                         .advisors(new SimpleLoggerAdvisor())
@@ -142,7 +139,7 @@ public class ChatService {
         if (messageList != null && !messageList.isEmpty()) {
             String content = messageList.stream().map(m -> "%s: %s".formatted(m.getType(), TextUtil.removeXmlTag(m.getContent(), "think"))).collect(Collectors.joining("\n"));
             String prompt = "/no_think \n 请根据这段对话内容，总结一个简洁、准确的标题，能够概括主题，长度不超过12个字。";
-            ChatAssistant chatAssistant = assistantService.getAssistantByCode(AssistantCode.CHAT.name());
+            ChatAssistant chatAssistant = assistantService.getAssistantByCode(AssistantCode.CHAT);
             ChatClient chatClient = assistantService.buildChatClient(chatAssistant);
             String result = chatClient.prompt(prompt).user(content).call().content();
             if (result != null) {
