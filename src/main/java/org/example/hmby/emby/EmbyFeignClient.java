@@ -61,7 +61,7 @@ public interface EmbyFeignClient {
      * @return
      */
     @GetMapping("/Tags")
-    PageWrapper<ItemTag> getTags(@RequestParam("SearchTerm") String searchTerm, @RequestParam(value = "te", defaultValue = "15") Long limit);
+    PageWrapper<ItemTag> getTags(@RequestParam("SearchTerm") String searchTerm, @RequestParam(value = "StartIndex", defaultValue = "0") Integer startIndex, @RequestParam(value = "Limit", defaultValue = "15") Integer limit);
 
     /**
      * 新增文件

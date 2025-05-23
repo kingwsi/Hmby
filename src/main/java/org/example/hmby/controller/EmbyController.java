@@ -158,7 +158,7 @@ public class EmbyController {
      */
     @GetMapping("/tags")
     public Response<List<ItemTag>> getTags(@RequestParam String name) {
-        PageWrapper<ItemTag> pageWrapper = embyClient.getTags(name, 100L);
+        PageWrapper<ItemTag> pageWrapper = embyClient.getTags(name, 0, 100);
         return Response.success(pageWrapper.getItems());
     }
 

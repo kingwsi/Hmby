@@ -16,12 +16,20 @@ import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 import net.bramp.ffmpeg.FFmpeg;
 import net.bramp.ffmpeg.FFprobe;
 import org.apache.commons.lang3.StringUtils;
+import org.example.hmby.entity.ChatAssistant;
+import org.example.hmby.enumerate.AssistantCode;
 import org.example.hmby.ffmpeg.FFmpegManager;
 import org.example.hmby.sceurity.SecurityUtils;
+import org.example.hmby.service.AssistantService;
+import org.springframework.ai.document.MetadataMode;
+import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.ai.openai.OpenAiEmbeddingModel;
+import org.springframework.ai.openai.OpenAiEmbeddingOptions;
+import org.springframework.ai.openai.api.OpenAiApi;
+import org.springframework.ai.retry.RetryUtils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.domain.AuditorAware;
-
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
@@ -106,5 +114,18 @@ public class ApplicationConfig {
         return new ThreadPoolExecutor(1, 1,
                 0L, TimeUnit.MILLISECONDS,
                 new ArrayBlockingQueue<>(100), Executors.defaultThreadFactory(), new ThreadPoolExecutor.AbortPolicy());
+    }
+    
+    @Bean
+    public EmbeddingModel embeddingModel(AssistantService assistantService){
+        ChatAssistant assistant = assistantService.getAssistantByCode(AssistantCode.CHAT);
+        OpenAiApi openAiApi = assistantService.buildOpenAiApi(assistant.getBaseUrl(), assistant.getModelName(), assistant.getApiKey());
+        return new OpenAiEmbeddingModel(
+                openAiApi,
+                MetadataMode.EMBED,
+                OpenAiEmbeddingOptions.builder()
+                        .model(assistant.getEmbeddingModel())
+                        .build(),
+                RetryUtils.DEFAULT_RETRY_TEMPLATE);
     }
 }

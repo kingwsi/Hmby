@@ -47,8 +47,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation platform("org.springframework.ai:spring-ai-bom:1.0.0-SNAPSHOT")
     // Replace the following with the starter dependencies of specific modules you wish to use
-    implementation 'org.springframework.ai:spring-ai-starter-mcp-client'
-    implementation 'org.springframework.ai:spring-ai-starter-mcp-client-webflux'
+    implementation 'org.springframework.ai:spring-ai-starter-vector-store-pgvector'
     implementation 'org.springframework.ai:spring-ai-openai'
     implementation 'org.springframework.ai:spring-ai-starter-model-chat-memory-jdbc:1.0.0-SNAPSHOT'
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'

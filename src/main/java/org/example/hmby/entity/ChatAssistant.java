@@ -21,6 +21,9 @@ public class ChatAssistant extends AuditableEntity {
     @Column(name = "model_name", nullable = false, length = 100)
     private String modelName;
 
+    @Column(name = "embedding_model", nullable = false, length = 100)
+    private String embeddingModel;
+
     @ColumnDefault("0.8")
     @Column(name = "temperature", nullable = false)
     private Double temperature;

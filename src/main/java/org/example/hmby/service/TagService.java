@@ -16,6 +16,9 @@ import org.example.hmby.emby.EmbyFeignClient;
 import org.example.hmby.repository.TagRepository;
 import org.example.hmby.sceurity.SecurityUtils;
 import org.example.hmby.vo.TagVO;
+import org.springframework.ai.document.Document;
+import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
+import org.springframework.ai.vectorstore.pgvector.PgVectorStore;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -25,6 +28,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -38,10 +42,12 @@ public class TagService {
     private final TagRepository tagRepository;
 
     private final EmbyFeignClient embyFeignClient;
+    private final PgVectorStore vectorStore;
 
-    public TagService(TagRepository tagRepository, EmbyFeignClient embyFeignClient) {
+    public TagService(TagRepository tagRepository, EmbyFeignClient embyFeignClient, PgVectorStore vectorStore) {
         this.tagRepository = tagRepository;
         this.embyFeignClient = embyFeignClient;
+        this.vectorStore = vectorStore;
     }
 
 
@@ -190,6 +196,21 @@ public class TagService {
                     .map(n -> new Tag(n, 0L, true))
                     .toList();
             tagRepository.saveAll(list);
+        }
+    }
+    
+    public void embeddingTags() {
+        FilterExpressionBuilder b = new FilterExpressionBuilder();
+        vectorStore.delete(b.eq("index", "tag").build());
+        
+        int pageSize = 100;
+        PageWrapper<ItemTag> pageWrapper = embyFeignClient.getTags(null, 0, pageSize);
+        for (int i = 0; i < pageWrapper.getTotalPages(); i++) {
+            pageWrapper = embyFeignClient.getTags(null, i * pageSize, pageSize);
+            List<Document> list = pageWrapper.getItems().stream()
+                    .map(t -> new Document(t.getName(), Map.of("id", t.getId(), "index", "tag")))
+                    .toList();
+            vectorStore.add(list);
         }
     }
 }

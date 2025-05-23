@@ -67,7 +67,7 @@
                             {{ tag.Name }}
                         </a-tag>
                     </template>
-                    <a-select v-if="tagState.inputVisible" ref="tagInputRef" v-model:value="tagState.inputValue"
+                    <a-select ref="tagInputRef" v-model:value="tagState.inputValue"
                         size="small" show-search allowClear placeholder="请输入标签" :autoClearSearchValue="true"
                         :style="{ width: '150px' }" :filter-option="false"
                         :not-found-content="tagState.fetching ? undefined : null" @search="fetchTags"
@@ -79,10 +79,10 @@
                             {{ tag.label }}
                         </a-select-option>
                     </a-select>
-                    <a-tag v-else style="background: #fff; border-style: dashed" @click="showTagInput">
-                        <plus-outlined />
-                        新标签
-                    </a-tag>
+<!--                    <a-tag v-else style="background: #fff; border-style: dashed" @click="showTagInput">-->
+<!--                        <plus-outlined />-->
+<!--                        新标签-->
+<!--                    </a-tag>-->
                     <a-divider type="vertical" />
                     <a-button type="text" @click="saveTagChanges" size="small">保存</a-button>
                 </div>

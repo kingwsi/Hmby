@@ -4,11 +4,17 @@ import lombok.AllArgsConstructor;
 import org.example.hmby.entity.ChatAssistant;
 import org.example.hmby.repository.ChatAssistantRepository;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.document.MetadataMode;
+import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.ai.embedding.EmbeddingResponse;
 import org.springframework.ai.model.NoopApiKey;
 import org.springframework.ai.model.SimpleApiKey;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
+import org.springframework.ai.openai.OpenAiEmbeddingModel;
+import org.springframework.ai.openai.OpenAiEmbeddingOptions;
 import org.springframework.ai.openai.api.OpenAiApi;
+import org.springframework.ai.retry.RetryUtils;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.http.client.reactive.JdkClientHttpConnector;
 import org.springframework.stereotype.Service;
@@ -17,6 +23,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 import java.net.http.HttpClient;
 import java.time.Duration;
+import java.util.List;
 
 @Service
 @AllArgsConstructor
@@ -29,10 +36,18 @@ public class AssistantService {
     }
     
     public ChatClient buildChatClient(ChatAssistant chatAssistant) {
-        String apiKey = chatAssistant.getApiKey();
-        String model = chatAssistant.getModelName();
-        String baseUrl = chatAssistant.getBaseUrl();
-        OpenAiApi openAiApi = OpenAiApi.builder()
+        OpenAiApi openAiApi = this.buildOpenAiApi(chatAssistant.getBaseUrl(), chatAssistant.getApiKey(), chatAssistant.getModelName());
+
+        OpenAiChatModel build = OpenAiChatModel.builder()
+                .defaultOptions(OpenAiChatOptions.builder().model(chatAssistant.getModelName()).build())
+                .openAiApi(openAiApi).build();
+        
+        return ChatClient.builder(build)
+                .build();
+    }
+
+    public OpenAiApi buildOpenAiApi(String baseUrl, String model, String apiKey) {
+        return OpenAiApi.builder()
                 .baseUrl(baseUrl)
                 .completionsPath("/chat/completions")
                 .embeddingsPath("/embeddings")
@@ -49,13 +64,6 @@ public class AssistantService {
                                 .version(HttpClient.Version.HTTP_1_1)
                                 .connectTimeout(Duration.ofSeconds(100))
                                 .build())))
-                .build();
-
-        OpenAiChatModel build = OpenAiChatModel.builder()
-                .defaultOptions(OpenAiChatOptions.builder().model(model).build())
-                .openAiApi(openAiApi).build();
-        
-        return ChatClient.builder(build)
                 .build();
     }
 
