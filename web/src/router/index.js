@@ -22,7 +22,13 @@ const routes = [
   {
     path: '/emby',
     name: 'Emby',
-    component: () => import('../views/EmbyCard.vue'),
+    component: () => import('../views/EmbyList.vue'),
+    meta: { requiresAuth: true, hideInNav: false, keepAlive: true }
+  },
+  {
+    path: '/emby-output',
+    name: '已处理',
+    component: () => import('../views/EmbyOutputList.vue'),
     meta: { requiresAuth: true, hideInNav: false, keepAlive: true }
   },
   {

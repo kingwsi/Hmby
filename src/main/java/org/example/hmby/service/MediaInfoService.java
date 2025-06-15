@@ -1,5 +1,6 @@
 package org.example.hmby.service;
 
+import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
@@ -114,6 +115,11 @@ public class MediaInfoService {
             if (params.getType() != null) {
                 predicates.add(criteriaBuilder.equal(root.get("type"), params.getType()));
             }
+
+            CriteriaBuilder.In<Object> inClause = criteriaBuilder.in(root.get("status"));
+            inClause.value(MediaStatus.DELETE_EMBY);
+            predicates.add(criteriaBuilder.not(inClause));
+            
             String userId = SecurityUtils.getUserInfo().map(EmbyUser::getUserId).orElse("Unknown");
             predicates.add(criteriaBuilder.equal(root.get("userId"), userId));
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
@@ -335,10 +341,10 @@ public class MediaInfoService {
         return this.getMediaAndMarks(mediaInfo.getId());
     }
 
-    public MediaInfoDTO getSubtitleMediaInfo(Long embyId, String language) {
+    public MediaInfoDTO getSubtitleMediaInfo(Long embyId) {
         MediaInfo query = new MediaInfo();
         query.setEmbyId(embyId);
-        query.setSuffix(language);
+        query.setSuffix("Japanese");
         return mediaInfoRepository.findAll(Example.of(query))
                 .stream().findFirst().map(mediainfoConvertMapper::toMediaInfoDTO).orElse(null);
     }

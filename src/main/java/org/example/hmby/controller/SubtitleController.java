@@ -39,8 +39,8 @@ public class SubtitleController {
         this.subtitleRepository = subtitleRepository;
     }
 
-    @GetMapping("/{embyId}/{language}")
-    public Response<?> initSubtitle(@PathVariable Long embyId, @PathVariable String language) throws IOException {
+    @GetMapping("/{embyId}")
+    public Response<?> initSubtitle(@PathVariable Long embyId) throws IOException {
         MediaInfo mediaInfo = subtitleService.initSubtitle(embyId, "Japanese");
         List<Subtitle> subtitles = subtitleService.listSubtitles(mediaInfo.getId());
         return Response.success(subtitles);

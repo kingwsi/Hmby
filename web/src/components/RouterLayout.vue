@@ -1,7 +1,7 @@
 <template>
   <a-config-provider :theme="themeConfig">
     <a-layout class="layout">
-    <a-layout-header v-if="!isLoginPage" class="header">
+    <a-layout-header v-if="!isLoginPage" class="header" :style="{ position: 'fixed', zIndex: 10, width: '100%' }">
       <div class="header-content">
         <menu-outlined
           v-if="deviceStore.isMobile"
@@ -108,7 +108,8 @@ const contentStyle = computed(() => {
   if (isLoginPage.value) return {};
   return {
     padding: deviceStore.isMobile ? '0 6px' : '12px 24px',
-    backgroundColor: '#fff'
+    backgroundColor: '#fff',
+    marginTop: '64px'
   };
 });
 

@@ -70,11 +70,11 @@ public class EmbyController {
     public Response<Page<MovieItem>> page(@RequestParam(value = "parentId", required = false) String parentId,
                                           @RequestParam(value = "keyword", required = false) String keyword,
                                           @RequestParam(value = "tag", required = false) String tag,
-                                          @RequestParam(value = "size", required = false, defaultValue = "10") Integer pageSize,
+                                          @RequestParam(value = "size", required = false, defaultValue = "10") Integer size,
                                           @RequestParam(value = "page", required = false, defaultValue = "1") Integer page) {
         EmbyItemRequest embyItemRequest = new EmbyItemRequest();
-        embyItemRequest.setLimit((long) pageSize);
-        long startIndex = (long) pageSize * page - pageSize;
+        embyItemRequest.setLimit((long) size);
+        long startIndex = (long) size * page - size;
         embyItemRequest.setStartIndex(startIndex);
 
         if (StringUtils.isNotBlank(keyword)) {
@@ -102,7 +102,7 @@ public class EmbyController {
             }
             item.setMediaInfo(mediaInfo);
         }
-        pageWrapper.setSize(pageSize);
+        pageWrapper.setSize(size);
         pageWrapper.setNumber(page);
         return Response.success(pageWrapper);
     }
@@ -207,7 +207,7 @@ public class EmbyController {
     public Response<Metadata> getSubtitleDetail(@PathVariable Long embyId, @PathVariable String language) {
         Metadata itemMetadata = embyClient.getItemMetadata(embyId);
         itemMetadata.setEmbyServer(propertiesConfig.getEmbyServer());
-        itemMetadata.setMediaInfo(mediaInfoService.getSubtitleMediaInfo(embyId, language));
+        itemMetadata.setMediaInfo(mediaInfoService.getSubtitleMediaInfo(embyId));
         return Response.success(itemMetadata);
     }
 

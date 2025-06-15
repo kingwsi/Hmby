@@ -29,6 +29,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
@@ -98,8 +99,8 @@ public class MediaInfoController {
         return Response.success();
     }
 
-    @PostMapping("/source-file/{id}/{operate}")
-    public Response<String> handlerSourceMedia(@PathVariable("id") Long id, @PathVariable("operate") String operate) throws ChangeSetPersister.NotFoundException, IOException {
+    @PostMapping("/source-file/{id}")
+    public Response<String> handlerSourceMedia(@PathVariable("id") Long id, @RequestParam("operate") String operate) throws ChangeSetPersister.NotFoundException, IOException {
         mediaInfoService.handlerSourceMedia(id, operate);
         return Response.success();
     }

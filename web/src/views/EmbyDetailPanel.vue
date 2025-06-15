@@ -12,7 +12,10 @@
               style="margin-top: 16px; margin-bottom: 16px"
               v-if="mediaStream"
             >
-              <a-descriptions-item v-if="mediaInfo.inputPath" :label="mediaDetail.Id">
+              <a-descriptions-item
+                v-if="mediaInfo.inputPath"
+                :label="mediaDetail.Id"
+              >
                 {{ mediaDetail.SortName }}
               </a-descriptions-item>
               <a-descriptions-item v-if="mediaInfo.inputPath" label="目录">{{
@@ -36,9 +39,8 @@
 
         <!-- 视频 -->
         <a-row>
-          <a-col :md="24" :sm="24"></a-col>
           <video-player
-            v-if="playerId"
+            v-if="selectedItemId && playerId"
             :key="playerId"
             ref="videoPlayerRef"
             :intervals="marks"
@@ -98,20 +100,6 @@
               size="small"
               v-if="videoStreamMain"
             >
-              <a-descriptions-item label="路径">{{
-                mediaDetail.Path
-              }}</a-descriptions-item>
-              <a-descriptions-item label="视频信息"
-                >{{ videoStreamMain.Width }} x
-                {{ videoStreamMain.Height }}
-                <a-divider type="vertical" />
-                {{ (mediaStream.BitRate / 1000).toFixed(0) }}
-                Kbps <a-divider type="vertical" />
-                {{ mediaStream.Size }}
-                <a-divider type="vertical" /> {{ videoStreamMain.Codec }}
-                <a-divider type="vertical" />
-                {{ videoStreamMain.AverageFrameRate }} Fps
-              </a-descriptions-item>
               <a-descriptions-item
                 label="字幕语言"
                 v-if="subtitleLanguages && subtitleLanguages.length > 0"
@@ -153,39 +141,6 @@
                   }}% <a-divider type="vertical" /> 耗时:{{
                     mediaDetail.mediaInfo.timeCost
                   }}
-                </a-descriptions-item>
-                <a-descriptions-item
-                  label="操作"
-                  v-if="
-                    mediaDetail.outputMedia &&
-                    mediaDetail.mediaInfo?.status !== 'DONE'
-                  "
-                >
-                  <a-popconfirm
-                    title="确认删除源文件？"
-                    ok-text="确认"
-                    okType="danger"
-                    cancel-text="取消"
-                    @confirm="handleSourceMedia('DELETE')"
-                    placement="left"
-                  >
-                    <a-button primary v-if="mediaDetail.mediaInfo" size="small"
-                      >删除源文件</a-button
-                    >
-                  </a-popconfirm>
-                  <a-divider type="vertical" />
-                  <a-popconfirm
-                    title="覆盖删除源文件？"
-                    ok-text="确认"
-                    okType="danger"
-                    cancel-text="取消"
-                    @confirm="handleSourceMedia('OVERRIDE')"
-                    placement="left"
-                  >
-                    <a-button primary v-if="mediaDetail.mediaInfo" size="small"
-                      >覆盖源文件</a-button
-                    >
-                  </a-popconfirm>
                 </a-descriptions-item>
               </template>
             </a-descriptions>
@@ -395,6 +350,8 @@ import Ellipsis from "@/components/Ellipsis.vue";
 import { message } from "ant-design-vue";
 import { useDeviceStore } from "@/stores/device";
 import TagsSelect from "@/components/TagsSelect.vue";
+import { useRouter } from "vue-router";
+
 import {
   StepBackwardOutlined,
   ScissorOutlined,
@@ -683,6 +640,7 @@ const deleteItemHandle = async (id) => {
     await request.delete(`/api/emby-item/${id}`);
     message.success("删除成功");
     selectedItemId.value = null;
+    playerId.value = null;
     changeHandler();
   } catch (error) {
     console.error("删除失败：", error);
@@ -696,7 +654,7 @@ const deleteItemHandle = async (id) => {
 const openEmbyPage = () => {
   if (mediaDetail.value && mediaDetail.value.embyServer) {
     window.open(
-      `${mediaDetail.value.embyServer}/web/index.html#!/item?id=${mediaDetail.value.Id}`,
+      `${mediaDetail.value.embyServer}/web/index.html#!/item?id=${mediaDetail.value.Id}&serverId=${mediaDetail.value.ServerId}`,
       "_blank"
     );
   }
@@ -710,26 +668,11 @@ const getPlayerPoter = () => {
   return "";
 };
 
-// 处理源文件操作
-const handleSourceMedia = async (action) => {
-  try {
-    confirmLoading.value = true;
-    await request.post(
-      `/api/media-info/${mediaDetail.value.Id}/source/${action}`
-    );
-    message.success("操作成功");
-    fetchMediaDetail(mediaDetail.value.Id);
-  } catch (error) {
-    console.error("操作失败：", error);
-    message.error("操作失败");
-  } finally {
-    confirmLoading.value = false;
-  }
-};
-
+const router = useRouter();
 // 打开字幕
 const openSubtitle = (id, language) => {
-  router.push(`/subtitle?id=${id}&language=${language}`);
+console.log('l', id)
+  router.push(`/subtitle-manager?id=${id}&language=${language}`);
 };
 
 // 编辑器
