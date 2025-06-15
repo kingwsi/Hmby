@@ -70,9 +70,9 @@
         </router-view>
       </div>
     </a-layout-content>
-    <a-layout-footer v-if="!isLoginPage" style="text-align: center">
+    <!-- <a-layout-footer v-if="!isLoginPage" style="text-align: center">
       Ant Design ©2023 Created by Ant UED
-    </a-layout-footer>
+    </a-layout-footer> -->
   </a-layout>
   </a-config-provider>
 </template>
@@ -107,7 +107,8 @@ const showDrawer = ref(false);
 const contentStyle = computed(() => {
   if (isLoginPage.value) return {};
   return {
-    padding: deviceStore.isMobile ? '0 16px' : '0 50px'
+    padding: deviceStore.isMobile ? '0 6px' : '12px 24px',
+    backgroundColor: '#fff'
   };
 });
 
@@ -127,8 +128,7 @@ const themeConfig = {
 <style scoped>
 .site-layout-content {
   min-height: 280px;
-  padding: 24px;
-  background: #fff;
+  padding: 12px;
 }
 .header {
   padding: 0 !important;

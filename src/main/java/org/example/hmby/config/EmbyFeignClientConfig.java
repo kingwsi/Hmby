@@ -1,12 +1,14 @@
 package org.example.hmby.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import feign.Logger;
 import feign.QueryMapEncoder;
+import feign.RequestInterceptor;
 import feign.codec.EncodeException;
 import feign.querymap.FieldQueryMapEncoder;
 import lombok.extern.slf4j.Slf4j;
-import org.example.hmby.emby.EmbyAccessTokenInterceptor;
+import org.example.hmby.exception.BusinessException;
+import org.example.hmby.sceurity.EmbyUser;
+import org.example.hmby.sceurity.SecurityUtils;
 import org.springframework.context.annotation.Bean;
 
 import java.lang.reflect.Field;
@@ -28,12 +30,6 @@ public class EmbyFeignClientConfig {
 
     private final Map<Class<?>, ObjectParamMetadata> classToMetadata = new HashMap<>();
     
-    @Bean
-    public EmbyAccessTokenInterceptor embyAccessTokenInterceptor() {
-        return new EmbyAccessTokenInterceptor();
-    }
-
-
     /**
      * 实现自定义Query参数编码器 以支持JsonProperty注解
      * @see FieldQueryMapEncoder
@@ -93,9 +89,24 @@ public class EmbyFeignClientConfig {
         }
     }
     
-    // 开启Feign的日志
     @Bean
-    public Logger.Level logger() {
-        return Logger.Level.FULL;
+    public RequestInterceptor requestInterceptor() {
+        return requestTemplate -> {
+            EmbyUser userDetails = SecurityUtils.getUserInfo()
+                    .orElseThrow(() -> new BusinessException("emby认证信息获取异常！"));
+            String url = requestTemplate.url().replace("USER_ID", userDetails.getUserId());
+            requestTemplate.header("X-Emby-Token", userDetails.getThirdPartyToken());
+            requestTemplate.header("Accept", "*/*");
+            requestTemplate.uri(url);
+            if (log.isDebugEnabled()) {
+                log.debug("Userid: {}", userDetails.getUserId());
+                log.debug("X-Emby-Token: {}", userDetails.getThirdPartyToken());
+                if (requestTemplate.body() != null && requestTemplate.body().length > 0) {
+                    log.debug("Feign远程调用: {} \n{}", requestTemplate.url(), new String(requestTemplate.body()));
+                } else {
+                    log.debug("Feign远程调用: {}", requestTemplate.url());
+                }
+            }
+        };
     }
 }

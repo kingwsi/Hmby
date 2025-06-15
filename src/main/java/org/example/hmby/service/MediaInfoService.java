@@ -79,7 +79,9 @@ public class MediaInfoService {
         if (exist != null) {
             mediaInfo.setId(exist.getId());
         }
-        if (mediaInfo.getType() != MediaConvertType.ENCODE) {
+        if (mediaInfo.getType() == MediaConvertType.ENCODE && mediaInfo.getCodec()==null) {
+            throw new BusinessException("编码类型不能为空！");
+        } else if (mediaInfo.getType() != MediaConvertType.ENCODE){
             mediaInfo.setCodec(null);
         }
         mediaInfoRepository.save(mediaInfo);
@@ -237,6 +239,7 @@ public class MediaInfoService {
         return String.format("%02d:%02d:%02d", seconds / 3600, (seconds % 3600) / 60, (seconds % 60));
     }
 
+    @Transactional
     public void removeAndMarks(Long id) {
         mediaInfoRepository.deleteById(id);
         mediaMarkRepository.deleteMediaMarksByMediaId(id);
@@ -306,6 +309,7 @@ public class MediaInfoService {
             mediaInfo.setFileName(itemMetadata.getSortName());
             mediaInfo.setFileSize(itemMetadata.getSize());
             mediaInfo.setInputPath(itemMetadata.getPath());
+            mediaInfo.setEmbyId(itemMetadata.getId());
             mediaInfo.setStatus(MediaStatus.DELETE_EMBY);
             mediaInfo.setType(MediaConvertType.DELETE);
             mediaInfo.setSuffix(itemMetadata.getContainer());

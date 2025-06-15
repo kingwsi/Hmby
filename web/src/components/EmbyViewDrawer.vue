@@ -57,7 +57,7 @@
                 <!-- 标签编辑 -->
                 <a-divider>标签管理</a-divider>
                 <div class="tag-edit-section">
-                    <template v-for="(tag, index) in tagState.tags" :key="tag.Id">
+                    <template v-for="(tag) in tagState.tags" :key="tag.Id">
                         <a-tooltip v-if="tag.Name.length > 20" :title="tag.Name">
                             <a-tag :closable="true" @close="handleTagClose(tag)">
                                 {{ `${tag.Name.slice(0, 20)}...` }}

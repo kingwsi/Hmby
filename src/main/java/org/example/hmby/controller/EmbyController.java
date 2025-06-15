@@ -23,6 +23,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.util.Assert;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -172,15 +173,14 @@ public class EmbyController {
     @PostMapping("/{itemId}/tags")
     public Response<?> saveMediaTags(@PathVariable Long itemId, @RequestBody MetadataRequest metadataRequest) {
         Metadata metadata = embyClient.getItemMetadata(itemId);
-        if (metadataRequest.getTagItems() == null) {
-            return Response.fail("tags is null");
-        }
+        Assert.notNull(metadataRequest.getTags(), "tags is null");
         
-        tagService.saveIfNotExist(metadataRequest.getTagItems().stream().map(ItemTag::getName).collect(Collectors.toSet()));
+        tagService.saveIfNotExist(metadataRequest.getTags());
         
         metadataRequest.setProviderIds(metadata.getProviderIds());
         metadataRequest.setName(metadata.getSortName());
         metadataRequest.setId(metadata.getId());
+        metadataRequest.setTagItems(metadataRequest.getTags().stream().map(ItemTag::new).collect(Collectors.toList()));
         try (feign.Response response = embyClient.updateMetadata(itemId, metadataRequest)) {
             if (response.status() == 204) {
                 return Response.success();

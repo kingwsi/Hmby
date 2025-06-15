@@ -2,9 +2,9 @@ spring:
   application:
     name: hmby
   datasource:
-    url: jdbc:postgresql://localhost:5432/hmby
-    username: dev
-    password: root
+    url: jdbc:postgresql://192.168.123.232:5432/hmby
+    username: postgres
+    password: dev
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -14,27 +14,23 @@ spring:
       static-locations: classpath:/dist/
   mvc:
     static-path-pattern: /web/**
-  ai:
-    mcp:
-      client:
-        connection-timeout: 60s
-        type: ASYNC
-        stdio:
-          servers-configuration: classpath:mcp-servers.json
-        toolcallback:
-          enabled: true
 server:
   port: 8094
-
+  
 hmby:
   config:
-    ffmpeg-path: /opt/homebrew/bin/ffmpeg
-    ffprobe-path: /opt/homebrew/bin/ffprobe
-    emby-server: http://localhost:8096
-    volume-bind:
-      - /Volumes/downloads/->/downloads/
-      - /Volumes/Volume1/->/Volume1
-      - /Volumes/Volume2/->/Volume2
-    output-media-path: /Volumes/downloads/output
-logging.level.org.hibernate.SQL: DEBUG
-logging.level.org.springframework.ai.chat.client.advisor: DEBUG
+    ffmpeg-path: E:\ffmpeg\bin\ffmpeg
+    ffprobe-path: E:\ffmpeg\bin\ffprobe
+    emby-server: http://192.168.123.232:8096
+    volume-bind: 
+    - \\192.168.123.232\downloads\->/downloads/
+    - \\192.168.123.232\Volume1\->/Volume1
+    - \\192.168.123.232\Volume2\->/Volume2
+    output-media-path: /downloads/output
+logging:
+  level:
+    org.springframework.ai.openai: DEBUG
+    org.example.hmby.config.EmbyFeignClientConfig: DEBUG
+#    org.hibernate.SQL: DEBUG
+#    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+#    org.springframework.web.socket: DEBUG

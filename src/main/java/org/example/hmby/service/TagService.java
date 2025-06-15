@@ -19,6 +19,8 @@ import org.example.hmby.vo.TagVO;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.ai.vectorstore.pgvector.PgVectorStore;
+import org.springframework.data.domain.Example;
+import org.springframework.data.domain.ExampleMatcher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -134,7 +136,21 @@ public class TagService {
     }
 
     public List<Tag> listByName(String name) {
-        List<Tag> tags = tagRepository.findAllByNameContainsOrderByLastUpdateDateDesc(name);
+        Tag probe = new Tag();
+        if (name != null && !name.isEmpty()) {
+            probe.setName(name);
+        }
+
+        ExampleMatcher matcher = ExampleMatcher
+                .matching()
+                .withMatcher("name", ExampleMatcher.GenericPropertyMatchers.contains().ignoreCase());
+        Example<Tag> example = Example.of(probe, matcher);
+
+        // 第 0 页，每页 limit 条，按 createTime 降序排序
+        Pageable pageable = PageRequest.of(0, 5, Sort.by(Sort.Direction.DESC, "lastUpdateDate"));
+        Page<Tag> resultPage = tagRepository.findAll(example, pageable);
+        List<Tag> tags = resultPage.getContent();
+
         if (tags.isEmpty()) {
             Tag tag = new Tag();
             tag.setName(name);

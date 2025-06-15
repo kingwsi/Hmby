@@ -81,7 +81,7 @@ const registerTimelinePlugin = () => {
     }
 
     drawMarkers() {
-      if (!this.options || !this.options.intervals || !this.options.intervals.length) return
+      if (!this.options || !this.options.intervals) return
 
       this.timelineElement.innerHTML = ''
       const duration = this.player.duration()
@@ -200,10 +200,11 @@ const showDeleteConfirm = (index) => {
   Modal.confirm({
     title: '删除片段?',
     content: 'Some descriptions',
-    okText: 'Yes',
+    okText: '确认',
     okType: 'danger',
-    cancelText: 'No',
+    cancelText: '取消',
     onOk() {
+      console.log('index',index)
       emit('delete-interval', index)
     },
     onCancel() {}
