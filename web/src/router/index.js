@@ -14,21 +14,33 @@ const routes = [
     meta: { requiresAuth: true, hideInNav: false, keepAlive: true }
   },
   {
+    path: '/nav',
+    name: 'nav',
+    component: () => import('../components/NavBar.vue'),
+    meta: { requiresAuth: true, hideInNav: false, keepAlive: true }
+  },
+  {
     path: '/media-info',
     name: '媒体信息',
     component: () => import('../views/MediaInfo.vue'),
     meta: { requiresAuth: true, hideInNav: false, keepAlive: true }
   },
   {
-    path: '/emby',
-    name: 'Emby',
-    component: () => import('../views/EmbyList.vue'),
+    path: '/emby-manager',
+    name: '管理',
+    component: () => import('@/views/EmbyManager.vue'),
     meta: { requiresAuth: true, hideInNav: false, keepAlive: true }
   },
   {
     path: '/emby-output',
     name: '已处理',
     component: () => import('../views/EmbyOutputList.vue'),
+    meta: { requiresAuth: true, hideInNav: false, keepAlive: true }
+  },
+  {
+    path: '/emby',
+    name: 'Emby',
+    component: () => import('../views/Emby.vue'),
     meta: { requiresAuth: true, hideInNav: false, keepAlive: true }
   },
   {
@@ -80,6 +92,9 @@ router.beforeEach(async (to, from, next) => {
     app.loading = true
   }
 
+  // 使用pinia store中的token状态
+  // 注意：由于路由守卫在pinia初始化之前执行，这里仍然需要从localStorage获取token
+  // 但在组件中应该使用userStore.isLoggedIn
   const token = localStorage.getItem('token')
   if (to.meta.requiresAuth && !token) {
     next('/login')

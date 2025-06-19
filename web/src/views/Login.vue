@@ -39,9 +39,10 @@ import { reactive, ref } from 'vue';
 import { message } from 'ant-design-vue';
 import { useRouter } from 'vue-router';
 import { UserOutlined, LockOutlined } from '@ant-design/icons-vue';
-import request from '@/utils/request';
+import { useAppStore } from '@/stores/app';
 
 const router = useRouter();
+const app = useAppStore();
 const loading = ref(false);
 
 const formState = reactive({
@@ -52,15 +53,17 @@ const formState = reactive({
 const onFinish = async values => {
     loading.value = true;
     try {
-        const response = await request.post('/api/auth/login', {
+        const success = await app.login({
             username: formState.username,
             password: formState.password
         });
-        localStorage.setItem('token', response.data);
-        message.success('登录成功');
-        router.push('/');
-    } catch (error) {
-        // 错误处理已经在request拦截器中统一处理
+        
+        if (success) {
+            message.success('登录成功');
+            router.push('/');
+        } else {
+            message.error('登录失败，请检查用户名和密码');
+        }
     } finally {
         loading.value = false;
     }

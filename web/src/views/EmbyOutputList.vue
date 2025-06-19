@@ -124,34 +124,15 @@
 import {
   ref,
   reactive,
-  onMounted,
-  onActivated,
-  computed,
-  nextTick,
-  watch,
+  onMounted
 } from "vue";
-import MediaStatusTag from "@/components/MediaStatusTag.vue";
 import request from "@/utils/request";
-import Ellipsis from "@/components/Ellipsis.vue";
-import { useRoute, useRouter } from "vue-router";
 import { message } from "ant-design-vue";
-import { useDeviceStore } from "@/stores/device";
-import EmbyDetailPanel from "@/views/EmbyDetailPanel.vue";
 import TagsSelect from "@/components/TagsSelect.vue";
-import EmbyCard from "@/views/EmbyCard.vue";
+import EmbyCard from "@/components/EmbyCard.vue";
 import VideoPlayer from "@/components/VideoPlayer.vue";
 // 状态管理
-const mediaList = ref([]);
-const total = ref(0);
 const loading = ref(false);
-const libraries = ref([]);
-const deviceStore = useDeviceStore();
-const router = useRouter();
-const route = useRoute();
-
-// 右侧面板状态
-const viewMode = ref("view"); // 'view' 或 'edit'
-// 编辑模式状态
 
 const videoPlayerRef = ref(null);
 
@@ -217,20 +198,4 @@ const handleSourceMedia = async (action) => {
 </script>
   
 <style scoped lang="less">
-.pagination-container {
-  height: 60px;
-  margin-top: 20px;
-  position: sticky;
-  bottom: 0;
-  width: 100%;
-  z-index: 100;
-  padding: 15px 0;
-  text-align: center;
-  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(10px);
-
-  @media (max-width: 768px) {
-    padding: 10px 0;
-  }
-}
 </style>

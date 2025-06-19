@@ -1,5 +1,6 @@
 <template>
   <a-spin :spinning="loading" style="width: 100%">
+    
     <a-row :gutter="[16, 16]" style="width: 100%">
       <a-col
         :sm="span.sm"
@@ -69,17 +70,10 @@
 import {
   ref,
   reactive,
-  onMounted,
-  onActivated,
-  computed,
-  nextTick,
-  watch,
 } from "vue";
 import MediaStatusTag from "@/components/MediaStatusTag.vue";
 import request from "@/utils/request";
 import Ellipsis from "@/components/Ellipsis.vue";
-import { message } from "ant-design-vue";
-import EmbyDetailPanel from "@/views/EmbyDetailPanel.vue";
 
 const props = defineProps({
   span: {
@@ -243,7 +237,6 @@ defineExpose({
   text-align: center;
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
   backdrop-filter: blur(10px);
-  background-color: rgba(255, 255, 255, 0.6);
 
   @media (max-width: 768px) {
     padding: 10px 0;

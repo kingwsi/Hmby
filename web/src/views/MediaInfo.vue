@@ -107,8 +107,6 @@
                 <a-descriptions-item label="修改时间" :span="3">{{ currentRecord?.lastUpdateDate }}</a-descriptions-item>
             </a-descriptions>
         </a-modal>
-
-        <EmbyEditorDrawer ref="editorDrawer" @update="loadData()" />
     </div>
 </template>
 
@@ -118,7 +116,6 @@ import { message } from 'ant-design-vue'
 import request from '@/utils/request'
 import MediaStatusTag from '@/components/MediaStatusTag.vue'
 import Ellipsis from '@/components/Ellipsis.vue'
-import EmbyEditorDrawer from '@/components/EmbyEditorDrawer.vue';
 import { useRouter } from 'vue-router';
 
 // 表格列定义

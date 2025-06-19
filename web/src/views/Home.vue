@@ -28,7 +28,25 @@
 </template>
 
 <script setup>
+import {
+  ref,
+  reactive,
+  onMounted
+} from "vue";
 // 组件逻辑可以在这里添加
+// 定义导航项数据
+const tabList = [
+  { key: 'movie', label: '电影' },
+  { key: 'tag', label: '标签' },
+  { key: 'favorite', label: '最爱' },
+  { key: 'folder', label: '文件夹' }
+];
+const currentTab = ref('movie'); // 默认选中“电影”
+
+// 切换标签逻辑
+const handleTabClick = (key) => {
+  currentTab.value = key;
+};
 </script>
 
 <style scoped>
@@ -38,5 +56,48 @@
 
 h1 {
   margin-bottom: 24px;
+}
+
+.nav-tab-container {
+  background-color: #2c2c2c;
+  display: flex;
+  justify-content: center;
+  padding: 8px 0;
+}
+
+.tab-group {
+  display: flex;
+}
+
+.tab-item {
+  color: #ccc;
+  padding: 8px 16px;
+  margin: 0 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.tab-item.active {
+  background-color: #444;
+  color: #fff;
+}
+
+/* 切换动画相关样式 */
+.tab-switch-enter-active,
+.tab-switch-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.tab-switch-enter-from,
+.tab-switch-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+.tab-switch-leave-from,
+.tab-switch-enter-to {
+  opacity: 1;
+  transform: translateY(0);
 }
 </style>

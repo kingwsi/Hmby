@@ -1,7 +1,6 @@
 <template>
   <div class="video-container">
     <video ref="videoPlayer" class="video-js"></video>
-    <TimeLine v-if="duration > 0" :intervals="intervals" :timeLength="duration"/>
   </div>
 </template>
 
@@ -13,7 +12,6 @@ import Stomp from 'stompjs'
 import 'video.js/dist/video-js.css'
 import '@/assets/timeline-marker.css'
 import request from '@/utils/request'
-import TimeLine from '@/components/TimeLine.vue'
 import { Modal } from 'ant-design-vue'
 
 // 定义props

@@ -1,23 +1,14 @@
 <script setup>
 import RouterLayout from '@/components/RouterLayout.vue'
 import { Spin } from 'ant-design-vue';
-import { ref } from 'vue';
+import { useAppStore } from '@/stores/app';
 
-const loading = ref(false);
+const app = useAppStore()
 
-// 提供全局loading状态控制
-const setLoading = (value) => {
-  loading.value = value;
-};
-
-// 将loading状态控制方法暴露给全局
-defineExpose({
-  setLoading
-});
 </script>
 
 <template>
-  <Spin :spinning="loading" tip="加载中..." size="large" wrapperClassName="global-loading">
+  <Spin :spinning="app.loading" tip="加载中..." size="large" wrapperClassName="global-loading">
     <RouterLayout />
   </Spin>
 </template>

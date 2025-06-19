@@ -1,10 +1,10 @@
 <template>
-  <a-config-provider :theme="themeConfig">
+  <a-config-provider :theme="app.themeConfig">
     <a-layout class="layout">
     <a-layout-header v-if="!isLoginPage" class="header" :style="{ position: 'fixed', zIndex: 10, width: '100%' }">
       <div class="header-content">
         <menu-outlined
-          v-if="deviceStore.isMobile"
+          v-if="app.isMobile"
           class="menu-trigger"
           @click="showDrawer = true"
         />
@@ -12,7 +12,7 @@
           <span class="logo-text">Hmby</span>
         </div>
         <a-menu
-          v-if="!deviceStore.isMobile"
+          v-if="!app.isMobile"
           v-model:selectedKeys="selectedKeys"
           theme="dark"
           mode="horizontal"
@@ -22,23 +22,18 @@
           <a-menu-item v-for="route in routes" :key="route.path">
             <router-link :to="route.path">{{ route.name }}</router-link>
           </a-menu-item>
-          <a-menu-item style="margin-left: auto" @click="handleLogout">
-            <a>登出</a>
+          <a-menu-item style="margin-left: auto" @click="app.toggleTheme">
+            <a><bulb-outlined /> {{ app.isDarkTheme ? '切换亮色主题' : '切换暗色主题' }}</a>
+          </a-menu-item>
+          <a-menu-item @click="handleLogout">
+            <a><logout-outlined /> 登出</a>
           </a-menu-item>
         </a-menu>
-        <a-button
-          v-if="deviceStore.isMobile"
-          type="link"
-          class="mobile-logout"
-          @click="handleLogout"
-        >
-          登出
-        </a-button>
       </div>
     </a-layout-header>
 
     <a-drawer
-      v-if="deviceStore.isMobile"
+      v-if="app.isMobile"
       v-model:open="showDrawer"
       placement="left"
       :closable="false"
@@ -78,9 +73,9 @@
 </template>
 <script setup>
 import { ref, computed } from 'vue';
-import { MenuOutlined } from '@ant-design/icons-vue';
+import { MenuOutlined, LogoutOutlined, BulbOutlined } from '@ant-design/icons-vue';
 import { useRouter, useRoute } from 'vue-router';
-import { useDeviceStore } from '../stores/device';
+import { useAppStore } from '@/stores/app';
 
 const router = useRouter();
 const route = useRoute();
@@ -101,34 +96,25 @@ const isLoginPage = computed(() => {
   return route.path === '/login';
 });
 
-const deviceStore = useDeviceStore();
+const app = useAppStore();
 const showDrawer = ref(false);
 
 const contentStyle = computed(() => {
   if (isLoginPage.value) return {};
   return {
-    padding: deviceStore.isMobile ? '0 6px' : '12px 24px',
-    backgroundColor: '#fff',
+    padding: app.isMobile ? '0 6px' : '12px 24px',
     marginTop: '64px'
   };
 });
 
 const handleLogout = () => {
-  localStorage.removeItem('token');
+  app.logout();
   router.push('/login');
 };
-
-const themeConfig = {
-      token: {
-        colorPrimary: '52b54b',
-        fontSize: 12,
-        wireframe: false
-      }
-    };
 </script>
 <style scoped>
 .site-layout-content {
-  min-height: 280px;
+  min-height: 80vh;
   padding: 12px;
 }
 .header {
@@ -169,10 +155,15 @@ const themeConfig = {
   flex: 1;
 }
 
-.mobile-logout {
-  color: #fff !important;
+.mobile-actions {
   margin-left: auto;
-  padding: 0 15px;
+  display: flex;
+  align-items: center;
+}
+
+.mobile-action-btn {
+  color: #fff !important;
+  padding: 0 10px;
   height: 64px;
   display: flex;
   align-items: center;
@@ -193,7 +184,7 @@ const themeConfig = {
   }
 }
 
-[data-theme='dark'] .site-layout-content {
+/* [data-theme='dark'] .site-layout-content {
   background: #141414;
-}
+} */
 </style>

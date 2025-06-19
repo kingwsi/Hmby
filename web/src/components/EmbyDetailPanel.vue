@@ -348,7 +348,6 @@ import VideoPlayer from "@/components/VideoPlayer.vue";
 import request from "@/utils/request";
 import Ellipsis from "@/components/Ellipsis.vue";
 import { message } from "ant-design-vue";
-import { useDeviceStore } from "@/stores/device";
 import TagsSelect from "@/components/TagsSelect.vue";
 import { useRouter } from "vue-router";
 
@@ -839,23 +838,6 @@ const intervalRemoveHandler = (index) => {};
   display: flex;
   flex-wrap: wrap;
   min-height: 200px;
-}
-
-.pagination-container {
-  height: 60px;
-  margin-top: 20px;
-  position: sticky;
-  bottom: 0;
-  width: 100%;
-  z-index: 100;
-  padding: 15px 0;
-  text-align: center;
-  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(10px);
-
-  @media (max-width: 768px) {
-    padding: 10px 0;
-  }
 }
 
 .wrapper {

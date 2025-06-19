@@ -68,6 +68,10 @@ public class FfmpegService {
         if (!StringUtils.isEmpty(mediaInfo.getMetaTitle())) {
             fFmpegOutputBuilder.addMetaTag("title", mediaInfo.getMetaTitle());
         }
+
+        if (mediaInfo.getCodec().name().startsWith("hevc")) {
+            fFmpegOutputBuilder.addExtraArgs("-tag:v", "hvc1");
+        }
         
         FFmpegBuilder fFmpegBuilder = fFmpegOutputBuilder.done().overrideOutputFiles(true);
 

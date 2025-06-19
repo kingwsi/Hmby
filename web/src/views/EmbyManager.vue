@@ -2,8 +2,8 @@
   <div style="padding-top: 15px">
     <!-- 左右分栏布局 -->
     <a-row :gutter="16">
-      <!-- 详情区域 -->
-      <a-col :span="12" :xs="24" :sm="24" :md="10" class="detail-panel">
+      <!-- 详情区域 - 在非移动端显示 -->
+      <a-col v-if="!app.isMobile" :span="12" :xs="24" :sm="24" :md="10" class="detail-panel">
         <EmbyDetailPanel :id="selectedItemId" @change="fetchData" />
       </a-col>
       <!-- 列表区域 -->
@@ -59,6 +59,19 @@
       </a-col>
     </a-row>
   </div>
+  <!-- 移动端弹窗 -->
+  <a-modal
+    v-if="app.isMobile"
+    v-model:visible="detailModalVisible"
+    :title="'媒体详情'"
+    :width="'100%'"
+    :footer="null"
+    :destroyOnClose="false"
+    :bodyStyle="{ padding: '12px', maxHeight: '90vh', overflow: 'auto' }"
+    style="top: 20px"
+  >
+    <EmbyDetailPanel :id="selectedItemId" @change="fetchData" />
+  </a-modal>
 </template>
 
 <script setup>
@@ -71,33 +84,20 @@ import {
   nextTick,
   watch,
 } from "vue";
-import MediaStatusTag from "@/components/MediaStatusTag.vue";
 import request from "@/utils/request";
-import Ellipsis from "@/components/Ellipsis.vue";
 import { useRoute, useRouter } from "vue-router";
-import { message } from "ant-design-vue";
-import { useDeviceStore } from "@/stores/device";
-import EmbyDetailPanel from "@/views/EmbyDetailPanel.vue";
+import { useAppStore } from "@/stores/app";
+import EmbyDetailPanel from "@/components/EmbyDetailPanel.vue";
 import TagsSelect from "@/components/TagsSelect.vue";
-import EmbyCard from "@/views/EmbyCard.vue";
+import EmbyCard from "@/components/EmbyCard.vue";
 
 // 状态管理
-const mediaList = ref([]);
-const total = ref(0);
-const loading = ref(true);
 const libraries = ref([]);
-const deviceStore = useDeviceStore();
-const router = useRouter();
-const route = useRoute();
+const app = useAppStore();
 const embyCardRef = ref(null);
 
 // 右侧面板状态
 const selectedItemId = ref(null);
-const viewMode = ref("view"); // 'view' 或 'edit'
-const moveLoading = ref(false);
-
-// 编辑模式状态
-const videoPlayerRef = ref(null);
 
 // 查询参数
 const queryParam = reactive({
@@ -140,15 +140,17 @@ const handleTagChange = (tagName) => {
   queryParam.tag = tagName;
 };
 
-const handlePageChange = (page, size) => {
-  queryParam.page = page;
-  queryParam.size = size;
-  fetchData();
-};
+// 移动端弹窗状态
+const detailModalVisible = ref(false);
 
 // 选择媒体项
 const handleClickItem = (item) => {
   selectedItemId.value = item.Id;
+  
+  // 在移动端打开弹窗
+  if (app.isMobile) {
+    detailModalVisible.value = true;
+  }
 };
 
 // 生命周期
