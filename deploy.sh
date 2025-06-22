@@ -14,7 +14,7 @@ JVM_OPTS="-Xmx512m"
 
 # Step 1: 编译前端项目
 echo "👉 使用 Docker 编译前端项目..."
-docker run --rm -v "$PWD/$FRONTEND_DIR":/app -w /app $NODE_IMAGE bash -c "npm install && $FRONTEND_BUILD_CMD"
+docker run --rm -v "$PWD/$FRONTEND_DIR":/app -w /app $NODE_IMAGE sh -c "npm install && $FRONTEND_BUILD_CMD"
 if [ $? -ne 0 ]; then
   echo "❌ 前端编译失败，退出。"
   exit 1
