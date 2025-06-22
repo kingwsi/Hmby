@@ -3,6 +3,7 @@ package org.example.hmby.config;
 import lombok.extern.slf4j.Slf4j;
 import org.example.hmby.Response;
 import org.example.hmby.exception.BusinessException;
+import org.example.hmby.exception.ConfigNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -23,6 +24,13 @@ public class ExceptionHandlerConfig {
     public ResponseEntity<Response<String>> handleException(Exception ex) {
         Response<String> response = Response.fail(ex.getMessage());
         log.error(ex.getMessage(), ex);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+    }
+    
+    @ExceptionHandler(ConfigNotFoundException.class)
+    public ResponseEntity<Response<String>> handleConfigNotFoundException(ConfigNotFoundException e) {
+        Response<String> response = Response.fail(e.getMessage());
+        log.error(e.getMessage());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
 }

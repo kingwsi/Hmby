@@ -2,8 +2,8 @@ package org.example.hmby.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.hmby.emby.EmbyFeignClient;
 import org.example.hmby.emby.Metadata;
@@ -15,18 +15,13 @@ import org.example.hmby.enumerate.MediaConvertType;
 import org.example.hmby.enumerate.MediaStatus;
 import org.example.hmby.enumerate.SseEventType;
 import org.example.hmby.enumerate.SubtitleStatus;
-import org.example.hmby.ffmpeg.FfmpegService;
 import org.example.hmby.repository.MediaInfoRepository;
 import org.example.hmby.repository.SubtitleRepository;
 import org.example.hmby.utils.FixedSizeQueue;
 import org.example.hmby.utils.SRTParser;
 import org.example.hmby.utils.TextUtil;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor;
-import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
-import org.springframework.ai.chat.memory.ChatMemory;
-import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,7 +31,6 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -48,23 +42,15 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
+@AllArgsConstructor
 public class SubtitleService {
 
     private final AssistantService assistantService;
     private final SubtitleRepository subtitleRepository;
     private final MediaInfoRepository mediaInfoRepository;
-    private final FfmpegService ffmpegService;
     private final EmbyFeignClient embyFeignClient;
     private final ObjectMapper objectMapper;
-
-    public SubtitleService(AssistantService assistantService, SubtitleRepository subtitleRepository, MediaInfoRepository mediaInfoRepository, FfmpegService ffmpegService, EmbyFeignClient embyFeignClient, ObjectMapper objectMapper) {
-        this.assistantService = assistantService;
-        this.subtitleRepository = subtitleRepository;
-        this.mediaInfoRepository = mediaInfoRepository;
-        this.ffmpegService = ffmpegService;
-        this.embyFeignClient = embyFeignClient;
-        this.objectMapper = objectMapper;
-    }
+    private final MediaInfoService mediaInfoService;
 
     public List<Subtitle> listSubtitles(Long mediaId) {
         return subtitleRepository.findAllByMediaId(mediaId, Sort.by(Sort.Direction.ASC, "sequence"));
@@ -239,7 +225,7 @@ public class SubtitleService {
             return mediaInfo;
         }
 
-        Path path = Paths.get(ffmpegService.handlerVolumeBind(subtitleFilePath));
+        Path path = Paths.get(mediaInfoService.handlerVolumeBind(subtitleFilePath));
         if (!path.toFile().exists()) {
             throw new RuntimeException("subtitle file does not exist: " + path);
         }
@@ -278,7 +264,7 @@ public class SubtitleService {
         String outputFileName = inputFileName.substring(0, inputFileName.indexOf(".")) + ".zh.srt";
         String outputPath = inputPath.substring(0, inputPath.lastIndexOf("/"));
         String fullPath = outputPath + "/" + outputFileName;
-        String s = ffmpegService.handlerVolumeBind(fullPath);
+        String s = mediaInfoService.handlerVolumeBind(fullPath);
         SRTParser.writeSRT(s, subtitles);
         mediaInfo.setOutputPath(fullPath);
         mediaInfoRepository.save(mediaInfo);

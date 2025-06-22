@@ -3,19 +3,17 @@ package org.example.hmby.controller;
 
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import net.bramp.ffmpeg.info.Codec;
-import net.bramp.ffmpeg.shared.CodecType;
 import org.apache.commons.lang3.StringUtils;
 import org.example.hmby.Response;
 import org.example.hmby.config.PropertiesConfig;
-import org.example.hmby.emby.MovieItem;
+import org.example.hmby.entity.Config;
 import org.example.hmby.entity.MediaInfo;
 import org.example.hmby.enumerate.CacheKey;
+import org.example.hmby.enumerate.ConfigKey;
 import org.example.hmby.enumerate.MediaCodec;
 import org.example.hmby.enumerate.MediaStatus;
 import org.example.hmby.exception.BusinessException;
-import org.example.hmby.ffmpeg.FFmpegManager;
-import org.example.hmby.ffmpeg.FfmpegExecutorRunnable;
+import org.example.hmby.repository.ConfigRepository;
 import org.example.hmby.service.MediaInfoService;
 import org.example.hmby.vo.MediaInfoDTO;
 import org.example.hmby.vo.MediaQueueVO;
@@ -36,6 +34,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.stream.Collectors;
@@ -51,7 +50,7 @@ public class MediaInfoController {
 
     private final ConcurrentHashMap<Object, Object> localCache;
     private final PropertiesConfig propertiesConfig;
-    private final FFmpegManager ffmpegManager;
+    private final ConfigRepository configRepository;
 
     @PostMapping
     public Response<String> save(@RequestBody MediaInfoDTO mediaInfoDTO) {
@@ -75,27 +74,7 @@ public class MediaInfoController {
 
     @PostMapping("/execute/{id}")
     public Response<?> execute(@PathVariable Long id) {
-        propertiesConfig.check();
-        MediaInfoDTO mediaAndMarks = mediaInfoService.getMediaAndMarks(id);
-        if (mediaAndMarks == null || mediaAndMarks.getMarks() == null) {
-            return Response.fail("没有找到对应的信息！");
-        }
-        if (mediaAndMarks.getStatus() == MediaStatus.PROCESSING) {
-            return Response.fail("处理中");
-        } else {
-            MediaQueueVO mediaQueueVO = new MediaQueueVO();
-            mediaQueueVO.setId(id);
-            mediaQueueVO.setFileName(mediaQueueVO.getFileName());
-            mediaQueueVO.setConvertType(mediaQueueVO.getConvertType());
-            mediaQueueVO.setFileSize(mediaQueueVO.getFileSize());
-            mediaQueueVO.setStatus(mediaQueueVO.getStatus());
-            FfmpegExecutorRunnable ffmpegExecutorRunnable = new FfmpegExecutorRunnable(mediaInfoService, mediaQueueVO);
-            if (!singleThreadExecutor.getQueue().contains(ffmpegExecutorRunnable)) {
-                singleThreadExecutor.execute(ffmpegExecutorRunnable);
-            } else {
-                return Response.fail("已在队列等待！");
-            }
-        }
+        // todo
         return Response.success();
     }
 
@@ -119,12 +98,8 @@ public class MediaInfoController {
     @GetMapping("/codecs")
     public Response<List<String>> codecs() throws IOException {
         List<String> mediaCodecs = new ArrayList<>(MediaCodec.getCodecs());
-
-        String codecString = ffmpegManager.getFfmpeg().codecs().stream()
-                .filter(codec -> codec.getType() == CodecType.VIDEO && mediaCodecs.contains(codec.getName()))
-                .map(Codec::toString)
-                .collect(Collectors.joining(","));
-        mediaCodecs.removeIf(codecName -> !codecString.contains(codecName));
+        Optional.ofNullable(configRepository.findOneByKey(ConfigKey.runner_server))
+                .map(Config::getVal).orElseThrow();
         return Response.success(mediaCodecs);
     }
 

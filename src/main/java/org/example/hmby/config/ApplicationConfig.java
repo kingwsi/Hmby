@@ -13,12 +13,9 @@ import com.fasterxml.jackson.databind.ser.std.DateSerializer;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
 import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
-import net.bramp.ffmpeg.FFmpeg;
-import net.bramp.ffmpeg.FFprobe;
 import org.apache.commons.lang3.StringUtils;
 import org.example.hmby.entity.ChatAssistant;
 import org.example.hmby.enumerate.AssistantCode;
-import org.example.hmby.ffmpeg.FFmpegManager;
 import org.example.hmby.sceurity.SecurityUtils;
 import org.example.hmby.service.AssistantService;
 import org.springframework.ai.document.MetadataMode;
@@ -91,17 +88,6 @@ public class ApplicationConfig {
                 .registerModule(javaTimeModule);
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         return objectMapper;
-    }
-    
-    @Bean
-    public FFmpegManager ffmpegManager(PropertiesConfig propertiesConfig) {
-        try {
-            FFmpeg ffmpeg = new FFmpeg(propertiesConfig.getFfmpegPath());
-            FFprobe ffprobe = new FFprobe(propertiesConfig.getFfprobePath());
-            return new FFmpegManager(ffmpeg, ffprobe);
-        } catch (Exception e) {
-            throw new RuntimeException("ffmpeg配置错误！" + e.getMessage());
-        }
     }
 
     @Bean

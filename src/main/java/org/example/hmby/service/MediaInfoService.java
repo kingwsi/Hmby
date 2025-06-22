@@ -9,23 +9,14 @@ import org.apache.commons.lang3.RandomUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.example.hmby.config.PropertiesConfig;
 import org.example.hmby.emby.Metadata;
-import org.example.hmby.emby.MovieItem;
-import org.example.hmby.emby.PageWrapper;
-import org.example.hmby.emby.request.EmbyItemRequest;
 import org.example.hmby.entity.MediaInfo;
 import org.example.hmby.entity.MediaMark;
-import org.example.hmby.enumerate.CacheKey;
 import org.example.hmby.enumerate.MediaConvertType;
 import org.example.hmby.enumerate.MediaStatus;
-import org.example.hmby.enumerate.ConfigKey;
 import org.example.hmby.exception.BusinessException;
-import org.example.hmby.emby.EmbyFeignClient;
-import org.example.hmby.ffmpeg.FfmpegExecutorRunnable;
-import org.example.hmby.ffmpeg.FfmpegService;
 import org.example.hmby.mapstract.MediaInfoConvertMapper;
 import org.example.hmby.repository.MediaInfoRepository;
 import org.example.hmby.repository.MediaMarkRepository;
-import org.example.hmby.repository.ParamRepository;
 import org.example.hmby.sceurity.EmbyUser;
 import org.example.hmby.sceurity.SecurityUtils;
 import org.example.hmby.vo.MediaInfoDTO;
@@ -44,14 +35,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -63,12 +49,6 @@ public class MediaInfoService {
     private final MediaInfoConvertMapper mediainfoConvertMapper;
     private final MediaMarkRepository mediaMarkRepository;
     private final PropertiesConfig propertiesConfig;
-    private final FfmpegService ffmpegService;
-    private final EmbyFeignClient embyClient;
-    private final ConcurrentHashMap<Object, Object> localCache;
-    private final ThreadPoolExecutor singleThreadExecutor;
-    private final ParamRepository paramRepository;
-    private final SubtitleService subtitleService;
 
     @Transactional(rollbackOn = Exception.class)
     public void save(MediaInfoDTO mediainfoDTO) {
@@ -80,9 +60,9 @@ public class MediaInfoService {
         if (exist != null) {
             mediaInfo.setId(exist.getId());
         }
-        if (mediaInfo.getType() == MediaConvertType.ENCODE && mediaInfo.getCodec()==null) {
+        if (mediaInfo.getType() == MediaConvertType.ENCODE && mediaInfo.getCodec() == null) {
             throw new BusinessException("编码类型不能为空！");
-        } else if (mediaInfo.getType() != MediaConvertType.ENCODE){
+        } else if (mediaInfo.getType() != MediaConvertType.ENCODE) {
             mediaInfo.setCodec(null);
         }
         mediaInfoRepository.save(mediaInfo);
@@ -103,7 +83,7 @@ public class MediaInfoService {
      */
     public Page<MediaInfo> listOfPage(MediaInfoDTO params, Pageable pageable) {
         PageRequest pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.Direction.DESC, "updatedAt", "createdAt");
-        Page<MediaInfo> mediaInfoPage = mediaInfoRepository.findAll((Specification<MediaInfo>) (root, query, criteriaBuilder) -> {
+        return mediaInfoRepository.findAll((Specification<MediaInfo>) (root, query, criteriaBuilder) -> {
             List<Predicate> predicates = new ArrayList<>();
 
             if (StringUtils.isNotBlank(params.getFileName())) {
@@ -119,24 +99,11 @@ public class MediaInfoService {
             CriteriaBuilder.In<Object> inClause = criteriaBuilder.in(root.get("status"));
             inClause.value(MediaStatus.DELETE_EMBY);
             predicates.add(criteriaBuilder.not(inClause));
-            
+
             String userId = SecurityUtils.getUserInfo().map(EmbyUser::getUserId).orElse("Unknown");
             predicates.add(criteriaBuilder.equal(root.get("userId"), userId));
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
         }, pageRequest);
-        
-        Set<Long> queueSet = singleThreadExecutor.getQueue()
-                .stream()
-                .map(runnable -> ((FfmpegExecutorRunnable) runnable).getMediaInfo().getId())
-                .collect(Collectors.toSet());
-        if (mediaInfoPage.getTotalPages() > 0) {
-            for (MediaInfo record : mediaInfoPage.getContent()) {
-                if (queueSet.contains(record.getId())) {
-                    record.setStatus(MediaStatus.WAITING);
-                }
-            }
-        }
-        return mediaInfoPage;
     }
 
     public void updateById(MediaInfo mediainfo) {
@@ -149,74 +116,6 @@ public class MediaInfoService {
         List<MediaMark> mediaMarks = mediaMarkRepository.findByMediaId(id).stream().sorted(Comparator.comparing(MediaMark::getStart)).collect(Collectors.toList());
         mediaInfoDTO.setMarks(mediaMarks);
         return mediaInfoDTO;
-    }
-
-    public void handleMedia(Long id) {
-        long startTime = System.currentTimeMillis();
-        MediaInfoDTO mediaInfoAndMarks = this.getMediaAndMarks(id);
-        MediaInfo mediaInfo = mediainfoConvertMapper.toMediaInfo(mediaInfoAndMarks);
-        String outputDir = propertiesConfig.getOutputMediaPath() + "/" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMM"));
-        Path folderPath = Paths.get(ffmpegService.handlerVolumeBind(outputDir));
-        if (!Files.exists(folderPath)) {
-            try {
-                Files.createDirectories(folderPath);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        String outputPath = Paths.get(outputDir, mediaInfo.getFileName() + ".mp4").toString();
-        if (!StringUtils.isEmpty(mediaInfo.getMetaTitle())) {
-            outputPath = Paths.get(outputDir, mediaInfo.getMetaTitle() + ".mp4").toString();
-        }
-        // 二次处理已经处理过的文件，要重命名
-        if (mediaInfo.getInputPath().contains(propertiesConfig.getOutputMediaPath())) {
-            outputPath = Paths.get(outputDir, mediaInfo.getFileName() + "_1.mp4").toString();
-        }
-        mediaInfo.setOutputPath(outputPath.replace(File.separator, "/"));
-        mediaInfo.setStatus(MediaStatus.PROCESSING);
-        mediaInfoRepository.save(mediaInfo);
-        String result = null;
-        try {
-            switch (mediaInfo.getType()){
-                case CUT:
-                    if (mediaInfoAndMarks == null || mediaInfoAndMarks.getMarks().isEmpty()) {
-                        throw new RuntimeException("mediaInfoAndMarks is empty");
-                    }
-                    mediaInfoAndMarks.setOutputPath(mediaInfo.getOutputPath());
-                    ffmpegService.cutAndConcat(mediaInfoAndMarks);
-                    mediaInfo.setStatus(MediaStatus.SUCCESS);
-                    mediaInfo.setProcessedSize(Files.size(Paths.get(ffmpegService.handlerVolumeBind(mediaInfo.getOutputPath()))));
-                    break;
-                case MOVE:
-                    ffmpegService.moveAndTitle(mediaInfo);
-                    mediaInfo.setErrorMessage(null);
-                    mediaInfo.setStatus(MediaStatus.DONE);
-                    mediaInfo.setProcessedSize(Files.size(Paths.get(ffmpegService.handlerVolumeBind(mediaInfo.getOutputPath()))));
-                    break;
-                case ENCODE:
-                    result = ffmpegService.encoding(mediaInfo);
-                    mediaInfo.setErrorMessage(null);
-                    mediaInfo.setStatus(MediaStatus.SUCCESS);
-                    mediaInfo.setProcessedSize(Files.size(Paths.get(ffmpegService.handlerVolumeBind(mediaInfo.getOutputPath()))));
-                    break;
-                case TRANSLATE:
-                    result = subtitleService.translateHandler(mediaInfo.getId());
-                    mediaInfo.setErrorMessage(null);
-                    mediaInfo.setStatus(MediaStatus.SUCCESS);
-                    mediaInfo.setOutputPath(null);
-                    break;
-            }
-        } catch (Exception e) {
-            log.error("处理失败", e);
-            result = e.toString();
-        }
-        if (StringUtils.isNotBlank(result)) {
-            log.error("处理失败 {}", result);
-            mediaInfo.setStatus(MediaStatus.FAIL);
-            mediaInfo.setErrorMessage(result);
-        }
-        mediaInfo.setTimeCost(makeReadable((System.currentTimeMillis() - startTime) / 1000));
-        this.updateById(mediaInfo);
     }
 
     /**
@@ -253,25 +152,24 @@ public class MediaInfoService {
 
     /**
      * @param operate OVERRIDE / DELETE
-     *
      */
     @Transactional(rollbackOn = Exception.class)
     public void handlerSourceMedia(Long id, String operate) throws ChangeSetPersister.NotFoundException, IOException {
         MediaInfo mediaInfo = mediaInfoRepository.findById(id).orElseThrow(ChangeSetPersister.NotFoundException::new);
-        String outputPath = ffmpegService.handlerVolumeBind(mediaInfo.getOutputPath());
-        String inputPath = ffmpegService.handlerVolumeBind(mediaInfo.getInputPath());
+        String outputPath = this.handlerVolumeBind(mediaInfo.getOutputPath());
+        String inputPath = this.handlerVolumeBind(mediaInfo.getInputPath());
 
         Path source = Paths.get(inputPath);
         if (!Files.exists(source)) {
             throw new ChangeSetPersister.NotFoundException();
         }
-        String recycleTargetPath = Paths.get(ffmpegService.handlerVolumeBind(propertiesConfig.getOutputMediaPath()), 
+        String recycleTargetPath = Paths.get(this.handlerVolumeBind(propertiesConfig.getOutputMediaPath()),
                 "recycle").toAbsolutePath().toString();
         Path path1 = Paths.get(recycleTargetPath);
         if (!Files.exists(path1)) {
             Files.createDirectories(path1);
         }
-        
+
         if ("DELETE".equals(operate)) {
             // 删除源文件
             Files.move(source, Paths.get(recycleTargetPath, "done_" + mediaInfo.getFileName() + "_" + RandomUtils.insecure().randomInt(100, 999) + "." + mediaInfo.getSuffix()), StandardCopyOption.REPLACE_EXISTING);
@@ -279,7 +177,7 @@ public class MediaInfoService {
             Files.move(Paths.get(outputPath), source, StandardCopyOption.REPLACE_EXISTING);
         }
 
-        String nfo = inputPath.substring(0, outputPath.lastIndexOf("."))+".nfo";
+        String nfo = inputPath.substring(0, outputPath.lastIndexOf(".")) + ".nfo";
         Path nfoPath = Paths.get(nfo);
         if (Files.exists(nfoPath)) {
             Files.delete(nfoPath);
@@ -326,5 +224,29 @@ public class MediaInfoService {
         query.setSuffix("Japanese");
         return mediaInfoRepository.findAll(Example.of(query))
                 .stream().findFirst().map(mediainfoConvertMapper::toMediaInfoDTO).orElse(null);
+    }
+
+    public String handlerVolumeBind(String path) {
+        path = String.valueOf(path);
+        if (propertiesConfig.getVolumeBind() != null && !propertiesConfig.getVolumeBind().isEmpty()) {
+            // 卷路径映射处理
+            for (String item : propertiesConfig.getVolumeBind()) {
+                String[] split = item.trim().split("->");
+                if (split.length != 2) {
+                    throw new BusinessException("Volume bind exception!");
+                }
+                String hostVolume = split[0];
+                String embyVolume = split[1];
+                if (path.startsWith(hostVolume)) {
+                    return path;
+                }
+                if (path.startsWith(embyVolume)) {
+                    String realPath = path.replaceFirst(embyVolume, hostVolume.replace(File.separatorChar, '/'));
+                    log.info("Volume path replace : {} ->{}", path, realPath);
+                    return realPath.replace('/', File.separatorChar);
+                }
+            }
+        }
+        return path;
     }
 }

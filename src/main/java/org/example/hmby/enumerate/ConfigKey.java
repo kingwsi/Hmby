@@ -58,7 +58,7 @@ public enum ConfigKey {
     EMBY_OUTPUT_ID,
 
     /**
-     * ffmpeg水印样式
+     * 任务执行器服务
      */
-    FFMPEG_WATERMARKS_STYLE
+    runner_server
 }
