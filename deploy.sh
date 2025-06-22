@@ -3,12 +3,12 @@
 # 参数定义
 FRONTEND_DIR="./web"
 FRONTEND_BUILD_CMD="npm run build"
-NODE_IMAGE="node:22"
+NODE_IMAGE="node:22-alpine"
 DIST_SRC="$FRONTEND_DIR/dist"
 DIST_DEST="./src/main/resources/dist"
 BACKEND_JAR_PATH="./build/libs"
 JAR_NAME="hmby-0.0.1-SNAPSHOT.jar"
-GRADLE_CMD="./gradlew bootJar"
+GRADLE_CMD="./gradlew clean bootJar -x test"
 JAVA_PROCESS_KEYWORD="hmby"
 JVM_OPTS="-Xmx512m"
 
