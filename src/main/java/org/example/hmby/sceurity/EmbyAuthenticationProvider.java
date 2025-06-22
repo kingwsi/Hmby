@@ -10,6 +10,9 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import org.example.hmby.config.PropertiesConfig;
 import org.example.hmby.emby.EmbyAuthResult;
+import org.example.hmby.entity.Config;
+import org.example.hmby.enumerate.ConfigKey;
+import org.example.hmby.repository.ConfigRepository;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.InsufficientAuthenticationException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -21,11 +24,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-@AllArgsConstructor
 @Component
+@AllArgsConstructor
 public class EmbyAuthenticationProvider implements AuthenticationProvider {
-    
-    private final PropertiesConfig propertiesConfig;
+
+    private final ConfigRepository configRepository;
     private final ObjectMapper objectMapper;
 
 
@@ -54,7 +57,10 @@ public class EmbyAuthenticationProvider implements AuthenticationProvider {
 
         OkHttpClient client = new OkHttpClient.Builder().build();
 
-        Request request = new Request.Builder().url(propertiesConfig.getEmbyServer() + "/Users/Public").get().build();
+        String emby_server = Optional.ofNullable(configRepository.findOneByKey(ConfigKey.emby_server))
+                .map(Config::getVal)
+                .orElseThrow(() -> new InsufficientAuthenticationException("emby server config not found"));
+        Request request = new Request.Builder().url(emby_server + "/Users/Public").get().build();
         try (Response response = client.newCall(request).execute()) {
             if (response.isSuccessful() && response.code() == 200 && response.body() != null) {
                 String responseStr = response.body().string();
@@ -75,7 +81,7 @@ public class EmbyAuthenticationProvider implements AuthenticationProvider {
         MediaType JSON = MediaType.parse("application/json; charset=utf-8");
         RequestBody body = RequestBody.create("{\"Username\":\"" + username + "\",\"Pw\":\"" + password + "\"}", JSON);
         request = new Request.Builder()
-                .url(propertiesConfig.getEmbyServer() + "/Users/AuthenticateByName")
+                .url(emby_server + "/Users/AuthenticateByName")
                 .addHeader("X-Emby-Authorization", token)
                 .addHeader("Content-Type", "application/json")
                 .post(body)

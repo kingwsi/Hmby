@@ -12,27 +12,14 @@ import java.util.List;
 @ConfigurationProperties(prefix="hmby.config")
 @Data
 public class PropertiesConfig {
-    private String embyServer;
-    private String outputMediaPath;
     private String deviceId = "999";
-    private String ffmpegPath;
-    private String ffprobePath;
+
+    private String outputMediaPath;
+    
     /**
      * 用于emby目录和主机目录绑定
      * 宿主机目录->emby目录
      * /Volumes/downloads->/downloads/movies
      */
     private List<String> volumeBind;
-    
-    public void check() {
-        if (StringUtils.isEmpty(ffmpegPath)) {
-            throw new RuntimeException("ffmpegPath is empty");
-        }
-        if (StringUtils.isEmpty(ffprobePath)) {
-            throw new RuntimeException("ffprobePath is empty");
-        }
-        if (StringUtils.isEmpty(outputMediaPath)) {
-            throw new RuntimeException("outputMediaPath is empty");
-        }
-    }
 }

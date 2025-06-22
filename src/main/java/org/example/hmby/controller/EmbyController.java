@@ -39,7 +39,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -83,14 +82,6 @@ public class EmbyController {
         PageWrapper<MovieItem> pageWrapper = embyClient.getItems(embyItemRequest);
 
         for (MovieItem item : pageWrapper.getItems()) {
-            if (item.getImageTags() != null) {
-                if (StringUtils.isNotBlank(item.getImageTags().getThumb())) {
-                    item.setCover(String.format(propertiesConfig.getEmbyServer() + "/emby/Items/%s/Images/Thumb?maxWidth=300&quality=100", item.getId()));
-                } else if (StringUtils.isNotBlank(item.getImageTags().getPrimary())) {
-                    item.setCover(String.format(propertiesConfig.getEmbyServer() + "/emby/Items/%s/Images/Primary?maxWidth=300&quality=100", item.getId()));
-                }
-            }
-            item.setDetailPage(String.format(propertiesConfig.getEmbyServer() + "/web/index.html#!/item?id=%s&serverId=%s", item.getId(), item.getServerId()));
             MediaInfo mediaInfo = mediaInfoService.getByInputPath(item.getPath());
             if (mediaInfo == null) {
                 mediaInfo = mediaInfoService.getByOutputPath(item.getPath());
@@ -194,7 +185,6 @@ public class EmbyController {
         if (StringUtils.isNotBlank(itemMetadata.getPath())) {
             itemMetadata.setMediaInfo(mediaInfoService.getMediaDetail(itemMetadata.getPath()));
         }
-        itemMetadata.setEmbyServer(propertiesConfig.getEmbyServer());
         return Response.success(itemMetadata);
     }
 
@@ -210,7 +200,6 @@ public class EmbyController {
     @GetMapping("/subtitle/detail/{embyId}/{language}")
     public Response<Metadata> getSubtitleDetail(@PathVariable Long embyId, @PathVariable String language) {
         Metadata itemMetadata = embyClient.getItemMetadata(embyId);
-        itemMetadata.setEmbyServer(propertiesConfig.getEmbyServer());
         itemMetadata.setMediaInfo(mediaInfoService.getSubtitleMediaInfo(embyId));
         return Response.success(itemMetadata);
     }
