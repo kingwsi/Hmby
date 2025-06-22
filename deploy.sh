@@ -42,13 +42,20 @@ fi
 echo "✅ 后端构建完成。"
 
 # Step 4: 启动 Java 服务
-echo "👉 检查 Java 服务进程..."
-PID=$(pgrep -f "$JAVA_PROCESS_KEYWORD")
+echo "👉 使用 jps 检查 Java 服务进程..."
+
+# 查找包含 JAR 名的 Java 进程
+PID=$(jps -l | grep "$JAR_NAME" | awk '{print $1}')
 
 if [ -n "$PID" ]; then
-  echo "⚠️ Java 服务已在运行中，PID=$PID，跳过启动。"
+  echo "🛑 检测到已运行的 Java 进程，PID=$PID，准备终止..."
+  kill -9 "$PID"
+  sleep 2
+  echo "✅ 已终止旧进程。"
 else
-  echo "✅ 未检测到正在运行的服务，准备启动..."
-  nohup java $JVM_OPTS -jar "$BACKEND_JAR_PATH/$JAR_NAME" --spring.profiles.active=prod > app.log 2>&1 &
-  echo "🚀 Java 服务已启动，日志写入 app.log"
+  echo "✅ 未检测到旧进程。"
 fi
+
+echo "🚀 启动新的 Java 服务..."
+nohup java $JVM_OPTS -jar "$BACKEND_JAR_PATH/$JAR_NAME" --spring.profiles.active=prod > app.log 2>&1 &
+echo "✅ Java 服务已启动，日志写入 app.log"
