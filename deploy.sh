@@ -1,5 +1,20 @@
+#!/bin/bash
+
+# 参数定义
+FRONTEND_DIR="./web"
+FRONTEND_BUILD_CMD="npm run build"
+NODE_IMAGE="node:22"
+DIST_SRC="$FRONTEND_DIR/dist"
+DIST_DEST="./src/main/resources/dist"
+BACKEND_JAR_PATH="./build/libs"
+JAR_NAME="hmby-0.0.1-SNAPSHOT.jar"
+GRADLE_CMD="./gradlew bootJar"
+JAVA_PROCESS_KEYWORD="hmby"
+JVM_OPTS="-Xmx512m"
+
+# Step 1: 编译前端项目
 echo "👉 使用 Docker 编译前端项目..."
-docker run --rm -v "$PWD/$FRONTEND_DIR":/app -w /app node:22-alpine sh -c "npm install && $FRONTEND_BUILD_CMD"
+docker run --rm -v "$PWD/$FRONTEND_DIR":/app -w /app $NODE_IMAGE bash -c "npm install && $FRONTEND_BUILD_CMD"
 if [ $? -ne 0 ]; then
   echo "❌ 前端编译失败，退出。"
   exit 1
