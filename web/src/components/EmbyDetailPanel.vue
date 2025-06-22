@@ -2,6 +2,22 @@
   <div class="detail-card">
     <div class="detail-header" v-if="selectedItemId">
       <div class="media-streams-section">
+        <!-- 视频 -->
+        <a-row>
+          <video-player
+            v-if="selectedItemId && playerId"
+            :key="playerId"
+            ref="videoPlayerRef"
+            :intervals="marks"
+            :item-id="playerId"
+            @delete-interval="
+              (index) => {
+                marks.splice(index, 1);
+              }
+            "
+            style="height: 350px; max-width: 100%"
+          />
+        </a-row>
         <!-- 信息区 -->
         <a-row>
           <a-col :md="24" :sm="24">
@@ -35,24 +51,6 @@
               </a-descriptions-item>
             </a-descriptions>
           </a-col>
-        </a-row>
-
-        <!-- 视频 -->
-        <a-row>
-          <video-player
-            v-if="selectedItemId && playerId"
-            :key="playerId"
-            ref="videoPlayerRef"
-            :intervals="marks"
-            :item-id="playerId"
-            @delete-interval="
-              (index) => {
-                marks.splice(index, 1);
-              }
-            "
-            style="height: 350px; max-width: 100%"
-            :poster="getPlayerPoter()"
-          />
         </a-row>
       </div>
     </div>
@@ -276,13 +274,6 @@
                   <a-select-option value="DELETED">已删除</a-select-option>
                 </a-select>
               </a-form-item>
-              <a-form-item label="视频标题">
-                <a-input
-                  v-model:value="mediaInfo.metaTitle"
-                  placeholder="视频标题"
-                  allow-clear
-                />
-              </a-form-item>
             </a-form>
           </div>
         </a-tab-pane>
@@ -502,7 +493,7 @@ const saveMediaInfo = async () => {
         return;
       }
     } else if (mediaInfo.value.type === "CUT") {
-      if (!mediaInfo.value.marks.length) {
+      if (!marks.value.length) {
         message.error("请添加剪切片段");
         return;
       }
@@ -657,14 +648,6 @@ const openEmbyPage = () => {
       "_blank"
     );
   }
-};
-
-// 获取播放器海报
-const getPlayerPoter = () => {
-  if (mediaDetail.value && mediaDetail.value.Id) {
-    return `${mediaDetail.value.embyServer}/emby/Items/${mediaDetail.value.Id}/Images/Primary?maxWidth=700&quality=100`;
-  }
-  return "";
 };
 
 const router = useRouter();

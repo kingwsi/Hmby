@@ -15,17 +15,13 @@ export default defineConfig({
     outDir: '../src/main/resources/dist',
   },
   server: {
+    host: '0.0.0.0',
     port: 8000,
     proxy: {
       '/api': {
         target: 'http://localhost:8094',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
-      },
-      '/ws': {
-        target: 'http://localhost:8094',
-        changeOrigin: true,
-        ws: true
       }
     }
   },

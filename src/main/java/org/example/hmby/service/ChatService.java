@@ -117,7 +117,7 @@ public class ChatService {
     }
 
     public Page<ChatConversation> listConversation(Pageable pageable) {
-        PageRequest pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.Direction.DESC, "lastUpdateDate", "createdDate");
+        PageRequest pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.Direction.DESC, "updatedAt", "createdAt");
         
         return chatConversationRepository.findByActivated(true, pageRequest);
     }

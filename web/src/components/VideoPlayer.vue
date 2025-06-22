@@ -1,14 +1,14 @@
 <template>
   <div class="video-container">
-    <video ref="videoPlayer" class="video-js"></video>
+    <video ref="videoPlayer" class="video-js">
+      <track kind='captions' v-for="item in subtitles" :src="item.url" :label="item.label" />
+    </video>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, onDeactivated, watch } from 'vue'
+import { ref, onMounted, nextTick, onDeactivated, watch } from 'vue'
 import videojs from 'video.js'
-import SockJS from 'sockjs-client'
-import Stomp from 'stompjs'
 import 'video.js/dist/video-js.css'
 import '@/assets/timeline-marker.css'
 import request from '@/utils/request'
@@ -35,10 +35,6 @@ const props = defineProps({
   intervals: {
     type: Array,
     default: () => []
-  },
-  poster: {
-    type: String,
-    default: null
   }
 })
 
@@ -48,7 +44,6 @@ const emit = defineEmits(['delete-interval'])
 // 响应式状态
 const videoPlayer = ref(null)
 const player = ref(null)
-const stompClient = ref(null)
 const duration = ref(null)
 
 // 暴露播放器实例
@@ -59,7 +54,7 @@ defineExpose({
 // 创建时间线标记插件
 const registerTimelinePlugin = () => {
   if (videojs.getPlugin('timelineMarker')) return
-  
+
   const Plugin = videojs.getPlugin('plugin')
 
   class TimelineMarker extends Plugin {
@@ -87,18 +82,18 @@ const registerTimelinePlugin = () => {
       this.options.intervals.forEach((interval, index) => {
         const marker = document.createElement('div')
         marker.className = 'vjs-timeline-marker'
-        
+
         const left = (interval.start / duration) * 100
         const width = ((interval.end - interval.start) / duration) * 100
-        
+
         marker.style.left = `${left}%`
         marker.style.width = `${width}%`
-        
+
         marker.addEventListener('mousedown', (event) => {
           event.stopPropagation()
           event.preventDefault()
         })
-        
+
         marker.addEventListener('click', (event) => {
           event.stopPropagation()
           event.preventDefault()
@@ -106,11 +101,11 @@ const registerTimelinePlugin = () => {
             this.options.onMarkerClick(index)
           }
         }, true)
-        
+
         this.timelineElement.appendChild(marker)
       })
     }
-    
+
     update(newIntervals) {
       this.options.intervals = newIntervals
       this.drawMarkers()
@@ -120,9 +115,11 @@ const registerTimelinePlugin = () => {
   videojs.registerPlugin('timelineMarker', TimelineMarker)
 }
 
+const subtitles = ref([])
+
 // 初始化播放器
 const initPlayer = async () => {
-  
+
   // 如果播放器已存在，先销毁
   if (player.value) {
     player.value.dispose()
@@ -135,12 +132,26 @@ const initPlayer = async () => {
   const options = {
     ...props.options,
     controls: true,
-    poster: props.poster,
     crossorigin: 'anonymous'
   }
 
+  // 获取视频源
+  const { data } = await request.get(`/api/emby-item/player/${props.itemId}`);
+  subtitles.value = data.subtitles
+  await nextTick();
+  // 初始化
   player.value = videojs(videoPlayer.value, options)
-  
+  // 设置视频源
+  player.value.src({
+    src: data.streamUrl,
+    poster: data.thumbImage || data.primaryImage,
+  })
+  player.value.ready(() => {
+    console.log('播放器准备就绪')
+  });
+  // 获取视频时长
+  duration.value = player.value.duration()
+
   // 等待视频元数据加载完成后初始化时间线标记
   player.value.on('loadedmetadata', () => {
     player.value.timelineMarker({
@@ -148,49 +159,6 @@ const initPlayer = async () => {
       onMarkerClick: showDeleteConfirm
     })
   })
-
-  try {
-    // 获取视频源
-    const response = await request.get(`/api/emby-item/player/${props.itemId}`)
-    
-    // 设置视频源
-    player.value.src({ 
-      src: response.data,
-      poster: props.poster
-    })
-    
-    // 获取视频时长
-    duration.value = player.value.duration()
-  } catch (error) {
-    console.error('Failed to fetch video source:', error)
-  }
-}
-
-// WebSocket 连接
-const connection = () => {
-  const socket = new SockJS(`${import.meta.env.VITE_API_BASE_URL}/ws`)
-  stompClient.value = Stomp.over(socket)
-
-  const sessionId = props.itemId
-  stompClient.value.connect({}, () => {
-    const headers = { playSessionId: sessionId }
-    stompClient.value.subscribe('/topic/player', (message) => {
-      console.log('Received message:', message)
-    }, headers)
-  })
-}
-
-// 断开连接
-const disconnect = () => {
-  console.log('Disconnecting...')
-  if (player.value) {
-    player.value.dispose()
-    player.value = null
-  }
-  if (stompClient.value && stompClient.value.connected) {
-    stompClient.value.disconnect()
-    stompClient.value = null
-  }
 }
 
 // 删除片段确认
@@ -202,10 +170,10 @@ const showDeleteConfirm = (index) => {
     okType: 'danger',
     cancelText: '取消',
     onOk() {
-      console.log('index',index)
+      console.log('index', index)
       emit('delete-interval', index)
     },
-    onCancel() {}
+    onCancel() { }
   })
 }
 
@@ -228,9 +196,6 @@ watch(() => props.intervals, (newVal) => {
 onMounted(() => {
   initPlayer()
 })
-
-onUnmounted(disconnect)
-onDeactivated(disconnect)
 </script>
 
 <style>

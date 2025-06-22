@@ -9,50 +9,28 @@
       <!-- 列表区域 -->
       <a-col :span="12" :xs="24" :sm="24" :md="14">
         <div class="table-page-search-wrapper">
-          <a-form layout="inline">
-            <a-row :gutter="[16, 16]">
-              <a-col>
-                <a-form-item label="媒体库">
-                  <a-select
-                    v-model:value="queryParam.parentId"
-                    style="width: 200px; margin-right: 16px"
-                    :allowClear="true"
-                    placeholder="请选择媒体库"
-                    @change="fetchData"
-                  >
-                    <a-select-option
-                      v-for="lib in libraries"
-                      :key="lib.Id"
-                      :value="lib.Id"
-                    >
-                      {{ lib.Name }}
-                    </a-select-option>
-                  </a-select>
-                </a-form-item>
-              </a-col>
-              <a-col>
-                <a-form-item label="关键字">
-                  <a-input
-                    v-model:value="queryParam.keyword"
-                    placeholder="请输入关键词搜索"
-                    style="width: 200px"
-                    :allowClear="true"
-                    @change="fetchData"
-                  />
-                </a-form-item>
-              </a-col>
-              <a-col>
-                <a-form-item label="标签">
-                  <TagsSelect @change="handleTagChange" />
-                </a-form-item>
-              </a-col>
-              <a-col>
-                <a-form-item>
-                  <a-button type="primary" @click="fetchData">搜索</a-button>
-                </a-form-item>
-              </a-col>
-            </a-row>
-          </a-form>
+          <a-row :gutter="[16, 16]">
+            <a-col>
+              <a-select v-model:value="queryParam.parentId" style="width: 180px;" :allowClear="true"
+                placeholder="媒体库" @change="fetchData">
+                <a-select-option v-for="lib in libraries" :key="lib.Id" :value="lib.Id">
+                  {{ lib.Name }}
+                </a-select-option>
+              </a-select>
+            </a-col>
+            <a-col>
+              <a-input v-model:value="queryParam.keyword" placeholder="关键词搜索" style="width: 200px" :allowClear="true"
+                @change="fetchData" />
+            </a-col>
+            <a-col>
+              <TagsSelect @change="handleTagChange" />
+            </a-col>
+            <a-col>
+              <a-form-item>
+                <a-button type="primary" @click="fetchData">搜索</a-button>
+              </a-form-item>
+            </a-col>
+          </a-row>
         </div>
 
         <EmbyCard ref="embyCardRef" @click="handleClickItem" />
@@ -60,16 +38,8 @@
     </a-row>
   </div>
   <!-- 移动端弹窗 -->
-  <a-modal
-    v-if="app.isMobile"
-    v-model:visible="detailModalVisible"
-    :title="'媒体详情'"
-    :width="'100%'"
-    :footer="null"
-    :destroyOnClose="false"
-    :bodyStyle="{ padding: '12px', maxHeight: '90vh', overflow: 'auto' }"
-    style="top: 20px"
-  >
+  <a-modal v-if="app.isMobile" v-model:open="detailModalVisible" :title="'媒体详情'" :width="'100%'" :footer="null"
+    :destroyOnClose="false" :bodyStyle="{ padding: '12px', maxHeight: '90vh', overflow: 'auto' }" style="top: 20px">
     <EmbyDetailPanel :id="selectedItemId" @change="fetchData" />
   </a-modal>
 </template>
@@ -103,7 +73,7 @@ const selectedItemId = ref(null);
 const queryParam = reactive({
   parentId: "",
   keyword: "",
-  tag: undefined,
+  tags: undefined,
   number: 1,
   size: 25,
 });
@@ -131,13 +101,13 @@ const saveQueryParamToStorage = () => {
   const params = {
     parentId: queryParam.parentId,
     keyword: queryParam.keyword,
-    tag: queryParam.tag,
+    tags: queryParam.tag,
   };
   localStorage.setItem("embyCardQueryParams", JSON.stringify(params));
 };
 
 const handleTagChange = (tagName) => {
-  queryParam.tag = tagName;
+  queryParam.tags = tagName;
 };
 
 // 移动端弹窗状态
@@ -146,7 +116,7 @@ const detailModalVisible = ref(false);
 // 选择媒体项
 const handleClickItem = (item) => {
   selectedItemId.value = item.Id;
-  
+
   // 在移动端打开弹窗
   if (app.isMobile) {
     detailModalVisible.value = true;
@@ -175,7 +145,7 @@ onMounted(async () => {
 onActivated(async () => {
   const route = useRoute();
   if (route.query.tag) {
-    queryParam.tag = route.query.tag;
+    queryParam.tags = route.query.tag;
     queryParam.parentId = null;
   }
   await fetchData();

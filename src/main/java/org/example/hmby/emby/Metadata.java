@@ -3,6 +3,7 @@ package org.example.hmby.emby;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import org.example.hmby.entity.MediaInfo;
+import org.example.hmby.enumerate.MediaSource;
 import org.example.hmby.vo.MediaInfoDTO;
 
 import java.util.HashMap;
@@ -42,7 +43,7 @@ public class Metadata {
     @JsonProperty("ExternalUrls")
     private List externalUrls;
     @JsonProperty("MediaSources")
-    private List<HashMap<String, Object>> mediaSources;
+    private List<MediaSource> mediaSources;
     @JsonProperty("ProductionLocations")
     private List productionLocations;
     @JsonProperty("Path")
@@ -79,12 +80,10 @@ public class Metadata {
     private String DisplayPreferencesId;
     @JsonProperty("PrimaryImageAspectRatio")
     private double PrimaryImageAspectRatio;
-    @JsonProperty("MediaStreams")
-    private List MediaStreams;
-    
+
     @JsonProperty("ImageTags")
     private Map<String, String> imageTags;
-    
+
     @JsonProperty("BackdropImageTags")
     private Set<String> backdropImageTags;
     @JsonProperty("Chapters")
@@ -105,15 +104,70 @@ public class Metadata {
     private Long size;
 
     private MediaInfoDTO mediaInfo;
-    
+
     private boolean isOutputMedia;
-    
+
     private List<SpecialFeature> specialFeatures;
-    
+
     public boolean isOutputMedia() {
         if (mediaInfo != null) {
             return Objects.equals(mediaInfo.getOutputPath(), this.path);
         }
         return isOutputMedia;
+    }
+
+    @Data
+    public static class MediaSource {
+        @JsonProperty("Id")
+        private String id;
+
+        @JsonProperty("MediaStreams")
+        private List<MediaStream> mediaStreams;
+
+        @JsonProperty("Size")
+        private Long size;
+
+        @JsonProperty("Name")
+        private String name;
+
+        @JsonProperty("Container")
+        private String container;
+
+        @JsonProperty("Bitrate")
+        private Long bitrate;
+    }
+
+    @Data
+    public static class MediaStream {
+
+        @JsonProperty("Type")
+        private String type;
+        
+        @JsonProperty("Codec")
+        private String codec;
+
+        @JsonProperty("CodecTag")
+        private String codecTag;
+
+        @JsonProperty("Language")
+        private String language;
+
+        @JsonProperty("BitRate")
+        private Long bitRate;
+
+        @JsonProperty("Height")
+        private Integer height;
+
+        @JsonProperty("Width")
+        private Integer width;
+
+        @JsonProperty("DisplayTitle")
+        private String displayTitle;
+
+        @JsonProperty("DisplayLanguage")
+        private String displayLanguage;
+
+        @JsonProperty("Path")
+        private String path;
     }
 }

@@ -110,11 +110,6 @@ public class MediaInfoController {
         return Response.success(localCache.put(CacheKey.CACHE_ENCODING_PROGRESS.name(), progress));
     }
 
-    @GetMapping("/output/page")
-    public Response<?> getOutputPage(Page<MovieItem> page) {
-        return Response.success(mediaInfoService.listOutputMedia(page));
-    }
-
     @GetMapping("/progress")
     public Response<Object> progress() {
 //        ProgressInfo progressInfo = new ProgressInfo("Hello World.mp4", Progress.Status.CONTINUE, 12, String.format("%.0f%%", 0.89 * 100), 2, "", "00:12:21");

@@ -5,7 +5,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;
-import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.Filter;
@@ -35,8 +34,8 @@ public class AuditableEntity {
     private String userId;
 
     @CreatedDate
-    private Instant createdDate;
+    private Instant createdAt;
 
     @LastModifiedDate
-    private Instant lastUpdateDate;
+    private Instant updatedAt;
 }

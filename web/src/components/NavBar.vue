@@ -62,7 +62,6 @@ watch(selectedTabId, updateSlider)
 
 onMounted(() => {
     updateSlider()
-    document.documentElement.style.setProperty('--nav-theme', )
     document.documentElement.style.setProperty('--nav-bg-theme', token.value.colorPrimaryText)
 })
 </script>

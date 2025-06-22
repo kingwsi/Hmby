@@ -15,4 +15,5 @@ app.use(pinia)
 // 初始化 useAppStore
 const appStore = useAppStore();
 appStore.init()
+
 app.use(Antd).use(router).mount('#app');

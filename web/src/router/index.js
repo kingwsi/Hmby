@@ -40,8 +40,26 @@ const routes = [
   {
     path: '/emby',
     name: 'Emby',
-    component: () => import('../views/Emby.vue'),
+    component: () => import('../views/emby/Library.vue'),
     meta: { requiresAuth: true, hideInNav: false, keepAlive: true }
+  },
+  {
+    path: '/emby/list',
+    name: 'EmbyList',
+    component: () => import('../views/emby/List.vue'),
+    meta: { requiresAuth: true, hideInNav: true, keepAlive: true }
+  },
+  {
+    path: '/emby/detail/:id?',
+    name: 'EmbyDetail',
+    component: () => import('../views/emby/Detail.vue'),
+    meta: { requiresAuth: true, hideInNav: true, keepAlive: true }
+  },
+  {
+    path: '/emby/player/:id?',
+    name: 'EmbyPlayer',
+    component: () => import('../views/emby/Player.vue'),
+    meta: { requiresAuth: true, hideInNav: true, keepAlive: true }
   },
   {
     path: '/tag',
@@ -94,7 +112,6 @@ router.beforeEach(async (to, from, next) => {
 
   // 使用pinia store中的token状态
   // 注意：由于路由守卫在pinia初始化之前执行，这里仍然需要从localStorage获取token
-  // 但在组件中应该使用userStore.isLoggedIn
   const token = localStorage.getItem('token')
   if (to.meta.requiresAuth && !token) {
     next('/login')

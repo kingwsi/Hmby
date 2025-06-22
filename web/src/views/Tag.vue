@@ -102,8 +102,8 @@ const columns = [
     },
     {
         title: '修改时间',
-        dataIndex: 'lastUpdateDate',
-        key: 'lastUpdateDate',
+        dataIndex: 'updatedAt',
+        key: 'updatedAt',
         width: 200,
     },
     {

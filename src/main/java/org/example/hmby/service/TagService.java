@@ -44,12 +44,10 @@ public class TagService {
     private final TagRepository tagRepository;
 
     private final EmbyFeignClient embyFeignClient;
-    private final PgVectorStore vectorStore;
 
-    public TagService(TagRepository tagRepository, EmbyFeignClient embyFeignClient, PgVectorStore vectorStore) {
+    public TagService(TagRepository tagRepository, EmbyFeignClient embyFeignClient) {
         this.tagRepository = tagRepository;
         this.embyFeignClient = embyFeignClient;
-        this.vectorStore = vectorStore;
     }
 
 
@@ -66,7 +64,7 @@ public class TagService {
     public Integer removeById(Long id) {
         Tag tags = tagRepository.findById(id).orElseThrow(() -> new BusinessException("记录不存在！"));
         EmbyItemRequest embyItemRequest = new EmbyItemRequest();
-        embyItemRequest.setLimit(9999L);
+        embyItemRequest.setLimit(9999);
         embyItemRequest.setTags(tags.getName());
         AtomicReference<Integer> result = new AtomicReference<>(0);
         PageWrapper<MovieItem> pageWrapper = embyFeignClient.getItems(embyItemRequest);
@@ -94,7 +92,7 @@ public class TagService {
     }
 
     public Page<Tag> listOfPage(TagVO vo, Pageable pageable) {
-        PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.Direction.DESC, "lastUpdateDate", "createdDate");
+        PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.Direction.DESC, "updatedAt", "createdAt");
         if (vo.getEmbyMediaId() != null) {
             Metadata metadata = embyFeignClient.getItemMetadata(vo.getEmbyMediaId());
             if (metadata != null && metadata.getTagItems() != null) {
@@ -147,7 +145,7 @@ public class TagService {
         Example<Tag> example = Example.of(probe, matcher);
 
         // 第 0 页，每页 limit 条，按 createTime 降序排序
-        Pageable pageable = PageRequest.of(0, 5, Sort.by(Sort.Direction.DESC, "lastUpdateDate"));
+        Pageable pageable = PageRequest.of(0, 5, Sort.by(Sort.Direction.DESC, "updatedAt"));
         Page<Tag> resultPage = tagRepository.findAll(example, pageable);
         List<Tag> tags = resultPage.getContent();
 
@@ -166,7 +164,7 @@ public class TagService {
         String newTagName = tagVO.getName();
 
         EmbyItemRequest embyItemRequest = new EmbyItemRequest();
-        embyItemRequest.setLimit(9999L);
+        embyItemRequest.setLimit(9999);
         embyItemRequest.setTags(originalName);
         AtomicInteger result = new AtomicInteger();
         PageWrapper<MovieItem> pageWrapper = embyFeignClient.getItems(embyItemRequest);
@@ -212,21 +210,6 @@ public class TagService {
                     .map(n -> new Tag(n, 0L, true))
                     .toList();
             tagRepository.saveAll(list);
-        }
-    }
-    
-    public void embeddingTags() {
-        FilterExpressionBuilder b = new FilterExpressionBuilder();
-        vectorStore.delete(b.eq("index", "tag").build());
-        
-        int pageSize = 100;
-        PageWrapper<ItemTag> pageWrapper = embyFeignClient.getTags(null, 0, pageSize);
-        for (int i = 0; i < pageWrapper.getTotalPages(); i++) {
-            pageWrapper = embyFeignClient.getTags(null, i * pageSize, pageSize);
-            List<Document> list = pageWrapper.getItems().stream()
-                    .map(t -> new Document(t.getName(), Map.of("id", t.getId(), "index", "tag")))
-                    .toList();
-            vectorStore.add(list);
         }
     }
 }

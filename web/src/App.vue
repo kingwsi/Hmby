@@ -8,9 +8,12 @@ const app = useAppStore()
 </script>
 
 <template>
-  <Spin :spinning="app.loading" tip="加载中..." size="large" wrapperClassName="global-loading">
+  <div v-if="app.loading">
+    <Spin class="global-loading" tip="加载中..." />
+  </div>
+  <template v-else>
     <RouterLayout />
-  </Spin>
+  </template>
 </template>
 
 <style>

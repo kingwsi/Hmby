@@ -52,10 +52,4 @@ public class TagsController {
     public Response<List<Tag>> listByName(String name) {
         return Response.success(tagService.listByName(name));
     }
-    
-    @GetMapping("/fetch")
-    public Response<?> fetchTags(){
-        tagService.embeddingTags();
-        return Response.success();
-    }
 }

@@ -20,5 +20,5 @@ public interface TagRepository extends JpaRepository<Tag, Long> {
 
     List<Tag> findByNameIn(Collection<String> names);
 
-    List<Tag> findAllByNameContainsOrderByLastUpdateDateDesc(String name);
+    List<Tag> findAllByNameContainsOrderByUpdatedAtDesc(String name);
 }

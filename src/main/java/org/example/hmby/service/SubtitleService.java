@@ -220,17 +220,15 @@ public class SubtitleService {
     @Transactional(rollbackFor = Exception.class)
     public MediaInfo initSubtitle(Long embyId, String language) throws IOException {
         Metadata metadata = embyFeignClient.getItemMetadata(embyId);
-        HashMap<String, Object> stringObjectHashMap = Optional.ofNullable(metadata)
+        Metadata.MediaSource mediaSource = Optional.ofNullable(metadata)
                 .map(Metadata::getMediaSources)
                 .flatMap(o -> o.stream().findFirst()).orElseThrow(() -> new RuntimeException("Not Found Media Source " + embyId));
-        JsonNode jsonNode = objectMapper.readTree(objectMapper.writeValueAsBytes(stringObjectHashMap));
+        
         String subtitleFilePath = null;
-        for (JsonNode streamNode : jsonNode.get("MediaStreams")) {
-            if ("Subtitle".equals(streamNode.get("Type").asText())) {
-                if (language.equals(streamNode.get("DisplayLanguage").asText())) {
-                    subtitleFilePath = streamNode.get("Path").asText();
-                    break;
-                }
+        for (Metadata.MediaStream mediaStream : mediaSource.getMediaStreams()) {
+            if ("Subtitle".equals(mediaStream.getType()) && "Japanese".equals(mediaStream.getDisplayLanguage())) {
+                subtitleFilePath = mediaStream.getPath();
+                break;
             }
         }
         if (subtitleFilePath == null) {

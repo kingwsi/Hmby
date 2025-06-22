@@ -1,81 +1,66 @@
 <template>
   <a-config-provider :theme="app.themeConfig">
     <a-layout class="layout">
-    <a-layout-header v-if="!isLoginPage" class="header" :style="{ position: 'fixed', zIndex: 10, width: '100%' }">
-      <div class="header-content">
-        <menu-outlined
-          v-if="app.isMobile"
-          class="menu-trigger"
-          @click="showDrawer = true"
-        />
-        <div class="logo">
-          <span class="logo-text">Hmby</span>
+      <a-float-button v-if="app.isMobile && !showDrawer" @click="showDrawer = true" />
+      <a-layout-header v-if="!isLoginPage && !app.isMobile" class="header"
+        :style="{ position: 'fixed', zIndex: 10, width: '100%' }">
+        <div class="header-content">
+          <div class="logo">
+            <span class="logo-text">Hmby</span>
+          </div>
+          <a-menu v-model:selectedKeys="selectedKeys" theme="dark" mode="horizontal" :style="{ lineHeight: '64px' }"
+            class="desktop-menu">
+            <a-menu-item v-for="route in routes" :key="route.path">
+              <router-link :to="route.path">{{ route.name }}</router-link>
+            </a-menu-item>
+            <a-menu-item style="margin-left: auto">
+              <ThemeSwitch />
+            </a-menu-item>
+            <a-menu-item @click="handleLogout">
+              <a><logout-outlined /> 登出</a>
+            </a-menu-item>
+          </a-menu>
         </div>
-        <a-menu
-          v-if="!app.isMobile"
-          v-model:selectedKeys="selectedKeys"
-          theme="dark"
-          mode="horizontal"
-          :style="{ lineHeight: '64px' }"
-          class="desktop-menu"
-        >
+      </a-layout-header>
+
+      <!-- 移动端侧边菜单 -->
+      <a-drawer v-if="app.isMobile" v-model:open="showDrawer" placement="left" :closable="false" width="250">
+        <a-menu v-model:selectedKeys="selectedKeys" class="mobile-menu-wrapper" mode="vertical">
           <a-menu-item v-for="route in routes" :key="route.path">
-            <router-link :to="route.path">{{ route.name }}</router-link>
-          </a-menu-item>
-          <a-menu-item style="margin-left: auto" @click="app.toggleTheme">
-            <a><bulb-outlined /> {{ app.isDarkTheme ? '切换亮色主题' : '切换暗色主题' }}</a>
-          </a-menu-item>
-          <a-menu-item @click="handleLogout">
-            <a><logout-outlined /> 登出</a>
+            <router-link :to="route.path" @click="showDrawer = false">
+              {{ route.name }}
+            </router-link>
           </a-menu-item>
         </a-menu>
-      </div>
-    </a-layout-header>
+        <template #footer>
+          <a-space>
+            <ThemeSwitch />
+            <a-button type="link" class="logout-btn" @click="handleLogout">登出</a-button>
+          </a-space>
+        </template>
+      </a-drawer>
 
-    <a-drawer
-      v-if="app.isMobile"
-      v-model:open="showDrawer"
-      placement="left"
-      :closable="false"
-      width="250"
-    >
-      <a-menu
-        v-model:selectedKeys="selectedKeys"
-        theme="light"
-        mode="inline"
-      >
-        <a-menu-item v-for="route in routes" :key="route.path">
-          <router-link :to="route.path" @click="showDrawer = false">
-            {{ route.name }}
-          </router-link>
-        </a-menu-item>
-      </a-menu>
-    </a-drawer>
-
-    <a-layout-content :style="contentStyle">
-      <!-- <a-breadcrumb v-if="!isLoginPage" style="margin: 16px 0">
-        <a-breadcrumb-item>{{ currentRoute.name }}</a-breadcrumb-item>
-      </a-breadcrumb> -->
-      <div :class="{ 'site-layout-content': !isLoginPage }">
-        <router-view v-slot="{ Component }">
-          <keep-alive>
-            <component :key="currentRoute.meta.name" :is="Component" v-if="currentRoute.meta && currentRoute.meta.keepAlive" />
-          </keep-alive>
-          <component :key="currentRoute.meta.name" :is="Component" v-if="currentRoute.meta && !currentRoute.meta.keepAlive" />
-        </router-view>
-      </div>
-    </a-layout-content>
-    <!-- <a-layout-footer v-if="!isLoginPage" style="text-align: center">
-      Ant Design ©2023 Created by Ant UED
-    </a-layout-footer> -->
-  </a-layout>
+      <a-layout-content :style="contentStyle">
+        <div :class="{ 'site-layout-content': !isLoginPage }">
+          <router-view v-slot="{ Component }">
+            <keep-alive>
+              <component :key="currentRoute.meta.name" :is="Component"
+                v-if="currentRoute.meta && currentRoute.meta.keepAlive" />
+            </keep-alive>
+            <component :key="currentRoute.meta.name" :is="Component"
+              v-if="currentRoute.meta && !currentRoute.meta.keepAlive" />
+          </router-view>
+        </div>
+      </a-layout-content>
+    </a-layout>
   </a-config-provider>
 </template>
 <script setup>
 import { ref, computed } from 'vue';
-import { MenuOutlined, LogoutOutlined, BulbOutlined } from '@ant-design/icons-vue';
+import { LogoutOutlined, MenuUnfoldOutlined } from '@ant-design/icons-vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAppStore } from '@/stores/app';
+import ThemeSwitch from '@/components/ThemeSwitch.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -102,8 +87,8 @@ const showDrawer = ref(false);
 const contentStyle = computed(() => {
   if (isLoginPage.value) return {};
   return {
-    padding: app.isMobile ? '0 6px' : '12px 24px',
-    marginTop: '64px'
+    marginTop: app.isMobile ? '10px' : '64px',
+    padding: app.isMobile ? '5px 8px' : '12px 10px',
   };
 });
 
@@ -114,9 +99,14 @@ const handleLogout = () => {
 </script>
 <style scoped>
 .site-layout-content {
-  min-height: 80vh;
-  padding: 12px;
+  min-height: 100vh;
 }
+
+.mobile-menu-wrapper {
+  background: none;
+  border-inline-end: none !important;
+}
+
 .header {
   padding: 0 !important;
 }
@@ -127,13 +117,6 @@ const handleLogout = () => {
   padding: 0 16px;
   display: flex;
   align-items: center;
-}
-
-.menu-trigger {
-  font-size: 18px;
-  color: #fff;
-  margin-right: 16px;
-  cursor: pointer;
 }
 
 .logo {
@@ -155,20 +138,6 @@ const handleLogout = () => {
   flex: 1;
 }
 
-.mobile-actions {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-}
-
-.mobile-action-btn {
-  color: #fff !important;
-  padding: 0 10px;
-  height: 64px;
-  display: flex;
-  align-items: center;
-}
-
 @media (max-width: 768px) {
   .header-content {
     padding: 0 12px;
@@ -183,8 +152,4 @@ const handleLogout = () => {
     font-size: 16px;
   }
 }
-
-/* [data-theme='dark'] .site-layout-content {
-  background: #141414;
-} */
 </style>

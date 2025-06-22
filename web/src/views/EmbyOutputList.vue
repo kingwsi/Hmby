@@ -113,7 +113,7 @@
           selectedItem.mediaInfo?.createdDate
         }}</a-descriptions-item>
         <a-descriptions-item label="修改时间" :span="3">{{
-          selectedItem.mediaInfo?.lastUpdateDate
+          selectedItem.mediaInfo?.updatedAt
         }}</a-descriptions-item>
       </a-descriptions>
     </a-modal>

@@ -5,6 +5,7 @@ import org.example.hmby.config.EmbyFeignClientConfig;
 import org.example.hmby.emby.request.EmbyItemRequest;
 import org.example.hmby.emby.request.MetadataRequest;
 import org.example.hmby.emby.request.UpdateItemRequest;
+import org.example.hmby.sceurity.SimilarResult;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.cloud.openfeign.SpringQueryMap;
 import org.springframework.http.ResponseEntity;
@@ -77,4 +78,10 @@ public interface EmbyFeignClient {
 
     @DeleteMapping("/Videos/ActiveEncodings")
     Response deleteActiveEncodings(@RequestParam(value = "DeviceId") String deviceId, @RequestParam("PlaySessionId") String playSessionId);
+
+    @GetMapping("/emby/Items/{itemId}/Similar")
+    ResponseEntity<SimilarResult> similar(@PathVariable Long itemId,
+                                    @RequestParam(value = "Fields") String fields,
+                                    @RequestParam("UserId") String userId,
+                                    @RequestParam("Limit") Integer limit);
 }

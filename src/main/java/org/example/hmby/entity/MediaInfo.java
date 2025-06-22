@@ -70,8 +70,8 @@ public class MediaInfo extends AuditableEntity {
     /**
      * 备注
      */
-    @Column(name = "remark", length = 1000)
-    private String remark;
+    @Column(name = "error_message", length = 1000)
+    private String errorMessage;
 
     /**
      * 转换类型 CUT / ENCODE

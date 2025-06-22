@@ -17,7 +17,7 @@ import org.example.hmby.entity.MediaMark;
 import org.example.hmby.enumerate.CacheKey;
 import org.example.hmby.enumerate.MediaConvertType;
 import org.example.hmby.enumerate.MediaStatus;
-import org.example.hmby.enumerate.ParamCode;
+import org.example.hmby.enumerate.ConfigKey;
 import org.example.hmby.exception.BusinessException;
 import org.example.hmby.emby.EmbyFeignClient;
 import org.example.hmby.ffmpeg.FfmpegExecutorRunnable;
@@ -102,7 +102,7 @@ public class MediaInfoService {
      * 获取分页信息
      */
     public Page<MediaInfo> listOfPage(MediaInfoDTO params, Pageable pageable) {
-        PageRequest pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.Direction.DESC, "lastUpdateDate", "createdDate");
+        PageRequest pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.Direction.DESC, "updatedAt", "createdAt");
         Page<MediaInfo> mediaInfoPage = mediaInfoRepository.findAll((Specification<MediaInfo>) (root, query, criteriaBuilder) -> {
             List<Predicate> predicates = new ArrayList<>();
 
@@ -189,19 +189,19 @@ public class MediaInfoService {
                     break;
                 case MOVE:
                     ffmpegService.moveAndTitle(mediaInfo);
-                    mediaInfo.setRemark(null);
+                    mediaInfo.setErrorMessage(null);
                     mediaInfo.setStatus(MediaStatus.DONE);
                     mediaInfo.setProcessedSize(Files.size(Paths.get(ffmpegService.handlerVolumeBind(mediaInfo.getOutputPath()))));
                     break;
                 case ENCODE:
                     result = ffmpegService.encoding(mediaInfo);
-                    mediaInfo.setRemark(null);
+                    mediaInfo.setErrorMessage(null);
                     mediaInfo.setStatus(MediaStatus.SUCCESS);
                     mediaInfo.setProcessedSize(Files.size(Paths.get(ffmpegService.handlerVolumeBind(mediaInfo.getOutputPath()))));
                     break;
                 case TRANSLATE:
                     result = subtitleService.translateHandler(mediaInfo.getId());
-                    mediaInfo.setRemark(null);
+                    mediaInfo.setErrorMessage(null);
                     mediaInfo.setStatus(MediaStatus.SUCCESS);
                     mediaInfo.setOutputPath(null);
                     break;
@@ -213,7 +213,7 @@ public class MediaInfoService {
         if (StringUtils.isNotBlank(result)) {
             log.error("处理失败 {}", result);
             mediaInfo.setStatus(MediaStatus.FAIL);
-            mediaInfo.setRemark(result);
+            mediaInfo.setErrorMessage(result);
         }
         mediaInfo.setTimeCost(makeReadable((System.currentTimeMillis() - startTime) / 1000));
         this.updateById(mediaInfo);
@@ -286,27 +286,6 @@ public class MediaInfoService {
         }
         mediaInfo.setStatus(MediaStatus.DONE);
         mediaInfoRepository.save(mediaInfo);
-    }
-
-    public Page<MovieItem> listOutputMedia(Page<MovieItem> page) {
-        String outputID = paramRepository.findValueByParamCode(ParamCode.EMBY_OUTPUT_ID.name());
-        if (StringUtils.isEmpty(outputID)) {
-            throw new BusinessException("未配置输出目录:" + ParamCode.EMBY_OUTPUT_ID);
-        }
-        EmbyItemRequest embyItemRequest = new EmbyItemRequest();
-        embyItemRequest.setLimit((long) page.getSize());
-        long startIndex = (long) page.getSize() * page.getNumber() - page.getSize();
-        embyItemRequest.setStartIndex(startIndex);
-        embyItemRequest.setParentId(outputID);
-        PageWrapper<MovieItem> pageWrapper = embyClient.getItems(embyItemRequest);
-        List<MovieItem> items = pageWrapper.getItems();
-        for (MovieItem item : items) {
-            item.setCover(String.format(propertiesConfig.getEmbyServer() + "/emby/Items/%s/Images/Primary?maxWidth=200&quality=100", item.getId()));
-            item.setStreamUrl(String.format(propertiesConfig.getEmbyServer() + "/Videos/%d/stream.%s?static=true&api_key=%s", item.getId(), item.getContainer(), localCache.get(CacheKey.EMBY_TOKEN)));
-            item.setDetailPage(String.format(propertiesConfig.getEmbyServer() + "/web/index.html#!/item?id=%s&serverId=%s", item.getId(), item.getServerId()));
-            item.setMediaInfo(mediaInfoRepository.findByInputPath(item.getPath()));
-        }
-        return page;
     }
 
     public void createByMetadata(Metadata itemMetadata) {

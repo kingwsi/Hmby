@@ -19,4 +19,7 @@ public class Library {
 
     @JsonProperty("Name")
     private String name;
+
+    @JsonProperty("ImageTags")
+    private MovieItem.ImageTags imageTags;
 }

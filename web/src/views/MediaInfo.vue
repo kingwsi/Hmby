@@ -103,8 +103,8 @@
                 </a-descriptions-item>
                 <a-descriptions-item label="输入路径" :span="3">{{ currentRecord?.inputPath }}</a-descriptions-item>
                 <a-descriptions-item label="输出路径" :span="3">{{ currentRecord?.outputPath }}</a-descriptions-item>
-                <a-descriptions-item label="创建时间" :span="3">{{ currentRecord?.createdDate }}</a-descriptions-item>
-                <a-descriptions-item label="修改时间" :span="3">{{ currentRecord?.lastUpdateDate }}</a-descriptions-item>
+                <a-descriptions-item label="创建时间" :span="3">{{ currentRecord?.createdAt }}</a-descriptions-item>
+                <a-descriptions-item label="修改时间" :span="3">{{ currentRecord?.updatedAt }}</a-descriptions-item>
             </a-descriptions>
         </a-modal>
     </div>

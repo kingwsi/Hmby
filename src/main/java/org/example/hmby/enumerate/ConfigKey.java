@@ -1,6 +1,6 @@
 package org.example.hmby.enumerate;
 
-public enum ParamCode {
+public enum ConfigKey {
     /**
      * qbittorrent下载地址，用于检查下载文件
      */
@@ -29,12 +29,14 @@ public enum ParamCode {
     /**
      * emby服务器地址
      */
-    EMBY_SERVER,
+    emby_server,
 
     /**
      * emby用户名 （管理员）
      */
     EMBY_USER,
+    
+    dark,
 
     /**
      * emby密码

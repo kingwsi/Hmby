@@ -48,7 +48,7 @@ public class ChatController {
 
     @GetMapping("/assistants")
     public Response<List<ChatAssistant>> listChatAssistants() {
-        List<ChatAssistant> list = chatAssistantRepository.findAllByUserIdOrderByLastUpdateDateDesc(SecurityUtils.getUserId());
+        List<ChatAssistant> list = chatAssistantRepository.findAllByUserIdOrderByUpdatedAtDesc(SecurityUtils.getUserId());
         return Response.success(list);
     }
 

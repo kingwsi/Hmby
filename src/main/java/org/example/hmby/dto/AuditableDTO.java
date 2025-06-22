@@ -8,6 +8,6 @@ import java.time.Instant;
 public class AuditableDTO {
     private Long id;
     private String userId;
-    private Instant createdDate;
-    private Instant lastUpdateDate;
+    private Instant createdAt;
+    private Instant updatedAt;
 }

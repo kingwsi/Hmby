@@ -8,6 +8,9 @@ public class EmbyItemRequest {
 
     @JsonProperty("SortBy")
     private String sortBy = "DateCreated,SortName";
+    
+    @JsonProperty("PersonIds")
+    private String personIds;
 
     @JsonProperty("SortOrder")
     private String sortOrder = "Descending";
@@ -31,13 +34,13 @@ public class EmbyItemRequest {
     private String enableImageTypes = "Primary,Backdrop,Banner,Thumb";
 
     @JsonProperty("StartIndex")
-    private Long startIndex = 0L;
+    private int startIndex = 0;
 
     @JsonProperty("ParentId")
     private String parentId;
 
     @JsonProperty("Limit")
-    private Long limit = 50L;
+    private int limit;
 
     @JsonProperty("TagIds")
     private String tagIds;
@@ -56,4 +59,8 @@ public class EmbyItemRequest {
 
     @JsonProperty("X-Emby-Client-Version")
     private String embyClientVersion = "0";
+
+    private int page = 1;
+    
+    private int size = 20;
 }

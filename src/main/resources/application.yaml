@@ -2,7 +2,7 @@ spring:
   application:
     name: hmby
   datasource:
-    url: jdbc:postgresql://localhost:5433/hmby
+    url: jdbc:postgresql://192.168.123.232:5432/hmby
     username: postgres
     password: dev
     driver-class-name: org.postgresql.Driver
@@ -31,11 +31,11 @@ hmby:
   config:
     ffmpeg-path: /opt/homebrew/bin/ffmpeg
     ffprobe-path: /opt/homebrew/bin/ffprobe
-    emby-server: http://localhost:8096
+    emby-server: http://192.168.123.232:8096
     volume-bind:
       - /Volumes/downloads/->/downloads/
       - /Volumes/Volume1/->/Volume1
       - /Volumes/Volume2/->/Volume2
     output-media-path: /Volumes/downloads/output
 logging.level.org.hibernate.SQL: DEBUG
-logging.level.org.springframework.ai.chat.client.advisor: DEBUG
+logging.level.org.example.hmby.config: DEBUG
