@@ -3,7 +3,7 @@
     <div class="detail-header" v-if="selectedItemId">
       <div class="media-streams-section">
         <!-- 视频 -->
-        <a-row>
+        <a-row :style="{borderRadius: token.borderRadius+'px', overflow: 'hidden'}">
           <video-player
             v-if="selectedItemId && playerId"
             :key="playerId"
@@ -15,7 +15,7 @@
                 marks.splice(index, 1);
               }
             "
-            style="height: 350px; max-width: 100%"
+            class="player"
           />
         </a-row>
         <!-- 信息区 -->
@@ -206,12 +206,7 @@
                   >
                     <div class="image-with-title">
                       <img
-                        :src="
-                          mediaDetail.embyServer +
-                          '/emby/Items/' +
-                          item.Id +
-                          '/Images/Primary?maxWidth=700&quality=100'
-                        "
+                        :src="getItemImage(mediaDetail)"
                         :alt="`扩展 ${item.Id}`"
                         class="backdrop-image"
                         @click="() => (playerId = item.Id)"
@@ -338,7 +333,7 @@ import { onMounted, ref, watch, computed, reactive } from "vue";
 import VideoPlayer from "@/components/VideoPlayer.vue";
 import request from "@/utils/request";
 import Ellipsis from "@/components/Ellipsis.vue";
-import { message } from "ant-design-vue";
+import { message,theme } from "ant-design-vue";
 import TagsSelect from "@/components/TagsSelect.vue";
 import { useRouter } from "vue-router";
 
@@ -350,6 +345,11 @@ import {
   StepForwardOutlined,
   PlusOutlined,
 } from "@ant-design/icons-vue";
+import { getItemImage } from "../utils/emby-util";
+import { useAppStore } from "@/stores/app";
+
+const { useToken } = theme;
+const { token } = useToken();
 // 定义props
 const props = defineProps({
   id: {
@@ -383,14 +383,6 @@ watch(
 
 const mediaInfo = ref({});
 const mediaStream = ref({});
-const videoOptions = reactive({
-  volumePanel: false,
-  playToggle: false,
-  autoplay: false,
-  controls: true,
-  userActions: { click: true },
-  controlBar: {},
-});
 // 元数据
 const detailLoading = ref(false);
 // 加载编辑模式所需的元数据
@@ -641,10 +633,11 @@ const deleteItemHandle = async (id) => {
 };
 
 // 在Emby中打开
+const { config } = useAppStore();
 const openEmbyPage = () => {
   if (mediaDetail.value && mediaDetail.value.embyServer) {
     window.open(
-      `${mediaDetail.value.embyServer}/web/index.html#!/item?id=${mediaDetail.value.Id}&serverId=${mediaDetail.value.ServerId}`,
+      `${config.emby_server}/web/index.html#!/item?id=${mediaDetail.value.Id}&serverId=${mediaDetail.value.ServerId}`,
       "_blank"
     );
   }
@@ -675,10 +668,6 @@ const handlerAdd = () => {
   }
 };
 
-const handlerRemover = (index) => {
-  marks.value.splice(index, 1);
-};
-
 const selectFrame = () => {
   if (player.value) {
     const currentTime = player.value.currentTime();
@@ -705,8 +694,6 @@ const emit = defineEmits(["change"]);
 const changeHandler = async () => {
   emit("change", mediaDetail.value);
 };
-
-const intervalRemoveHandler = (index) => {};
 </script>
 <style lang="less" scoped>
 .empty-detail {
@@ -715,16 +702,15 @@ const intervalRemoveHandler = (index) => {};
   align-items: center;
   justify-content: center;
 }
+
+.player {
+  height: 330px;
+  max-width: 100%;
+}
 .video-player-container {
   margin-bottom: 16px;
   border-radius: 4px;
   overflow: hidden;
-}
-
-// 详情面板样式
-.detail-card {
-  height: 100%;
-  overflow-y: auto;
 }
 
 .stream-cards-container {
@@ -749,9 +735,9 @@ const intervalRemoveHandler = (index) => {};
   border-radius: 3px;
 }
 
-.media-streams-section {
-  margin-top: 16px;
-}
+// .media-streams-section {
+//   margin-top: 16px;
+// }
 
 .streams-title {
   margin-bottom: 12px;

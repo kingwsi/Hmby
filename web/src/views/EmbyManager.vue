@@ -3,8 +3,10 @@
     <!-- 左右分栏布局 -->
     <a-row :gutter="16">
       <!-- 详情区域 - 在非移动端显示 -->
-      <a-col v-if="!app.isMobile" :span="12" :xs="24" :sm="24" :md="10" class="detail-panel">
-        <EmbyDetailPanel :id="selectedItemId" @change="fetchData" />
+      <a-col v-if="!app.isMobile" :span="12" :xs="24" :sm="24" :md="10">
+        <a-affix :offset-top="64">
+          <EmbyDetailPanel :id="selectedItemId" @change="fetchData" />
+        </a-affix>
       </a-col>
       <!-- 列表区域 -->
       <a-col :span="12" :xs="24" :sm="24" :md="14">

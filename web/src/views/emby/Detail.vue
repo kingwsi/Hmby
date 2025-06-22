@@ -43,17 +43,19 @@
             </div>
 
             <!-- 演职人员横向滑动（共用） -->
-            <h2 class="section-title">演职人员</h2>
-            <div class="cast-scroll">
-                <div class="cast-card" v-for="people in mediaDetail.People" :key="people.Id"
-                    @click="personFilterHandler(people.Id)">
-                    <div class="avatar">
-                        {{ people.Name }}
+            <template v-if="mediaDetail.People?.length > 0">
+                <h2 class="section-title">演职人员</h2>
+                <div class="cast-scroll">
+                    <div class="cast-card" v-for="people in mediaDetail.People" :key="people.Id"
+                        @click="personFilterHandler(people.Id)">
+                        <div class="avatar">
+                            {{ people.Name }}
+                        </div>
+                        <div class="cast-name">{{ people.Name }}</div>
+                        <div class="cast-role">{{ people.Type }}</div>
                     </div>
-                    <div class="cast-name">{{ people.Name }}</div>
-                    <div class="cast-role">{{ people.Type }}</div>
                 </div>
-            </div>
+            </template>
 
             <!-- 附加内容 -->
             <template v-if="mediaDetail.specialFeatures && mediaDetail.specialFeatures.length > 0">
@@ -75,7 +77,8 @@
                 <h2 class="section-title">相似推荐</h2>
                 <div class="similar-scroll">
                     <div class="similar-card" v-for="item in similarMovies" :key="item.Id">
-                        <img class="poster-small" :src="getItemImage(item)" alt="similar" @click="toSimilarItemHandler(item)" />
+                        <img class="poster-small" :src="getItemImage(item)" alt="similar"
+                            @click="toSimilarItemHandler(item)" />
                         <div class="similar-title">
                             <ellipsis :length="40" :tooltip="true" :line="3">
                                 {{ item.Name }}
@@ -171,6 +174,13 @@ const toSimilarItemHandler = (item) => {
         behavior: 'smooth'
     });
 }
+
+const cardStyle = computed(() => {
+    return {
+        borderRadius: token.borderRadius + 'px',
+        border: '1px solid ' + token.colorBorder
+    };
+})
 </script>
 
 <style scoped lang="less">

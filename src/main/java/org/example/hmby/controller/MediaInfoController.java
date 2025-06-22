@@ -13,6 +13,7 @@ import org.example.hmby.enumerate.ConfigKey;
 import org.example.hmby.enumerate.MediaCodec;
 import org.example.hmby.enumerate.MediaStatus;
 import org.example.hmby.exception.BusinessException;
+import org.example.hmby.exception.ConfigNotFoundException;
 import org.example.hmby.repository.ConfigRepository;
 import org.example.hmby.service.MediaInfoService;
 import org.example.hmby.vo.MediaInfoDTO;
@@ -96,10 +97,10 @@ public class MediaInfoController {
     }
 
     @GetMapping("/codecs")
-    public Response<List<String>> codecs() throws IOException {
+    public Response<List<String>> codecs() {
         List<String> mediaCodecs = new ArrayList<>(MediaCodec.getCodecs());
-        Optional.ofNullable(configRepository.findOneByKey(ConfigKey.runner_server))
-                .map(Config::getVal).orElseThrow();
+        String s = Optional.ofNullable(configRepository.findOneByKey(ConfigKey.runner_server))
+                .map(Config::getVal).orElseThrow(() -> new ConfigNotFoundException(ConfigKey.runner_server));
         return Response.success(mediaCodecs);
     }
 

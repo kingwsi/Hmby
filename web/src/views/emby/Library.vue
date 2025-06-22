@@ -1,10 +1,9 @@
 <template>
     <div>
         <a-row :gutter="[16, 16]">
-            <a-col :sm="12" :md="8" :lg="6" :xs="12" v-for="item in libraries"
-            @click="handleClickItem(item)"
-            :key="item.Id">
-                <div class="card">
+            <a-col :sm="12" :md="8" :lg="6" :xs="12" v-for="item in libraries" @click="handleClickItem(item)"
+                :key="item.Id">
+                <div class="card" :style="cardStyle">
                     <img :src="getItemImage(item)">
                     <div class="card-title">
                         <ellipsis :length="20" :tooltip="true" :line="1">
@@ -20,12 +19,13 @@
 <script setup>
 import {
     ref,
-    reactive,
+    computed,
     onMounted
 } from "vue";
 import request from "@/utils/request";
 import Ellipsis from "@/components/Ellipsis.vue";
 import { getItemImage } from "@/utils/emby-util";
+import { theme } from "ant-design-vue";
 
 const loading = ref(false);
 
@@ -47,6 +47,22 @@ const router = useRouter();
 const handleClickItem = async (item) => {
     router.push({ name: 'EmbyList', query: { parentId: item.Id } })
 };
+
+const { useToken } = theme;
+const { token } = useToken();
+// 确保 token 是响应式的
+const cardStyle = computed(() => {
+    // 检查 token 是否存在及其值
+    console.log('Current token:', token);
+    
+    return {
+        borderRadius: token.value?.borderRadius + 'px',
+        border: '1px solid ' + token.value?.colorBorder,
+        // 添加一些调试样式确认是否生效
+        backgroundColor: token.value?.colorBgContainer,
+        transition: 'all 0.3s'
+    };
+});
 </script>
 
 <style scoped lang="less">
@@ -68,15 +84,11 @@ const handleClickItem = async (item) => {
 }
 
 .card {
-    border-radius: 12px;
+    border-radius: 10px;
     overflow: hidden;
     transition: transform 0.2s ease;
     cursor: pointer;
     height: 230px;
-}
-
-.card:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
 }
 
 .card img {

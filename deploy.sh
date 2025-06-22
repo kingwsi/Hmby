@@ -41,21 +41,19 @@ if [ $? -ne 0 ]; then
 fi
 echo "✅ 后端构建完成。"
 
-# Step 4: 启动 Java 服务
-echo "👉 使用 jps 检查 Java 服务进程..."
+# Step 4: 使用 systemctl 启动 Java 服务
+echo "👉 使用 systemctl 检查并重启 Java 服务..."
 
-# 查找包含 JAR 名的 Java 进程
-PID=$(jps -l | grep "$JAR_NAME" | awk '{print $1}')
+SERVICE_NAME="hmby"
 
-if [ -n "$PID" ]; then
-  echo "🛑 检测到已运行的 Java 进程，PID=$PID，准备终止..."
-  kill -9 "$PID"
-  sleep 2
-  echo "✅ 已终止旧进程。"
+# 检查服务是否已存在并运行
+if systemctl is-active --quiet $SERVICE_NAME; then
+  echo "🛑 Java 服务已在运行，正在重启..."
+  sudo systemctl restart $SERVICE_NAME
 else
-  echo "✅ 未检测到旧进程。"
+  echo "✅ Java 服务未在运行，正在启动..."
+  sudo systemctl start $SERVICE_NAME
 fi
 
-echo "🚀 启动新的 Java 服务..."
-nohup java $JVM_OPTS -jar "$BACKEND_JAR_PATH/$JAR_NAME" --spring.profiles.active=prod > app.log 2>&1 &
-echo "✅ Java 服务已启动，日志写入 app.log"
+# 查看服务状态
+sudo systemctl status $SERVICE_NAME --no-pager

@@ -83,22 +83,10 @@ onActivated(() => {
 })
 
 
-const handleSearch = () => {
-    if (!queryParam.page) {
-        queryParam.page = 1;
-    }
-    embyCardRef.value.fetchData(queryParam)
-};
-
 // 选择媒体项
-const detailVisible = ref(false);
-const selectedItem = ref(null);
 const handleClickItem = async (item) => {
     router.push({ name: 'EmbyDetail', params: { id: item.Id } })
 };
-
-
-
 </script>
 
 <style scoped lang="less"></style>

@@ -1,12 +1,12 @@
 <template>
   <a-spin :spinning="loading" style="width: 100%">
-    <a-row :gutter="[16, 16]" justify="space-evenly">
+    <a-row :gutter="[16, 16]">
       <a-col :sm="span.sm" :md="span.md" :lg="span.lg" :xs="span.xs" v-for="item in pageData.Items" :key="item.Id"
         @click="handleSelectItem(item)">
-        <div class="card">
+        <div class="card" :style="{borderRadius: token.borderRadius+'px', border: '1px solid ' + token.colorBorder}">
           <img :src="getItemImage(item)">
           <div class="card-title">
-            <ellipsis :length="20" :tooltip="true" :line="1">
+            <ellipsis :length="40" :tooltip="true" :line="3">
               {{ item.Name }}
             </ellipsis>
           </div>
@@ -26,10 +26,12 @@ import {
   ref,
   reactive,
 } from "vue";
-import MediaStatusTag from "@/components/MediaStatusTag.vue";
 import request from "@/utils/request";
 import Ellipsis from "@/components/Ellipsis.vue";
 import { getItemImage } from "@/utils/emby-util";
+import { theme } from "ant-design-vue";
+const { useToken } = theme;
+const { token } = useToken();
 
 const props = defineProps({
   span: {
@@ -195,8 +197,7 @@ defineExpose({
 }
 
 .card-title {
-  padding: 12px;
-  font-size: 1.2em;
+  padding: 8px;
   text-align: center;
 }
 </style>
