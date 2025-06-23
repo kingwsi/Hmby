@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAppStore } from '@/stores/app'
 import Home from '../views/Home.vue'
 import NotFound from '../views/NotFound.vue'
 
@@ -98,33 +99,63 @@ const router = createRouter({
   routes
 })
 
-// 获取App实例以控制全局loading状态
-let app
-document.addEventListener('vue-app-init', (e) => {
-  app = e.detail
-})
-
 // 全局前置守卫
 router.beforeEach(async (to, from, next) => {
-  if (app) {
-    app.loading = true
+  // 获取store实例
+  const appStore = useAppStore()
+  
+  // 设置路由切换loading状态
+  if (!appStore.initializing) {
+    appStore.loading = true
   }
 
-  // 使用pinia store中的token状态
-  // 注意：由于路由守卫在pinia初始化之前执行，这里仍然需要从localStorage获取token
-  const token = localStorage.getItem('token')
-  if (to.meta.requiresAuth && !token) {
-    next('/login')
-  } else {
-    next()
+  // 检查是否需要认证
+  if (to.meta.requiresAuth) {
+    // 如果没有token，重定向到登录页
+    if (!appStore.isAuthenticated) {
+      appStore.loading = false
+      next('/login')
+      return
+    }
+    
+    // 如果有token但正在初始化，等待初始化完成
+    if (appStore.initializing) {
+      // 等待初始化完成
+      const checkInit = () => {
+        if (!appStore.initializing) {
+          if (appStore.isAuthenticated) {
+            next()
+          } else {
+            next('/login')
+          }
+        } else {
+          setTimeout(checkInit, 100)
+        }
+      }
+      checkInit()
+      return
+    }
   }
+  
+  // 如果访问登录页但已经认证，重定向到首页
+  if (to.path === '/login' && appStore.isAuthenticated) {
+    appStore.loading = false
+    next('/home')
+    return
+  }
+  
+  next()
 })
 
 // 全局后置守卫
 router.afterEach(() => {
-  if (app) {
-    app.loading = false
-  }
+  const appStore = useAppStore()
+  // 延迟关闭loading，提供更好的用户体验
+  setTimeout(() => {
+    if (!appStore.initializing) {
+      appStore.loading = false
+    }
+  }, 100)
 })
 
 export default router

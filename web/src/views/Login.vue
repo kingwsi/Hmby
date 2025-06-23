@@ -35,37 +35,40 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue';
+import { reactive, ref, computed } from 'vue';
 import { message } from 'ant-design-vue';
 import { useRouter } from 'vue-router';
 import { UserOutlined, LockOutlined } from '@ant-design/icons-vue';
 import { useAppStore } from '@/stores/app';
 
 const router = useRouter();
-const app = useAppStore();
-const loading = ref(false);
+const appStore = useAppStore();
+
+// 使用store的loading状态
+const loading = computed(() => appStore.loading);
 
 const formState = reactive({
     username: '',
     password: ''
 });
 
-const onFinish = async values => {
-    loading.value = true;
+const onFinish = async (values) => {
     try {
-        const success = await app.login({
+        const result = await appStore.login({
             username: formState.username,
             password: formState.password
         });
         
-        if (success) {
+        if (result.success) {
             message.success('登录成功');
-            router.push('/');
+            // 登录成功后，路由守卫会自动重定向到首页
+            router.push('/home');
         } else {
-            message.error('登录失败，请检查用户名和密码');
+            message.error(result.error || '登录失败，请检查用户名和密码');
         }
-    } finally {
-        loading.value = false;
+    } catch (error) {
+        console.error('登录过程中发生错误:', error);
+        message.error('登录过程中发生错误，请稍后重试');
     }
 };
 </script>

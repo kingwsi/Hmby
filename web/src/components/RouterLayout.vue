@@ -92,9 +92,17 @@ const contentStyle = computed(() => {
   };
 });
 
-const handleLogout = () => {
-  app.logout();
-  router.push('/login');
+const handleLogout = async () => {
+  try {
+    app.logout();
+    // 登出后重定向到登录页，路由守卫会处理认证状态
+    await router.push('/login');
+  } catch (error) {
+    console.error('登出过程中发生错误:', error);
+    // 即使出错也要清除本地状态
+    app.logout();
+    router.push('/login');
+  }
 };
 </script>
 <style scoped>
