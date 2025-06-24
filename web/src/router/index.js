@@ -99,53 +99,6 @@ const router = createRouter({
   routes
 })
 
-// 全局前置守卫
-router.beforeEach(async (to, from, next) => {
-  // 获取store实例
-  const appStore = useAppStore()
-  
-  // 设置路由切换loading状态
-  if (!appStore.initializing) {
-    appStore.loading = true
-  }
-
-  // 检查是否需要认证
-  if (to.meta.requiresAuth) {
-    // 如果没有token，重定向到登录页
-    if (!appStore.isAuthenticated) {
-      appStore.loading = false
-      next('/login')
-      return
-    }
-    
-    // 如果有token但正在初始化，等待初始化完成
-    if (appStore.initializing) {
-      // 等待初始化完成
-      const checkInit = () => {
-        if (!appStore.initializing) {
-          if (appStore.isAuthenticated) {
-            next()
-          } else {
-            next('/login')
-          }
-        } else {
-          setTimeout(checkInit, 100)
-        }
-      }
-      checkInit()
-      return
-    }
-  }
-  
-  // 如果访问登录页但已经认证，重定向到首页
-  if (to.path === '/login' && appStore.isAuthenticated) {
-    appStore.loading = false
-    next('/home')
-    return
-  }
-  
-  next()
-})
 
 // 全局后置守卫
 router.afterEach(() => {

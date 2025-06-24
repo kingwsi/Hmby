@@ -34,4 +34,9 @@ public class AuthController {
         }
         return Response.fail("登录失败");
     }
+
+    @GetMapping("/validate")
+    public Response<String> validate() {
+        return Response.success();
+    }
 }

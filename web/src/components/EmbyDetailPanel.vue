@@ -329,7 +329,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch, computed, reactive } from "vue";
+import { onMounted, ref, watch, computed, reactive,nextTick } from "vue";
 import VideoPlayer from "@/components/VideoPlayer.vue";
 import request from "@/utils/request";
 import Ellipsis from "@/components/Ellipsis.vue";
@@ -369,8 +369,9 @@ watch(
     selectedItemId.value = newId;
     if (newId) {
       try {
+        // 使用 nextTick 确保在 loadMetaInfo 函数定义后再调用
+        await nextTick();
         await loadMetaInfo();
-        // await fetchMediaDetail(newId);
       } catch (err) {
         console.error("watch props.id 报错:", err);
       }

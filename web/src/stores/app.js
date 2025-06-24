@@ -11,7 +11,7 @@ export const useAppStore = defineStore('app', () => {
   const isMobile = ref(false);
   const loading = ref(false);
   const initializing = ref(false);
-  
+
   // 用户认证状态
   const token = ref(localStorage.getItem('token') || '');
   const username = ref('');
@@ -45,29 +45,23 @@ export const useAppStore = defineStore('app', () => {
 
   const init = async () => {
     if (typeof window === 'undefined' || listenerAdded) return;
-    
+
     initializing.value = true;
     loading.value = true;
 
     try {
-      // 初始化移动端检测
-      checkMobile();
-      window.addEventListener('resize', checkMobile);
-      listenerAdded = true;
-      
-      // 初始化用户状态
-      initUserState();
-      
       // 获取应用配置
       const { data } = await request.get('/api/config');
       data.dark = data.dark === 'true' || data.dark === true;
       config.value = data;
       
-      // 如果有token，验证其有效性
-      if (token.value) {
-        await validateToken();
-      }
-      
+      // 初始化移动端检测
+      checkMobile();
+      window.addEventListener('resize', checkMobile);
+      listenerAdded = true;
+
+      // 初始化用户状态
+      initUserState();
     } catch (error) {
       console.error('应用初始化失败:', error);
     } finally {
@@ -109,22 +103,6 @@ export const useAppStore = defineStore('app', () => {
     localStorage.removeItem('username');
   };
 
-  // 验证token有效性
-  const validateToken = async () => {
-    if (!token.value) return false;
-    
-    try {
-      // 可以添加一个验证token的API调用
-      // const response = await request.get('/api/auth/validate');
-      // return response.success;
-      return true; // 暂时返回true，可根据实际API调整
-    } catch (error) {
-      console.error('Token验证失败:', error);
-      logout(); // 清除无效token
-      return false;
-    }
-  };
-
   // 初始化用户状态
   const initUserState = () => {
     const savedUsername = localStorage.getItem('username');
@@ -145,14 +123,13 @@ export const useAppStore = defineStore('app', () => {
     initializing,
     themeConfig,
     config,
-    
+
     // 方法
     toggleTheme,
     checkMobile,
     init,
     login,
     logout,
-    validateToken,
     initUserState,
   };
 });

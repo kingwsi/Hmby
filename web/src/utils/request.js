@@ -49,13 +49,10 @@ request.interceptors.response.use(
         return res;
     },
     error => {
-        // 处理网络错误
-        const errMsg = error.response?.data?.message || '网络错误';
-        message.error(errMsg);
-
         // 如果是401错误，说明未登录或token失效
         if (error.response?.status === 401) {
             localStorage.removeItem('token');
+            message.error('需要登录');
             // 使用 nextTick 确保在下一个事件循环中执行路由跳转
             setTimeout(() => {
                 router.push({
@@ -63,6 +60,9 @@ request.interceptors.response.use(
                     query: { redirect: router.currentRoute.value.fullPath }
                 });
             }, 100);
+        } else {
+            const errMsg = error.response?.data?.message || '网络错误';
+            message.error(errMsg);
         }
 
         return Promise.reject(error);
@@ -164,7 +164,7 @@ export const eventHandler = (options) => {
 
     // 合并配置
     const config = { ...defaultOptions, ...options };
-    
+
     // 必填参数检查
     if (!config.path) {
         throw new Error('SSE请求路径不能为空');
@@ -174,7 +174,7 @@ export const eventHandler = (options) => {
     let abortController = null;
     let retryCount = 0;
     let isConnecting = false;
-    
+
     // 构建URL
     const buildUrl = () => {
         const baseUrl = import.meta.env.VITE_API_BASE_URL.replace(/\/+$/, '');
@@ -209,7 +209,7 @@ export const eventHandler = (options) => {
     const connect = async () => {
         if (isConnecting) return;
         isConnecting = true;
-        
+
         const url = buildUrl();
         abortController = new AbortController();
 
@@ -228,21 +228,21 @@ export const eventHandler = (options) => {
                 onopen(response) {
                     // 连接成功，重置重试计数
                     retryCount = 0;
-                    
+
                     if (!response.ok) {
                         const errMsg = response?.data?.message || `HTTP错误: ${response.status}`;
                         if (config.showErrorMessage) {
                             message.error(errMsg);
                         }
-                        
+
                         // 处理认证错误
                         if (handleAuthError(response.status)) {
                             throw new Error('认证失败');
                         }
-                        
+
                         throw new Error(errMsg);
                     }
-                    
+
                     // 调用自定义onOpen回调
                     config.onOpen && config.onOpen(response);
                 },
@@ -250,7 +250,7 @@ export const eventHandler = (options) => {
                     try {
                         // 调用通用消息处理器
                         config.onMessage && config.onMessage(event);
-                        
+
                         if (event.data) {
                             // 处理特定类型的事件
                             if (event.event && config.eventHandlers[event.event]) {
@@ -262,7 +262,7 @@ export const eventHandler = (options) => {
                                     config.eventHandlers[event.event](event.data, event);
                                 }
                             }
-                            
+
                             // 特殊处理错误事件
                             if (event.event === 'error') {
                                 try {
@@ -286,7 +286,7 @@ export const eventHandler = (options) => {
                     isConnecting = false;
                     console.log('SSE连接已关闭');
                     config.onClose && config.onClose();
-                    
+
                     // 自动重连逻辑
                     if (config.autoReconnect && retryCount < config.maxRetries) {
                         retryCount++;
@@ -298,7 +298,7 @@ export const eventHandler = (options) => {
                     isConnecting = false;
                     console.error('SSE连接错误:', error);
                     config.onError && config.onError(error);
-                    
+
                     // 自动重连逻辑
                     if (config.autoReconnect && retryCount < config.maxRetries) {
                         retryCount++;
@@ -306,18 +306,18 @@ export const eventHandler = (options) => {
                         setTimeout(connect, config.reconnectInterval);
                         return; // 不抛出错误，让重连继续
                     }
-                    
+
                     throw error;
                 }
             });
         } catch (error) {
             isConnecting = false;
             console.error('SSE连接失败:', error);
-            
+
             if (config.showErrorMessage && !abortController.signal.aborted) {
                 message.error(error.message || 'SSE连接失败');
             }
-            
+
             config.onError && config.onError(error);
         }
     };

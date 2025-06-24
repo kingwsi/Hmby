@@ -37,15 +37,26 @@
 <script setup>
 import { reactive, ref, computed } from 'vue';
 import { message } from 'ant-design-vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { UserOutlined, LockOutlined } from '@ant-design/icons-vue';
 import { useAppStore } from '@/stores/app';
 
 const router = useRouter();
+const route = useRoute();
 const appStore = useAppStore();
 
 // 使用store的loading状态
 const loading = computed(() => appStore.loading);
+
+// 获取重定向路径
+const getRedirectPath = () => {
+    const redirect = route.query.redirect;
+    // 确保重定向路径是安全的
+    if (redirect && typeof redirect === 'string' && !redirect.startsWith('/login')) {
+        return redirect;
+    }
+    return '/home';
+};
 
 const formState = reactive({
     username: '',
@@ -61,8 +72,8 @@ const onFinish = async (values) => {
         
         if (result.success) {
             message.success('登录成功');
-            // 登录成功后，路由守卫会自动重定向到首页
-            router.push('/home');
+            // 登录成功后重定向到原始目标路由
+            router.push(getRedirectPath());
         } else {
             message.error(result.error || '登录失败，请检查用户名和密码');
         }
