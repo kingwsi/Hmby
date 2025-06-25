@@ -1,13 +1,10 @@
 import psycopg2
 import schedule
 import time
-import subprocess
-import os
 from flask import Flask, jsonify
 import logging
 from datetime import datetime
 import threading
-import json
 
 # 配置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -18,12 +15,47 @@ app = Flask(__name__)
 
 # 数据库配置
 DB_CONFIG = {
-    'dbname': 'your_database',
-    'user': 'your_username',
-    'password': 'your_password',
-    'host': 'localhost',
+    'dbname': 'hmby',
+    'user': 'postgres',
+    'password': 'dev',
+    'host': '192.168.123.232',
     'port': '5432'
 }
+
+# 路径映射配置（示例，可以从配置文件或数据库加载）
+# 路径映射配置
+# Windows格式使用 \\ 双反斜杠
+# Linux/Unix格式使用 / 正斜杠
+# 根据操作系统自动选择正确的路径格式
+PATH_MAPPING = {
+    '/downloads': '\\\\192.168.123.232\\downloads',
+    '/db/output': '\\\\192.168.123.232\\Volume1'
+}
+
+APP_CONFIG = {
+    'output_path': '/downloads/output',
+    'temp_path': 'D:\\temp',
+}
+
+def map_path(db_path):
+    """将数据库中的路径映射到实际文件路径"""
+    if not isinstance(db_path, str):
+        logger.error(f"路径映射失败，传入值无效: {db_path}")
+        return db_path
+
+    try:
+        for db_prefix, actual_prefix in PATH_MAPPING.items():
+            if db_path.startswith(db_prefix):
+                # 先替换路径前缀
+                mapped_path = db_path.replace(db_prefix, actual_prefix, 1)
+                # 使用os.path.normpath()将路径分隔符转换为当前系统使用的格式
+                return os.path.normpath(mapped_path)
+        # 如果没有匹配的映射，返回原路径
+        logger.warning(f"路径未找到映射，直接使用: {db_path}")
+        return os.path.normpath(db_path)
+    except Exception as e:
+        logger.error(f"路径映射失败: {str(e)}")
+        return db_path
 
 # 服务状态
 service_status = {
@@ -40,84 +72,136 @@ def get_db_connection():
     except Exception as e:
         logger.error(f"数据库连接失败: {str(e)}")
         return None
+import os
+import ffmpeg
 
-def get_video_info(input_path):
-    """获取视频信息（分辨率、帧率等）"""
-    try:
-        cmd = [
-            'ffprobe',
-            '-v', 'error',
-            '-show_entries', 'stream=width,height,r_frame_rate',
-            '-of', 'json',
-            input_path
-        ]
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        info = json.loads(result.stdout)
-        stream = info['streams'][0]
-        width, height = stream['width'], stream['height']
-        frame_rate = eval(stream['r_frame_rate'])  # 转换为浮点数，如 30/1 -> 30.0
-        return width, height, frame_rate
-    except Exception as e:
-        logger.error(f"获取视频信息失败: {str(e)}")
-        return None, None, None
-
-def process_encode(input_path, output_path, meta_title, crf=23, max_resolution=1080, max_fps=30):
+def process_encode(input_path, meta_title, crf=26, max_resolution=1080, max_fps=30):
     """处理视频编码（压缩）"""
     try:
-        if not os.path.exists(input_path):
-            raise Exception(f"输入文件不存在: {input_path}")
+        output_path = get_output_path(input_path)
+        logger.info(f"process_encode 输出目录: {output_path}")
 
-        width, height, frame_rate = get_video_info(input_path)
-        if width is None:
-            raise Exception("无法获取视频信息")
+        actual_input_path = map_path(input_path)
+        actual_output_path = map_path(output_path)
+        if not os.path.exists(actual_input_path):
+            raise Exception(f"输入文件不存在: {actual_input_path}")
 
-        scale_filter = ""
+        # 获取视频信息
+        probe = ffmpeg.probe(actual_input_path)
+        video_info = next(s for s in probe['streams'] if s['codec_type'] == 'video')
+        width = int(video_info['width'])
+        height = int(video_info['height'])
+        frame_rate = eval(video_info['r_frame_rate'])
+
+        # 构建输入流
+        stream = ffmpeg.input(actual_input_path, hwaccel='cuda')
+
+        # 应用视频滤镜
         if height > max_resolution:
-            scale_filter = f"-vf scale=-2:{max_resolution}"
-
-        fps_filter = ""
+            stream = stream.filter('scale', '-2', max_resolution)
         if frame_rate > max_fps:
-            fps_filter = f"-r {max_fps}"
+            stream = stream.filter('fps', fps=max_fps)
 
-        cmd = [
-            'ffmpeg',
-            '-i', input_path,
-            '-hwaccel', 'cuvid'
-            '-c:v', "h264_cuvid",
-            '-crf', str(crf),
-            '-preset', 'medium',
-            '-tag:v', 'hvc1'
-            '-c:a', 'aac',
-            '-b:a', '128k',
-        ]
-        
-        if meta_title:
-            cmd.extend(['-metadata', f'title=\'{meta_title}\''])
+        # 设置输出参数
+        stream = ffmpeg.output(
+            stream,
+            actual_output_path,
+            vcodec='hevc_nvenc',
+            crf=crf,
+            preset='medium',
+            acodec='aac',
+            audio_bitrate='128k',
+            metadata={'title': meta_title} if meta_title else None,
+            **{'tag:v': 'avc1'},
+            overwrite_output=True
+        )
 
-        if scale_filter or fps_filter:
-            filters = []
-            if scale_filter:
-                filters.append(scale_filter.lstrip('-vf '))
-            if fps_filter:
-                filters.append(fps_filter.lstrip('-r '))
-            cmd.extend(['-vf', ','.join(filters)])
+        # 获取命令行字符串
+        cmd = ' '.join(stream.compile())
+        logger.info(f"执行命令: {cmd}")
 
-        cmd.extend(['-y', output_path])
+        # 运行 FFmpeg 进程
+        process = stream.run_async(pipe_stdout=True, pipe_stderr=True)
+        stderr_output_lines = []
+        # 实时读取 stderr 获取进度
+        while True:
+            output = process.stderr.readline()
+            if output == b'' and process.poll() is not None:
+                break
+            if output:
+                output_str = output.decode('utf-8', errors='ignore')
+                stderr_output_lines.append(output_str)  # ⬅️ 缓存下来
+                if "frame=" in output_str:
+                    logger.info(f"FFmpeg进度: {output_str.strip()}")
 
-        process = subprocess.run(cmd, capture_output=True, text=True)
+        # 等待完成
+        process.wait()
+
+        # 检查退出状态
         if process.returncode != 0:
-            raise Exception(f"FFmpeg 编码失败: {process.stderr}")
+            stdout, stderr = process.communicate()
+            error_output = stderr.decode('utf-8', errors='ignore') if isinstance(stderr, bytes) else str(stderr)
+            logger.error(f"FFmpeg 错误信息: {error_output.strip()}")
+            raise Exception(f"FFmpeg 编码失败，返回码非 0。错误信息: {error_output.strip()}")
 
-        processed_size = os.path.getsize(output_path)
+        processed_size = os.path.getsize(actual_output_path)
         return True, processed_size, None
+
     except Exception as e:
+        logger.error(f"编码出错: {str(e)}")
         return False, 0, str(e)
 
-def process_cut(input_path, output_path, media_id):
+def get_output_path(input_path, meta_title=None):
+    """根据输入路径和标题生成输出路径"""
+    # 获取输出目录的基础路径
+    # 获取基础输出目录
+    base_output_dir = APP_CONFIG.get('output_path')
+    if not base_output_dir:
+        raise Exception("未配置输出目录")
+
+    # 获取当前年月作为子目录
+    current_date = datetime.now()
+    year_month = current_date.strftime("%Y%m")
+
+    # 组合完整输出目录
+    base_output_dir = os.path.join(base_output_dir, year_month)
+
+    # 确保输出目录存在
+    os.makedirs(map_path(base_output_dir), exist_ok=True)
+
+    # 从输入路径中提取文件名
+    input_filename = os.path.basename(input_path)
+    filename_without_ext = os.path.splitext(input_filename)[0]
+
+    # 构建基础输出文件名
+    if meta_title:
+        output_filename = f"{meta_title}.mp4"
+    else:
+        output_filename = f"{filename_without_ext}.mp4"
+
+    # 构建完整输出路径，使用正斜杠确保Linux格式
+    output_path = f"{base_output_dir}/{output_filename}".replace('\\', '/')
+
+    # 如果文件已存在，添加数字后缀
+    counter = 1
+    while os.path.exists(map_path(output_path)):
+        new_filename = f"{filename_without_ext}_{counter}.mp4"
+        output_path = f"{base_output_dir}/{new_filename}".replace('\\', '/')
+        counter += 1
+
+    return output_path
+def process_cut(input_path, media_id):
     """处理视频剪切并拼接"""
     try:
-        if not os.path.exists(input_path):
-            raise Exception(f"输入文件不存在: {input_path}")
+        import ffmpeg
+
+        output_path = get_output_path(input_path)
+        logger.info(f"process_cut 输出目录: {output_path}")
+        # 映射路径
+        actual_input_path = map_path(input_path)
+        actual_output_path = map_path(output_path)
+        if not os.path.exists(actual_input_path):
+            raise Exception(f"输入文件不存在: {actual_input_path}")
 
         # 获取 media_marks 表中的片段
         conn = get_db_connection()
@@ -143,7 +227,7 @@ def process_cut(input_path, output_path, media_id):
             raise Exception("未找到视频片段")
 
         # 创建临时文件列表用于拼接
-        temp_dir = "temp_segments"
+        temp_dir = APP_CONFIG.get('temp_path')
         os.makedirs(temp_dir, exist_ok=True)
         temp_files = []
         temp_list_file = os.path.join(temp_dir, f"concat_list_{media_id}.txt")
@@ -153,17 +237,18 @@ def process_cut(input_path, output_path, media_id):
             for i, (start_time, end_time) in enumerate(segments):
                 temp_output = os.path.join(temp_dir, f"segment_{media_id}_{i}.mp4")
                 duration = (end_time - start_time) / 1000.0  # 转换为秒
-                cmd = [
-                    'ffmpeg',
-                    '-i', input_path,
-                    '-ss', str(start_time / 1000.0),
-                    '-t', str(duration),
-                    '-c', 'copy',  # 使用流复制避免重新编码
-                    '-y', temp_output
-                ]
-                process = subprocess.run(cmd, capture_output=True, text=True)
-                if process.returncode != 0:
-                    raise Exception(f"FFmpeg 剪切失败: {process.stderr}")
+
+                # 使用ffmpeg-python剪切片段
+                stream = ffmpeg.input(actual_input_path, ss=start_time/1000.0, t=duration)
+                stream = ffmpeg.output(stream, temp_output, c='copy', y=None)
+
+                # 运行ffmpeg命令
+                try:
+                    ffmpeg.run(stream, capture_stdout=True, capture_stderr=True)
+                except ffmpeg.Error as e:
+                    error_msg = e.stderr.decode('utf-8') if isinstance(e.stderr, bytes) else e.stderr
+                    raise Exception(f"FFmpeg 剪切失败: {error_msg}")
+
                 temp_files.append(temp_output)
 
             # 创建拼接列表文件
@@ -171,20 +256,17 @@ def process_cut(input_path, output_path, media_id):
                 for temp_file in temp_files:
                     f.write(f"file '{temp_file}'\n")
 
-            # 拼接片段
-            cmd = [
-                'ffmpeg',
-                '-f', 'concat',
-                '-safe', '0',
-                '-i', temp_list_file,
-                '-c', 'copy',
-                '-y', output_path
-            ]
-            process = subprocess.run(cmd, capture_output=True, text=True)
-            if process.returncode != 0:
-                raise Exception(f"FFmpeg 拼接失败: {process.stderr}")
+            # 使用ffmpeg-python拼接片段
+            stream = ffmpeg.input(temp_list_file, f='concat', safe=0)
+            stream = ffmpeg.output(stream, actual_output_path, c='copy', y=None)
 
-            processed_size = os.path.getsize(output_path)
+            try:
+                ffmpeg.run(stream, capture_stdout=True, capture_stderr=True)
+            except ffmpeg.Error as e:
+                error_msg = e.stderr.decode('utf-8') if isinstance(e.stderr, bytes) else e.stderr
+                raise Exception(f"FFmpeg 拼接失败: {error_msg}")
+
+            processed_size = os.path.getsize(actual_output_path)
             return True, processed_size, None
 
         finally:
@@ -207,6 +289,10 @@ def update_media_record(media_id, status, processed_size, error_message=None):
     try:
         with conn.cursor() as cur:
             if error_message:
+                # 打印错误日志
+                logger.error(f"处理失败: {error_message}")
+                # 截取错误信息长度,避免超出数据库字段长度限制(varchar 1000)
+                error_message = error_message[:1000] if error_message else None
                 cur.execute(
                     """
                     UPDATE media_infos
@@ -232,12 +318,24 @@ def update_media_record(media_id, status, processed_size, error_message=None):
         return False
     finally:
         conn.close()
+        is_processing = False
+
+# 全局变量，用于跟踪任务执行状态
+is_processing = False
 
 def process_pending_videos():
     """处理待处理的视频记录"""
-    global service_status
+    global service_status, is_processing
+
+    # 如果上次任务执行中，就不要执行了
+    if is_processing:
+        logger.info("上一次任务仍在执行中，跳过本次执行")
+        return
+
+    is_processing = True
     conn = get_db_connection()
     if not conn:
+        is_processing = False
         return
 
     try:
@@ -246,7 +344,7 @@ def process_pending_videos():
                 """
                 SELECT id, input_path, codec, output_path, processed_size, status, type, meta_title
                 FROM media_infos
-                WHERE status = 'pending' AND type IN ('ENCODE', 'CUT')
+                WHERE status = 'PENDING' AND type IN ('ENCODE', 'CUT')
                 """
             )
             records = cur.fetchall()
@@ -258,18 +356,18 @@ def process_pending_videos():
                 # 根据 type 处理
                 if process_type == 'ENCODE':
                     success, new_size, error_message = process_encode(
-                        input_path, output_path, meta_title, crf=23
+                        input_path, meta_title, crf=26
                     )
                 elif process_type == 'CUT':
                     success, new_size, error_message = process_cut(
-                        input_path, output_path, media_id
+                        input_path, media_id
                     )
                 else:
                     logger.error(f"未知处理类型: {process_type}")
                     continue
 
                 # 更新记录
-                new_status = 'completed' if success else 'failed'
+                new_status = 'DONE' if success else 'FAIL'
                 if update_media_record(media_id, new_status, new_size, error_message):
                     service_status['processed_count'] += 1 if success else 0
                     service_status['error_count'] += 1 if not success else 0
@@ -281,22 +379,33 @@ def process_pending_videos():
         logger.error(f"处理视频时发生错误: {str(e)}")
     finally:
         conn.close()
+        is_processing = False
 
     service_status['last_check'] = datetime.now().isoformat()
 
-@app.route('/status', methods=['GET'])
+@app.route('/', methods=['GET'])
 def get_status():
     """获取服务状态"""
     return jsonify(service_status)
 
-@app.route('/pending/list', methods=['GET'])
-def get_pending_status():
-    """获取服务状态"""
-    return jsonify(service_status)
+@app.route('/get_output_path', methods=['GET'])
+def get_output_path_rest():
+    input_path = request.args.get('input_path')
+    meta_title = request.args.get('meta_title')
+    return get_output_path(input_path, meta_title)
+
+# 在文件顶部添加 Flask 相关导入（如果尚未导入 request）
+from flask import request
+
+# 在 Flask 应用中添加手动执行端点
+@app.route('/process', methods=['GET'])
+def manual_process():
+    process_pending_videos()
+    return jsonify("{'msg','ok'}")
 
 def run_scheduler():
     """运行定时任务"""
-    schedule.every(5).minutes.do(process_pending_videos)
+    schedule.every(1).minutes.do(process_pending_videos)
     while True:
         schedule.run_pending()
         time.sleep(60)
