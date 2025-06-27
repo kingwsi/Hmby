@@ -57,6 +57,7 @@ public enum ConfigKey {
      */
     EMBY_OUTPUT_ID,
 
+    embedding,
     /**
      * 任务执行器服务
      */

@@ -56,7 +56,7 @@
   </a-config-provider>
 </template>
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { LogoutOutlined, MenuUnfoldOutlined } from '@ant-design/icons-vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAppStore } from '@/stores/app';
@@ -104,6 +104,11 @@ const handleLogout = async () => {
     router.push('/login');
   }
 };
+
+// 在组件挂载时获取用户信息
+onMounted(async () => {
+  await app.init();
+});
 </script>
 <style scoped>
 .site-layout-content {

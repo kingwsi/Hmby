@@ -51,10 +51,12 @@ export const useAppStore = defineStore('app', () => {
 
     try {
       // 获取应用配置
-      const { data } = await request.get('/api/config');
-      data.dark = data.dark === 'true' || data.dark === true;
-      config.value = data;
-      
+      if (localStorage.getItem('token')) {
+        const { data } = await request.get('/api/config');
+        data.dark = data.dark === 'true' || data.dark === true;
+        config.value = data;
+      }
+
       // 初始化移动端检测
       checkMobile();
       window.addEventListener('resize', checkMobile);

@@ -1,11 +1,18 @@
 package org.example.hmby.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.Data;
 import org.example.hmby.emby.EmbyFeignClient;
 import org.example.hmby.emby.ItemTag;
 import org.example.hmby.emby.MovieItem;
 import org.example.hmby.emby.PageWrapper;
 import org.example.hmby.emby.request.EmbyItemRequest;
+import org.example.hmby.entity.Config;
+import org.example.hmby.enumerate.CacheKey;
+import org.example.hmby.enumerate.ConfigKey;
+import org.example.hmby.repository.ConfigRepository;
 import org.springframework.ai.document.Document;
+import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.ai.vectorstore.pgvector.PgVectorStore;
 import org.springframework.stereotype.Service;
@@ -27,10 +34,14 @@ public class EmbeddingService {
 
     private final PgVectorStore vectorStore;
     private final EmbyFeignClient embyFeignClient;
+    private final ConfigRepository configRepository;
+    private final ObjectMapper objectMapper;
 
-    public EmbeddingService(PgVectorStore vectorStore, EmbyFeignClient embyFeignClient) {
+    public EmbeddingService(PgVectorStore vectorStore, EmbyFeignClient embyFeignClient, ConfigRepository configRepository, ObjectMapper objectMapper) {
         this.vectorStore = vectorStore;
         this.embyFeignClient = embyFeignClient;
+        this.configRepository = configRepository;
+        this.objectMapper = objectMapper;
     }
 
     public void embeddingTags() {
@@ -83,5 +94,16 @@ public class EmbeddingService {
                     .toList();
             vectorStore.add(list);
         }
+    }
+    
+    public List<Document> similaritySearch(String type, String content) {
+        FilterExpressionBuilder b = new FilterExpressionBuilder();
+
+        List<Document> documents = vectorStore.similaritySearch(SearchRequest.builder()
+                .query(content)
+                .topK(10)
+                .similarityThreshold(0.6)
+                .filterExpression(b.eq("index", type).build()).build());
+        return documents;
     }
 }

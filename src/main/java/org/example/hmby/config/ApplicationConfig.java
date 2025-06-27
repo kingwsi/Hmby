@@ -2,9 +2,11 @@ package org.example.hmby.config;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -15,9 +17,13 @@ import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
 import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 import org.apache.commons.lang3.StringUtils;
 import org.example.hmby.entity.ChatAssistant;
+import org.example.hmby.entity.Config;
 import org.example.hmby.enumerate.AssistantCode;
+import org.example.hmby.enumerate.ConfigKey;
+import org.example.hmby.repository.ConfigRepository;
 import org.example.hmby.sceurity.SecurityUtils;
 import org.example.hmby.service.AssistantService;
+import org.example.hmby.service.EmbeddingService;
 import org.springframework.ai.document.MetadataMode;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.openai.OpenAiEmbeddingModel;
@@ -104,14 +110,6 @@ public class ApplicationConfig {
     
     @Bean
     public EmbeddingModel embeddingModel(AssistantService assistantService){
-        ChatAssistant assistant = assistantService.getAssistantByCode(AssistantCode.CHAT);
-        OpenAiApi openAiApi = assistantService.buildOpenAiApi(assistant.getBaseUrl(), assistant.getModelName(), assistant.getApiKey());
-        return new OpenAiEmbeddingModel(
-                openAiApi,
-                MetadataMode.EMBED,
-                OpenAiEmbeddingOptions.builder()
-                        .model(assistant.getEmbeddingModel())
-                        .build(),
-                RetryUtils.DEFAULT_RETRY_TEMPLATE);
+        return assistantService.buildEmbeddingModel();
     }
 }

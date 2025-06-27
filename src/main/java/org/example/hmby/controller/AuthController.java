@@ -4,11 +4,13 @@ import org.example.hmby.Response;
 import org.example.hmby.sceurity.AuthRequest;
 import org.example.hmby.sceurity.EmbyUser;
 import org.example.hmby.sceurity.SecurityUtils;
+import org.example.hmby.sceurity.UserContextHolder;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -39,4 +41,12 @@ public class AuthController {
     public Response<String> validate() {
         return Response.success();
     }
+
+    @GetMapping("/info")
+    public Response<Map<String, String>> info() {
+        String username = UserContextHolder.getUsername();
+        String userid = UserContextHolder.getUserid();
+        return Response.success(Map.of("username", username, "userid", userid));
+    }
+    
 }
