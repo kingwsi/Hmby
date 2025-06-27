@@ -249,4 +249,12 @@ public class MediaInfoService {
         }
         return path;
     }
+
+    public List<MediaInfo> listByEmbyIds(List<Long> ids) {
+        return mediaInfoRepository.findByEmbyIdIn(ids);
+    }
+
+    public List<MediaInfo> listByOutput(List<String> paths) {
+        return mediaInfoRepository.findByOutputPathIn(paths);
+    }
 }

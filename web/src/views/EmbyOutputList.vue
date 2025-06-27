@@ -8,7 +8,7 @@
             <a-col>
               <a-form-item label="关键字">
                 <a-input
-                  v-model:value="queryParam.keyword"
+                  v-model:value="queryParam.searchTerm"
                   placeholder="请输入关键词搜索"
                   style="width: 200px"
                   :allowClear="true"
@@ -51,50 +51,23 @@
         :item-id="selectedItem.Id"
         style="height: 350px; max-width: 100%"
       />
-      <div style="margin-top: 10px;" v-if="selectedItem.mediaInfo?.status === 'SUCCESS'">
-        <a-space size="large">
-          <a-popconfirm
-            title="确认删除源文件？"
-            ok-text="确认"
-            okType="danger"
-            cancel-text="取消"
-            :loading="confirmLoading"
-            @confirm="handleSourceMedia('DELETE')"
-            placement="left"
-          >
-            <a-button type="primary" v-if="selectedItem.mediaInfo"
-              >删除源文件</a-button
-            >
-          </a-popconfirm>
-          <a-popconfirm
-            title="覆盖删除源文件？"
-            ok-text="确认"
-            okType="danger"
-            :loading="confirmLoading"
-            cancel-text="取消"
-            @confirm="handleSourceMedia('OVERRIDE')"
-            placement="left"
-          >
-            <a-button type="primary" danger v-if="selectedItem.mediaInfo"
-              >覆盖源文件</a-button
-            >
-          </a-popconfirm>
-        </a-space>
-      </div>
-      <a-descriptions bordered v-if="selectedItem.mediaInfo && selectedItem.mediaInfo.id">
+      <a-descriptions
+        bordered
+        v-if="selectedItem.mediaInfo && selectedItem.mediaInfo.id"
+      >
         <a-descriptions-item label="处理耗时" :span="3">
           {{ selectedItem.mediaInfo?.timeCost }}
           {{
-              (selectedItem.mediaInfo.processedSize / 1024 / 1024).toFixed(2)
-            }}MB /
-            {{ (selectedItem.mediaInfo.fileSize / 1024 / 1024).toFixed(2) }}MB
-            <a-divider type="vertical" />
-            {{
-              (
-                (selectedItem.mediaInfo.processedSize * 100) /
-                selectedItem.mediaInfo.fileSize
-              ).toFixed(2)
-            }}%
+            (selectedItem.mediaInfo.processedSize / 1024 / 1024).toFixed(2)
+          }}MB /
+          {{ (selectedItem.mediaInfo.fileSize / 1024 / 1024).toFixed(2) }}MB
+          <a-divider type="vertical" />
+          {{
+            (
+              (selectedItem.mediaInfo.processedSize * 100) /
+              selectedItem.mediaInfo.fileSize
+            ).toFixed(2)
+          }}%
         </a-descriptions-item>
         <a-descriptions-item label="类型" :span="3">
           {{ selectedItem.mediaInfo.type }}
@@ -116,16 +89,47 @@
           selectedItem.mediaInfo?.updatedAt
         }}</a-descriptions-item>
       </a-descriptions>
+      <template #footer>
+        <a-space size="large">
+          <a-button @click="() => (detailVisible = !detailVisible)"
+            >取消</a-button
+          >
+          <template v-if="selectedItem.mediaInfo?.status === 'SUCCESS'">
+            <a-popconfirm
+              title="确认删除源文件？"
+              ok-text="确认"
+              okType="danger"
+              cancel-text="取消"
+              :loading="confirmLoading"
+              @confirm="handleSourceMedia('DELETE')"
+              placement="left"
+            >
+              <a-button type="primary" v-if="selectedItem.mediaInfo"
+                >删除源文件</a-button
+              >
+            </a-popconfirm>
+            <a-popconfirm
+              title="覆盖删除源文件？"
+              ok-text="确认"
+              okType="danger"
+              :loading="confirmLoading"
+              cancel-text="取消"
+              @confirm="handleSourceMedia('OVERRIDE')"
+              placement="left"
+            >
+              <a-button type="primary" danger v-if="selectedItem.mediaInfo"
+                >覆盖源文件</a-button
+              >
+            </a-popconfirm>
+          </template>
+        </a-space>
+      </template>
     </a-modal>
   </div>
 </template>
   
   <script setup>
-import {
-  ref,
-  reactive,
-  onMounted
-} from "vue";
+import { ref, reactive, onMounted } from "vue";
 import request from "@/utils/request";
 import { message } from "ant-design-vue";
 import TagsSelect from "@/components/TagsSelect.vue";
@@ -139,7 +143,7 @@ const videoPlayerRef = ref(null);
 // 查询参数
 const queryParam = reactive({
   parentId: "7014",
-  keyword: "",
+  searchTerm: "",
   tag: undefined,
   page: 1,
   size: 25,
@@ -147,17 +151,17 @@ const queryParam = reactive({
 
 const handleTagChange = (tagName) => {
   queryParam.tag = tagName;
-  embyCardRef.value.fetchData(queryParam)
+  embyCardRef.value.fetchData(queryParam);
 };
 
 onMounted(() => {
-  embyCardRef.value.fetchData(queryParam)
-})
+  embyCardRef.value.fetchData(queryParam);
+});
 const handleSearch = () => {
   if (!queryParam.page) {
     queryParam.page = 1;
   }
-  embyCardRef.value.fetchData(queryParam)
+  embyCardRef.value.fetchData(queryParam);
 };
 
 // 选择媒体项
@@ -176,9 +180,9 @@ const handleClickItem = async (item) => {
 };
 
 // 处理源文件操作
-const embyCardRef = ref(null)
+const embyCardRef = ref(null);
 
-const confirmLoading = ref(false)
+const confirmLoading = ref(false);
 const handleSourceMedia = async (action) => {
   try {
     confirmLoading.value = true;
@@ -186,15 +190,14 @@ const handleSourceMedia = async (action) => {
       `/api/media-info/source-file/${selectedItem.value.mediaInfo.id}?operate=${action}`
     );
     message.success("操作成功");
-    if (action === 'DELETE') {
-      detailVisible.value = false
+    if (action === "OVERRIDE") {
+      detailVisible.value = false;
     }
-    embyCardRef.value.fetchData(queryParam)
+    embyCardRef.value.fetchData(queryParam);
   } finally {
     confirmLoading.value = false;
   }
 };
-
 </script>
   
 <style scoped lang="less">

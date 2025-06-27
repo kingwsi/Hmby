@@ -1,14 +1,33 @@
 <template>
   <a-spin :spinning="loading" style="width: 100%">
     <a-row :gutter="[16, 16]">
-      <a-col :sm="span.sm" :md="span.md" :lg="span.lg" :xs="span.xs" v-for="item in pageData.Items" :key="item.Id"
-        @click="handleSelectItem(item)">
-        <div class="card" :style="{borderRadius: token.borderRadius+'px', border: '1px solid ' + token.colorBorder}">
-          <img :src="getItemImage(item)">
+      <a-col
+        :sm="span.sm"
+        :md="span.md"
+        :lg="span.lg"
+        :xs="span.xs"
+        v-for="item in pageData.Items"
+        :key="item.Id"
+        @click="handleSelectItem(item)"
+      >
+        <div
+          class="card"
+          :style="{
+            borderRadius: token.borderRadius + 'px',
+            border: '1px solid ' + token.colorBorder,
+          }"
+        >
+          <img :src="getItemImage(item)" />
           <div class="card-title">
             <ellipsis :length="40" :tooltip="true" :line="3">
               {{ item.Name }}
             </ellipsis>
+          </div>
+          <div class="status">
+            <MediaStatusTag
+              v-if="item.MediaInfo?.status"
+              :status="item.MediaInfo?.status"
+            />
           </div>
         </div>
       </a-col>
@@ -16,20 +35,22 @@
   </a-spin>
 
   <div class="pagination-container">
-    <a-pagination v-model:current="pageData.number" :total="pageData.totalElements" :pageSize="pageData.size"
-      @change="handlePageChange" />
+    <a-pagination
+      v-model:current="pageData.number"
+      :total="pageData.totalElements"
+      :pageSize="pageData.size"
+      @change="handlePageChange"
+    />
   </div>
 </template>
 
 <script setup>
-import {
-  ref,
-  reactive,
-} from "vue";
+import { ref, reactive } from "vue";
 import request from "@/utils/request";
 import Ellipsis from "@/components/Ellipsis.vue";
 import { getItemImage } from "@/utils/emby-util";
 import { theme } from "ant-design-vue";
+import MediaStatusTag from "@/components/MediaStatusTag.vue";
 const { useToken } = theme;
 const { token } = useToken();
 
@@ -50,8 +71,7 @@ const span = ref(props.span);
 // 查询参数
 const queryParam = reactive({});
 const pageData = ref({});
-const loading = ref(false)
-// 监听intervals变化，更新时间线标记
+const loading = ref(false);
 
 /**
  *
@@ -184,20 +204,23 @@ defineExpose({
   transition: transform 0.2s ease;
   cursor: pointer;
   height: 230px;
-}
 
-.card:hover {
-}
+  img {
+    width: 100%;
+    display: block;
+    object-fit: cover;
+    height: 160px;
+  }
 
-.card img {
-  width: 100%;
-  display: block;
-  object-fit: cover;
-  height: 160px;
-}
+  .card-title {
+    padding: 8px;
+    text-align: center;
+  }
 
-.card-title {
-  padding: 8px;
-  text-align: center;
+  .status {
+    position: absolute;
+    top: 5px;
+    left: 10px;
+  }
 }
 </style>

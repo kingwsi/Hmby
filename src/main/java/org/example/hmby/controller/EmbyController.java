@@ -81,12 +81,24 @@ public class EmbyController {
         embyItemRequest.setStartIndex(embyItemRequest.getSize() * embyItemRequest.getPage() - embyItemRequest.getSize());
         PageWrapper<MovieItem> pageWrapper = embyClient.getItems(embyItemRequest);
 
+        List<Long> ids = pageWrapper.getItems().stream().map(MovieItem::getId).toList();
+        List<String> paths = pageWrapper.getItems().stream().map(MovieItem::getPath).toList();
+        Map<Long, MediaInfo> map = Optional.ofNullable(mediaInfoService.listByEmbyIds(ids))
+                .map(l -> l.stream()
+                        .collect(Collectors.toMap(MediaInfo::getEmbyId, o -> o, (o1, o2) -> o1)))
+                .orElse(new HashMap<>());
+
+        Map<String, MediaInfo> outputMap = Optional.ofNullable(mediaInfoService.listByOutput(paths))
+                .map(l -> l.stream()
+                        .collect(Collectors.toMap(MediaInfo::getOutputPath, o -> o, (o1, o2) -> o1)))
+                .orElse(new HashMap<>());
         for (MovieItem item : pageWrapper.getItems()) {
-            MediaInfo mediaInfo = mediaInfoService.getByInputPath(item.getPath());
-            if (mediaInfo == null) {
-                mediaInfo = mediaInfoService.getByOutputPath(item.getPath());
+            MediaInfo mediaInfo = map.get(item.getId());
+            if (mediaInfo != null) {
+                item.setMediaInfo(mediaInfo);
+            } else {
+                item.setMediaInfo(outputMap.get(item.getPath()));
             }
-            item.setMediaInfo(mediaInfo);
         }
         pageWrapper.setSize(embyItemRequest.getSize());
         pageWrapper.setNumber(embyItemRequest.getPage());
@@ -247,12 +259,12 @@ public class EmbyController {
         if (itemMetadata.getImageTags() != null) {
             String thumbId = itemMetadata.getImageTags().get("Thumb");
             if (StringUtils.isNotBlank(thumbId)) {
-                String thumbUrl = "%s/emby/Items/%s/Images/Thumb?maxWidth=700&quality=100".formatted(embyServer, thumbId);
+                String thumbUrl = "%s/emby/Items/%s/Images/Thumb?maxWidth=700&quality=100".formatted(embyServer, itemId);
                 playerInfo.setThumbImage(thumbUrl);
             }
             String primaryId = itemMetadata.getImageTags().get("Primary");
             if (StringUtils.isNotBlank(primaryId)) {
-                String primaryUrl = "%s/emby/Items/%s/Images/Primary?maxWidth=700&quality=100".formatted(embyServer, primaryId);
+                String primaryUrl = "%s/emby/Items/%s/Images/Primary?maxWidth=700&quality=100".formatted(embyServer, itemId);
                 playerInfo.setPrimaryImage(primaryUrl);
             }
         }

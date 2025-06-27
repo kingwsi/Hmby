@@ -154,7 +154,7 @@
     <a-drawer
       placement="left"
       size="large"
-      :open="showEditor"
+      v-model:open="showEditor"
     >
       <EmbyDetailPanel :id="selectedRecord.embyId" @change="loadData" />
     </a-drawer>

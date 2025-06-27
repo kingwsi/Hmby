@@ -27,8 +27,4 @@ server:
   
 hmby:
   config:
-    volume-bind:
-      - /Volumes/downloads/->/downloads/
-      - /Volumes/Volume1/->/Volume1
-      - /Volumes/Volume2/->/Volume2
     output-media-path: /Volumes/downloads/output

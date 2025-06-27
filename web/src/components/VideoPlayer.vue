@@ -1,201 +1,218 @@
 <template>
   <div class="video-container">
     <video ref="videoPlayer" class="video-js">
-      <track kind='captions' v-for="item in subtitles" :src="item.url" :label="item.label" />
+      <track
+        kind="captions"
+        v-for="(item, index) in subtitles"
+        :key="index"
+        :src="item.url"
+        :label="item.label"
+      />
     </video>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick, onDeactivated, watch } from 'vue'
-import videojs from 'video.js'
-import 'video.js/dist/video-js.css'
-import '@/assets/timeline-marker.css'
-import request from '@/utils/request'
-import { Modal } from 'ant-design-vue'
+import { ref, onMounted, nextTick, onDeactivated, watch } from "vue";
+import videojs from "video.js";
+import "video.js/dist/video-js.css";
+import "@/assets/timeline-marker.css";
+import request from "@/utils/request";
+import { Modal } from "ant-design-vue";
 
 // 定义props
 const props = defineProps({
   options: {
     type: Object,
-    default: () => ({})
+    default: () => ({}),
   },
   title: {
     type: String,
-    default: null
+    default: null,
   },
   text: {
     type: String,
-    default: null
+    default: null,
   },
   itemId: {
     type: Number,
-    required: true
+    required: true,
   },
   intervals: {
     type: Array,
-    default: () => []
-  }
-})
+    default: () => [],
+  },
+});
 
 // 定义emit
-const emit = defineEmits(['delete-interval'])
+const emit = defineEmits(["delete-interval"]);
 
 // 响应式状态
-const videoPlayer = ref(null)
-const player = ref(null)
-const duration = ref(null)
+const videoPlayer = ref(null);
+const player = ref(null);
+const duration = ref(null);
 
 // 暴露播放器实例
 defineExpose({
-  player: () => player.value
-})
+  player: () => player.value,
+});
 
 // 创建时间线标记插件
 const registerTimelinePlugin = () => {
-  if (videojs.getPlugin('timelineMarker')) return
+  if (videojs.getPlugin("timelineMarker")) return;
 
-  const Plugin = videojs.getPlugin('plugin')
+  const Plugin = videojs.getPlugin("plugin");
 
   class TimelineMarker extends Plugin {
     constructor(player, options) {
-      super(player)
-      this.options = options
-      this.player = player
-      this.createTimelineElement()
-      this.drawMarkers()
+      super(player);
+      this.options = options;
+      this.player = player;
+      this.createTimelineElement();
+      this.drawMarkers();
     }
 
     createTimelineElement() {
-      const controlBar = this.player.el().querySelector('.vjs-progress-control')
-      this.timelineElement = document.createElement('div')
-      this.timelineElement.className = 'vjs-timeline-markers'
-      controlBar.appendChild(this.timelineElement)
+      const controlBar = this.player
+        .el()
+        .querySelector(".vjs-progress-control");
+      this.timelineElement = document.createElement("div");
+      this.timelineElement.className = "vjs-timeline-markers";
+      controlBar.appendChild(this.timelineElement);
     }
 
     drawMarkers() {
-      if (!this.options || !this.options.intervals) return
+      if (!this.options || !this.options.intervals) return;
 
-      this.timelineElement.innerHTML = ''
-      const duration = this.player.duration()
+      this.timelineElement.innerHTML = "";
+      const duration = this.player.duration();
 
       this.options.intervals.forEach((interval, index) => {
-        const marker = document.createElement('div')
-        marker.className = 'vjs-timeline-marker'
+        const marker = document.createElement("div");
+        marker.className = "vjs-timeline-marker";
 
-        const left = (interval.start / duration) * 100
-        const width = ((interval.end - interval.start) / duration) * 100
+        const left = (interval.start / duration) * 100;
+        const width = ((interval.end - interval.start) / duration) * 100;
 
-        marker.style.left = `${left}%`
-        marker.style.width = `${width}%`
+        marker.style.left = `${left}%`;
+        marker.style.width = `${width}%`;
 
-        marker.addEventListener('mousedown', (event) => {
-          event.stopPropagation()
-          event.preventDefault()
-        })
+        marker.addEventListener("mousedown", (event) => {
+          event.stopPropagation();
+          event.preventDefault();
+        });
 
-        marker.addEventListener('click', (event) => {
-          event.stopPropagation()
-          event.preventDefault()
-          if (typeof this.options.onMarkerClick === 'function') {
-            this.options.onMarkerClick(index)
-          }
-        }, true)
+        marker.addEventListener(
+          "click",
+          (event) => {
+            event.stopPropagation();
+            event.preventDefault();
+            if (typeof this.options.onMarkerClick === "function") {
+              this.options.onMarkerClick(index);
+            }
+          },
+          true
+        );
 
-        this.timelineElement.appendChild(marker)
-      })
+        this.timelineElement.appendChild(marker);
+      });
     }
 
     update(newIntervals) {
-      this.options.intervals = newIntervals
-      this.drawMarkers()
+      this.options.intervals = newIntervals;
+      this.drawMarkers();
     }
   }
 
-  videojs.registerPlugin('timelineMarker', TimelineMarker)
-}
+  videojs.registerPlugin("timelineMarker", TimelineMarker);
+};
 
-const subtitles = ref([])
+const subtitles = ref([]);
 
 // 初始化播放器
 const initPlayer = async () => {
-
   // 如果播放器已存在，先销毁
   if (player.value) {
-    player.value.dispose()
+    player.value.dispose();
   }
 
   // 注册时间线插件
-  registerTimelinePlugin()
+  registerTimelinePlugin();
 
+  // 获取视频源
+  const { data } = await request.get(`/api/emby-item/player/${props.itemId}`);
+  subtitles.value = data.subtitles;
+  await nextTick();
+  // 初始化
   // 初始化播放器
   const options = {
     ...props.options,
     controls: true,
-    crossorigin: 'anonymous'
+    sources: [
+      {
+        src: data.streamUrl,
+      },
+    ],
+    crossorigin: "anonymous",
+  };
+  if (data.thumbImage || data.primaryImage) {
+    options.poster = data.thumbImage ?? data.primaryImage;
   }
-
-  // 获取视频源
-  const { data } = await request.get(`/api/emby-item/player/${props.itemId}`);
-  subtitles.value = data.subtitles
-  await nextTick();
-  // 初始化
-  player.value = videojs(videoPlayer.value, options)
-  // 设置视频源
-  player.value.src({
-    src: data.streamUrl,
-    poster: data.thumbImage || data.primaryImage,
-  })
+  player.value = videojs(videoPlayer.value, options);
   player.value.ready(() => {
-    console.log('播放器准备就绪')
+    console.log("播放器准备就绪");
   });
   // 获取视频时长
-  duration.value = player.value.duration()
+  duration.value = player.value.duration();
 
   // 等待视频元数据加载完成后初始化时间线标记
-  player.value.on('loadedmetadata', () => {
+  player.value.on("loadedmetadata", () => {
     player.value.timelineMarker({
       intervals: props.intervals,
-      onMarkerClick: showDeleteConfirm
-    })
-  })
-}
+      onMarkerClick: showDeleteConfirm,
+    });
+  });
+};
 
 // 删除片段确认
 const showDeleteConfirm = (index) => {
   Modal.confirm({
-    title: '删除片段?',
-    content: 'Some descriptions',
-    okText: '确认',
-    okType: 'danger',
-    cancelText: '取消',
+    title: "删除片段?",
+    content: "Some descriptions",
+    okText: "确认",
+    okType: "danger",
+    cancelText: "取消",
     onOk() {
-      console.log('index', index)
-      emit('delete-interval', index)
+      console.log("index", index);
+      emit("delete-interval", index);
     },
-    onCancel() { }
-  })
-}
+    onCancel() {},
+  });
+};
 
 // 监听intervals变化，更新时间线标记
-watch(() => props.intervals, (newVal) => {
-  if (player.value) {
-    const timelineMarker = player.value.timelineMarker()
-    if (timelineMarker) {
-      timelineMarker.update(newVal)
-    } else {
-      player.value.timelineMarker({
-        intervals: newVal,
-        onMarkerClick: showDeleteConfirm
-      })
+watch(
+  () => props.intervals,
+  (newVal) => {
+    if (player.value) {
+      const timelineMarker = player.value.timelineMarker();
+      if (timelineMarker) {
+        timelineMarker.update(newVal);
+      } else {
+        player.value.timelineMarker({
+          intervals: newVal,
+          onMarkerClick: showDeleteConfirm,
+        });
+      }
     }
-  }
-}, { deep: true })
+  },
+  { deep: true }
+);
 
 // 生命周期钩子
 onMounted(() => {
-  initPlayer()
-})
+  initPlayer();
+});
 </script>
 
 <style>
@@ -209,7 +226,7 @@ onMounted(() => {
   color: white;
   display: none;
   font-size: 2em;
-  padding: .5em;
+  padding: 0.5em;
   position: absolute;
   top: 0;
   left: 0;

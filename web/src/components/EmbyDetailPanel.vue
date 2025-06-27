@@ -3,7 +3,12 @@
     <div class="detail-header" v-if="selectedItemId">
       <div class="media-streams-section">
         <!-- 视频 -->
-        <a-row :style="{borderRadius: token.borderRadius+'px', overflow: 'hidden'}">
+        <a-row
+          :style="{
+            borderRadius: token.borderRadius + 'px',
+            overflow: 'hidden',
+          }"
+        >
           <video-player
             v-if="selectedItemId && playerId"
             :key="playerId"
@@ -17,6 +22,40 @@
             "
             class="player"
           />
+        </a-row>
+        <a-row style="margin-top: 10px" :gutter="[16, 16]" justify="end" v-if="viewMode != 'view'">
+          <!-- 操作按钮 -->
+          <a-col>
+            <a-popconfirm
+              title="确认删除这条数据？"
+              ok-text="确认"
+              okType="danger"
+              cancel-text="取消"
+              @confirm="deleteItemHandle(mediaDetail.Id)"
+              placement="left"
+            >
+              <a-button danger :loading="confirmLoading">删除</a-button>
+            </a-popconfirm>
+          </a-col>
+          <a-col>
+            <a-button @click="openEmbyPage">查看更多</a-button>
+          </a-col>
+          <a-col>
+            <a-button @click="loadMetaInfo()">
+              <template #icon><reload-outlined /></template>
+              刷新
+            </a-button>
+          </a-col>
+          <a-col>
+            <a-button
+              :loading="saveMediaInfoLoading"
+              type="primary"
+              @click="saveMediaInfo()"
+            >
+              <template #icon><save-outlined /></template>
+              保存
+            </a-button>
+          </a-col>
         </a-row>
         <!-- 信息区 -->
         <a-row>
@@ -60,168 +99,75 @@
         <a-empty description="请选择一个媒体项目查看详情" />
       </div>
       <a-tabs v-else v-model:activeKey="viewMode" class="detail-tabs">
-        <template #rightExtra>
-          <a-space size="large">
-            <a-popconfirm
-              title="确认删除这条数据？"
-              ok-text="确认"
-              okType="danger"
-              cancel-text="取消"
-              @confirm="deleteItemHandle(mediaDetail.Id)"
-              placement="left"
-            >
-              <a-button danger type="link" :loading="confirmLoading"
-                >删除</a-button
-              >
-            </a-popconfirm>
-            <a-button type="link" @click="openEmbyPage">查看更多</a-button>
-            <a-button type="link" @click="loadMetaInfo()">
-              <template #icon><reload-outlined /></template>
-              刷新
-            </a-button>
-            <a-button
-              type="link"
-              :loading="saveMediaInfoLoading"
-              @click="saveMediaInfo()"
-            >
-              <template #icon><save-outlined /></template>
-              保存
-            </a-button>
-          </a-space>
-        </template>
         <a-tab-pane key="view" tab="预览">
-          <a-spin :spinning="detailLoading" tip="加载中...">
-            <!-- 视频信息区域 -->
-            <a-descriptions
-              :column="1"
-              bordered
-              size="small"
-              v-if="videoStreamMain"
+          <!-- 视频信息区域 -->
+          <a-descriptions
+            :column="1"
+            bordered
+            size="small"
+            v-if="videoStreamMain"
+          >
+            <a-descriptions-item
+              label="字幕语言"
+              v-if="subtitleLanguages && subtitleLanguages.length > 0"
             >
-              <a-descriptions-item
-                label="字幕语言"
-                v-if="subtitleLanguages && subtitleLanguages.length > 0"
-              >
-                <a-space size="large">
-                  <a-tag
-                    v-for="item in subtitleLanguages"
-                    style="cursor: pointer"
-                    @click="openSubtitle(mediaDetail.Id, item)"
-                    :key="item"
-                  >
-                    {{ item }}</a-tag
-                  >
-                </a-space>
-              </a-descriptions-item>
-              <template v-if="mediaDetail.mediaInfo">
-                <a-descriptions-item
-                  label="源文件"
-                  v-if="mediaDetail.outputMedia"
+              <a-space size="large">
+                <a-tag
+                  v-for="item in subtitleLanguages"
+                  style="cursor: pointer"
+                  @click="openSubtitle(mediaDetail.Id, item)"
+                  :key="item"
                 >
-                  {{
-                    (mediaDetail.mediaInfo.fileSize / 1024 / 1024).toFixed(2)
-                  }}MB <a-divider type="vertical" />
-                  {{ mediaDetail.mediaInfo.inputPath }}
-                </a-descriptions-item>
-                <a-descriptions-item
-                  :label="typeMap[mediaDetail.mediaInfo.type]"
-                >
-                  {{
-                    (mediaDetail.mediaInfo.processedSize / 1024 / 1024).toFixed(
-                      2
-                    )
-                  }}MB <a-divider type="vertical" />
-                  {{
-                    (
-                      (mediaDetail.mediaInfo.processedSize * 100) /
-                      mediaDetail.mediaInfo.fileSize
-                    ).toFixed(2)
-                  }}% <a-divider type="vertical" /> 耗时:{{
-                    mediaDetail.mediaInfo.timeCost
-                  }}
-                </a-descriptions-item>
-              </template>
-            </a-descriptions>
-            <div>
-              <!-- 标签编辑 -->
-              <a-space class="tag-edit-section">
-                <template v-for="tag in selectedTags" :key="tag.Id">
-                  <a-tooltip v-if="tag.length > 20" :title="tag">
-                    <a-tag :closable="true" @close="handleTagClose(tag)">
-                      {{ `${tag.slice(0, 20)}...` }}
-                    </a-tag>
-                  </a-tooltip>
-                  <a-tag v-else :closable="true" @close="handleTagClose(tag)">
-                    {{ tag }}
-                  </a-tag>
-                </template>
-                <TagsSelect :size="'small'" @change="tagChangeHandle" />
-                <a-button type="text" @click="saveTagChanges" size="small"
-                  >保存</a-button
+                  {{ item }}</a-tag
                 >
               </a-space>
-            </div>
-
-            <!-- 背景图片缩略图区域 -->
-            <div
-              v-if="
-                mediaDetail.BackdropImageTags &&
-                mediaDetail.BackdropImageTags.length > 0
-              "
-              class="media-streams-section"
-            >
-              <a-divider>预览</a-divider>
-              <div class="stream-cards-container">
-                <div
-                  v-for="(chapter, index) in mediaDetail.Chapters"
-                  :key="'backdrop-' + index"
-                  class="backdrop-image-container"
-                >
-                  <div class="image-with-title">
-                    <img
-                      :src="`${mediaDetail.embyServer}/emby/Items/${mediaDetail.Id}/Images/Chapter/${chapter.ChapterIndex}?&quality=100`"
-                      :alt="`背景图片 ${index}`"
-                      class="backdrop-image"
-                    />
-                    <div class="image-title">{{ chapter.Name }}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div
-              v-if="
-                mediaDetail.specialFeatures &&
-                mediaDetail.specialFeatures.length > 0
-              "
-              class="media-streams-section"
-            >
-              <a-divider>附加</a-divider>
-              <div class="stream-cards-container">
-                <div class="stream-cards-container">
-                  <div
-                    v-for="item in mediaDetail.specialFeatures"
-                    :key="item.Id"
-                    class="backdrop-image-container"
-                  >
-                    <div class="image-with-title">
-                      <img
-                        :src="getItemImage(mediaDetail)"
-                        :alt="`扩展 ${item.Id}`"
-                        class="backdrop-image"
-                        @click="() => (playerId = item.Id)"
-                      />
-                      <div class="image-title">
-                        <Ellipsis :tooltip="true" :line="1" :length="20">
-                          {{ item.Name }}
-                        </Ellipsis>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </a-spin>
+            </a-descriptions-item>
+            <template v-if="mediaDetail.mediaInfo">
+              <a-descriptions-item
+                label="源文件"
+                v-if="mediaDetail.outputMedia"
+              >
+                {{
+                  (mediaDetail.mediaInfo.fileSize / 1024 / 1024).toFixed(2)
+                }}MB <a-divider type="vertical" />
+                {{ mediaDetail.mediaInfo.inputPath }}
+              </a-descriptions-item>
+              <a-descriptions-item :label="typeMap[mediaDetail.mediaInfo.type]">
+                {{
+                  (mediaDetail.mediaInfo.processedSize / 1024 / 1024).toFixed(
+                    2
+                  )
+                }}MB <a-divider type="vertical" />
+                {{
+                  (
+                    (mediaDetail.mediaInfo.processedSize * 100) /
+                    mediaDetail.mediaInfo.fileSize
+                  ).toFixed(2)
+                }}% <a-divider type="vertical" /> 耗时:{{
+                  mediaDetail.mediaInfo.timeCost
+                }}
+              </a-descriptions-item>
+            </template>
+          </a-descriptions>
+          <div>
+            <!-- 标签编辑 -->
+            <a-space class="tag-edit-section">
+              <template v-for="tag in selectedTags" :key="tag.Id">
+                <a-tooltip v-if="tag.length > 20" :title="tag">
+                  <a-tag :closable="true" @close="handleTagClose(tag)">
+                    {{ `${tag.slice(0, 20)}...` }}
+                  </a-tag>
+                </a-tooltip>
+                <a-tag v-else :closable="true" @close="handleTagClose(tag)">
+                  {{ tag }}
+                </a-tag>
+              </template>
+              <TagsSelect :size="'small'" @change="tagChangeHandle" />
+              <a-button type="text" @click="saveTagChanges" size="small"
+                >保存</a-button
+              >
+            </a-space>
+          </div>
         </a-tab-pane>
 
         <a-tab-pane key="CUT" tab="剪辑">
@@ -329,11 +275,11 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch, computed, reactive,nextTick } from "vue";
+import { onMounted, ref, watch, computed, reactive, nextTick } from "vue";
 import VideoPlayer from "@/components/VideoPlayer.vue";
 import request from "@/utils/request";
 import Ellipsis from "@/components/Ellipsis.vue";
-import { message,theme } from "ant-design-vue";
+import { message, theme } from "ant-design-vue";
 import TagsSelect from "@/components/TagsSelect.vue";
 import { useRouter } from "vue-router";
 
@@ -395,6 +341,9 @@ const loadMetaInfo = async () => {
     const { data } = await request.get(
       `/api/emby-item/detail/${selectedItemId.value}`
     );
+    if (data?.mediaInfo?.type) {
+      viewMode.value = data.mediaInfo.type;
+    }
     mediaDetail.value = data;
     playerId.value = data.Id;
 
@@ -647,7 +596,7 @@ const openEmbyPage = () => {
 const router = useRouter();
 // 打开字幕
 const openSubtitle = (id, language) => {
-console.log('l', id)
+  console.log("l", id);
   router.push(`/subtitle-manager?id=${id}&language=${language}`);
 };
 
@@ -712,96 +661,6 @@ const changeHandler = async () => {
   margin-bottom: 16px;
   border-radius: 4px;
   overflow: hidden;
-}
-
-.stream-cards-container {
-  display: flex;
-  overflow-x: auto;
-  padding: 8px 0;
-  gap: 12px;
-  scrollbar-width: thin;
-}
-
-.stream-cards-container::-webkit-scrollbar {
-  height: 6px;
-}
-
-.stream-cards-container::-webkit-scrollbar-track {
-  background: #f0f0f0;
-  border-radius: 3px;
-}
-
-.stream-cards-container::-webkit-scrollbar-thumb {
-  background: #ccc;
-  border-radius: 3px;
-}
-
-// .media-streams-section {
-//   margin-top: 16px;
-// }
-
-.streams-title {
-  margin-bottom: 12px;
-  font-size: 16px;
-  font-weight: 500;
-  color: rgba(0, 0, 0, 0.85);
-}
-
-.stream-card {
-  min-width: 220px;
-  max-width: 280px;
-  flex-shrink: 0;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s;
-}
-
-.stream-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-}
-
-.video-stream-card {
-  border-left: 3px solid #1890ff;
-}
-
-.audio-stream-card {
-  border-left: 3px solid #52c41a;
-}
-
-.subtitle-stream-card {
-  border-left: 3px solid #722ed1;
-}
-
-.stream-card p {
-  margin-bottom: 6px;
-}
-
-.backdrop-image-container {
-  img {
-    height: 150px;
-  }
-}
-
-.image-with-title {
-  position: relative;
-  display: inline-block;
-}
-
-.image-title {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background-color: rgb(255 255 255 / 10%);
-  color: white;
-  padding: 5px 8px;
-  font-size: 14px;
-  text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
 }
 
 .tag-edit-section {

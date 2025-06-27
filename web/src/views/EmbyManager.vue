@@ -1,12 +1,12 @@
 <template>
   <div style="padding-top: 15px">
     <!-- 左右分栏布局 -->
-    <a-row :gutter="16">
+    <a-row >
       <!-- 详情区域 - 在非移动端显示 -->
       <a-col v-if="!app.isMobile" :span="12" :xs="24" :sm="24" :md="10">
-        <a-affix :offset-top="64">
-          <EmbyDetailPanel :id="selectedItemId" @change="fetchData" />
-        </a-affix>
+        <div class="detail-panel">
+            <EmbyDetailPanel :id="selectedItemId" @change="fetchData" />
+        </div>
       </a-col>
       <!-- 列表区域 -->
       <a-col :span="12" :xs="24" :sm="24" :md="14">
@@ -90,22 +90,7 @@ const fetchLibraries = async () => {
 };
 
 const fetchData = async () => {
-  if (!queryParam.page) {
-    queryParam.page = 1;
-  }
-  // 保存查询参数到localStorage
-  saveQueryParamToStorage();
   embyCardRef.value.fetchData(queryParam);
-};
-
-// 保存查询参数到localStorage
-const saveQueryParamToStorage = () => {
-  const params = {
-    parentId: queryParam.parentId,
-    keyword: queryParam.keyword,
-    tags: queryParam.tag,
-  };
-  localStorage.setItem("embyCardQueryParams", JSON.stringify(params));
 };
 
 const handleTagChange = (tagName) => {
@@ -168,8 +153,14 @@ onActivated(async () => {
 
 .detail-panel {
   position: sticky;
-  top: 20px;
-  height: calc(100vh - 40px);
-  overflow-y: auto;
+  top: 84px;
+  padding-right: 10px;
+  height: calc(100vh - 64px);
+  overflow-y: scroll;
+  -ms-overflow-style: none; /* IE 10+ */
+}
+
+.detail-panel::-webkit-scrollbar {
+  display: none; /* Chrome / Safari / Edge */
 }
 </style>

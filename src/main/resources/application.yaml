@@ -33,9 +33,9 @@ hmby:
     ffprobe-path: /opt/homebrew/bin/ffprobe
     emby-server: http://192.168.123.232:8096
     volume-bind:
-      - /Volumes/downloads/->/downloads/
-      - /Volumes/Volume1/->/Volume1
-      - /Volumes/Volume2/->/Volume2
-    output-media-path: /Volumes/downloads/output
+        - \\192.168.123.232\downloads\->/downloads/
+        - \\192.168.123.232\Volume1\->/Volume1
+        - \\192.168.123.232\Volume2\->/Volume2
+    output-media-path: /downloads/output
 logging.level.org.hibernate.SQL: DEBUG
 logging.level.org.example.hmby.config: DEBUG
