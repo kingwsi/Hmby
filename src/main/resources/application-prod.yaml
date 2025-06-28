@@ -28,4 +28,4 @@ server:
 hmby:
   config:
     volume-bind:
-    output-media-path: /Volumes/downloads/output
+    output-media-path: /downloads/output
