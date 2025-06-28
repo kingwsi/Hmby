@@ -37,8 +37,8 @@
 
         <EmbyCard ref="embyCardRef" :span="{
           xs: 12,
-          sm: 12,
-          md: 8,
+          sm: 8,
+          md: 6,
           lg: 6,
         }" @click="handleClickItem" />
       </a-col>
@@ -160,6 +160,7 @@ onActivated(async () => {
   position: sticky;
   top: 84px;
   padding-right: 10px;
+  padding-bottom: 60px;
   height: calc(100vh - 64px);
   overflow-y: scroll;
   -ms-overflow-style: none;

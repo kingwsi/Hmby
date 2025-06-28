@@ -3,74 +3,31 @@
     <div class="detail-header" v-if="selectedItemId">
       <div class="media-streams-section">
         <!-- 视频 -->
-        <a-row
-          :style="{
-            borderRadius: token.borderRadius + 'px',
-            overflow: 'hidden',
-          }"
-        >
-          <video-player
-            v-if="selectedItemId && playerId"
-            :key="playerId"
-            ref="videoPlayerRef"
-            :intervals="marks"
-            :item-id="playerId"
-            @delete-interval="
+        <a-row :style="{
+          borderRadius: token.borderRadius + 'px',
+          overflow: 'hidden',
+        }">
+          <video-player v-if="selectedItemId && playerId" :key="playerId" ref="videoPlayerRef" :intervals="marks"
+            :item-id="playerId" @delete-interval="
               (index) => {
                 marks.splice(index, 1);
               }
-            "
-            class="player"
-          />
+            " class="player" />
         </a-row>
-        <a-row style="margin-top: 10px" :gutter="[16, 16]" justify="end" v-if="viewMode != 'view'">
-          <!-- 操作按钮 -->
-          <a-col>
-            <a-popconfirm
-              title="确认删除这条数据？"
-              ok-text="确认"
-              okType="danger"
-              cancel-text="取消"
-              @confirm="deleteItemHandle(mediaDetail.Id)"
-              placement="left"
-            >
-              <a-button danger :loading="confirmLoading">删除</a-button>
-            </a-popconfirm>
-          </a-col>
-          <a-col>
-            <a-button @click="openEmbyPage">查看更多</a-button>
-          </a-col>
-          <a-col>
-            <a-button @click="loadMetaInfo()">
-              <template #icon><reload-outlined /></template>
-              刷新
-            </a-button>
-          </a-col>
-          <a-col>
-            <a-button
-              :loading="saveMediaInfoLoading"
-              type="primary"
-              @click="saveMediaInfo()"
-            >
-              <template #icon><save-outlined /></template>
-              保存
-            </a-button>
-          </a-col>
-        </a-row>
-        <!-- 信息区 -->
-        <a-row>
-          <a-col :md="24" :sm="24">
-            <a-descriptions
-              :column="1"
-              bordered
-              size="small"
-              style="margin-top: 16px; margin-bottom: 16px"
-              v-if="mediaStream"
-            >
-              <a-descriptions-item
-                v-if="mediaInfo.inputPath"
-                :label="mediaDetail.Id"
-              >
+      </div>
+    </div>
+    <a-row justify="center">
+      <a-spin :spinning="detailLoading" tip="加载中...">
+        <!-- 未选中任何项目时的提示 -->
+        <div v-if="!selectedItemId" class="empty-detail">
+          <a-empty description="请选择一个媒体项目查看详情" />
+        </div>
+        <a-tabs v-else v-model:activeKey="viewMode" class="detail-tabs">
+          <a-tab-pane key="view" tab="预览">
+            <!-- 视频信息区域 -->
+            <a-descriptions :column="1" bordered size="small" style="margin-top: 16px; margin-bottom: 16px"
+              v-if="mediaStream">
+              <a-descriptions-item v-if="mediaInfo.inputPath" :label="mediaDetail.Id">
                 {{ mediaDetail.SortName }}
               </a-descriptions-item>
               <a-descriptions-item v-if="mediaInfo.inputPath" label="目录">{{
@@ -79,8 +36,7 @@
                   mediaInfo.inputPath.lastIndexOf("/") + 1
                 )
               }}</a-descriptions-item>
-              <a-descriptions-item label="详情"
-                >{{ mediaStream.Size }}
+              <a-descriptions-item label="详情">{{ mediaStream.Size }}
                 <a-divider type="vertical" />
                 {{ parseInt(mediaStream.BitRate / 1000 / 1000) }} mbps
                 <a-divider type="vertical" />{{
@@ -89,188 +45,171 @@
                 <a-divider type="vertical" /> {{ mediaStream.Codec }}
               </a-descriptions-item>
             </a-descriptions>
-          </a-col>
-        </a-row>
-      </div>
-    </div>
-    <a-spin :spinning="detailLoading" tip="加载中...">
-      <!-- 未选中任何项目时的提示 -->
-      <div v-if="!selectedItemId" class="empty-detail">
-        <a-empty description="请选择一个媒体项目查看详情" />
-      </div>
-      <a-tabs v-else v-model:activeKey="viewMode" class="detail-tabs">
-        <a-tab-pane key="view" tab="预览">
-          <!-- 视频信息区域 -->
-          <a-descriptions
-            :column="1"
-            bordered
-            size="small"
-            v-if="videoStreamMain"
-          >
-            <a-descriptions-item
-              label="字幕语言"
-              v-if="subtitleLanguages && subtitleLanguages.length > 0"
-            >
-              <a-space size="large">
-                <a-tag
-                  v-for="item in subtitleLanguages"
-                  style="cursor: pointer"
-                  @click="openSubtitle(mediaDetail.Id, item)"
-                  :key="item"
-                >
-                  {{ item }}</a-tag
-                >
-              </a-space>
-            </a-descriptions-item>
-            <template v-if="mediaDetail.mediaInfo">
-              <a-descriptions-item
-                label="源文件"
-                v-if="mediaDetail.outputMedia"
-              >
-                {{
-                  (mediaDetail.mediaInfo.fileSize / 1024 / 1024).toFixed(2)
-                }}MB <a-divider type="vertical" />
-                {{ mediaDetail.mediaInfo.inputPath }}
+            <a-descriptions :column="1" bordered size="small" v-if="videoStreamMain">
+              <a-descriptions-item label="字幕语言" v-if="subtitleLanguages && subtitleLanguages.length > 0">
+                <a-space size="large">
+                  <a-tag v-for="item in subtitleLanguages" style="cursor: pointer"
+                    @click="openSubtitle(mediaDetail.Id, item)" :key="item">
+                    {{ item }}</a-tag>
+                </a-space>
               </a-descriptions-item>
-              <a-descriptions-item :label="typeMap[mediaDetail.mediaInfo.type]">
-                {{
-                  (mediaDetail.mediaInfo.processedSize / 1024 / 1024).toFixed(
-                    2
-                  )
-                }}MB <a-divider type="vertical" />
-                {{
-                  (
-                    (mediaDetail.mediaInfo.processedSize * 100) /
-                    mediaDetail.mediaInfo.fileSize
-                  ).toFixed(2)
-                }}% <a-divider type="vertical" /> 耗时:{{
-                  mediaDetail.mediaInfo.timeCost
-                }}
-              </a-descriptions-item>
-            </template>
-          </a-descriptions>
-          <div>
-            <!-- 标签编辑 -->
-            <a-space class="tag-edit-section">
-              <template v-for="tag in selectedTags" :key="tag.Id">
-                <a-tooltip v-if="tag.length > 20" :title="tag">
-                  <a-tag :closable="true" @close="handleTagClose(tag)">
-                    {{ `${tag.slice(0, 20)}...` }}
-                  </a-tag>
-                </a-tooltip>
-                <a-tag v-else :closable="true" @close="handleTagClose(tag)">
-                  {{ tag }}
-                </a-tag>
+              <template v-if="mediaDetail.mediaInfo">
+                <a-descriptions-item label="源文件" v-if="mediaDetail.outputMedia">
+                  {{
+                    (mediaDetail.mediaInfo.fileSize / 1024 / 1024).toFixed(2)
+                  }}MB <a-divider type="vertical" />
+                  {{ mediaDetail.mediaInfo.inputPath }}
+                </a-descriptions-item>
+                <a-descriptions-item :label="typeMap[mediaDetail.mediaInfo.type]">
+                  {{
+                    (mediaDetail.mediaInfo.processedSize / 1024 / 1024).toFixed(
+                      2
+                    )
+                  }}MB <a-divider type="vertical" />
+                  {{
+                    (
+                      (mediaDetail.mediaInfo.processedSize * 100) /
+                      mediaDetail.mediaInfo.fileSize
+                    ).toFixed(2)
+                  }}% <a-divider type="vertical" /> 耗时:{{
+                    mediaDetail.mediaInfo.timeCost
+                  }}
+                </a-descriptions-item>
               </template>
-              <TagsSelect :size="'small'" @change="tagChangeHandle" />
-              <a-button type="text" @click="saveTagChanges" size="small"
-                >保存</a-button
-              >
-            </a-space>
-          </div>
-        </a-tab-pane>
+            </a-descriptions>
+            <div>
+              <!-- 标签编辑 -->
+              <a-space class="tag-edit-section">
+                <template v-for="tag in selectedTags" :key="tag.Id">
+                  <a-tooltip v-if="tag.length > 20" :title="tag">
+                    <a-tag :closable="true" @close="handleTagClose(tag)">
+                      {{ `${tag.slice(0, 20)}...` }}
+                    </a-tag>
+                  </a-tooltip>
+                  <a-tag v-else :closable="true" @close="handleTagClose(tag)">
+                    {{ tag }}
+                  </a-tag>
+                </template>
+                <TagsSelect :size="'small'" @change="tagChangeHandle" />
+                <a-button type="text" @click="saveTagChanges" size="small">保存</a-button>
+              </a-space>
+            </div>
+          </a-tab-pane>
 
-        <a-tab-pane key="CUT" tab="剪辑">
-          <div>
-            <a-form ref="form" :model="mediaInfo" layout="vertical">
-              <a-form-item>
-                <a-space>
-                  <span>开始时间: {{ formatDuring(selectedMark.start) }}</span>
-                  <span>结束时间: {{ formatDuring(selectedMark.end) }}</span>
-                </a-space>
-              </a-form-item>
-              <a-form-item>
-                <a-space>
-                  <a-button-group>
-                    <a-button @click="modifyPlay(-5)">
-                      <template #icon><step-backward-outlined /></template>
-                      -5s
+          <a-tab-pane key="CUT" tab="剪辑">
+            <div>
+              <a-form ref="form" :model="mediaInfo" layout="vertical">
+                <a-form-item>
+                  <a-space>
+                    <span>开始时间: {{ formatDuring(selectedMark.start) }}</span>
+                    <span>结束时间: {{ formatDuring(selectedMark.end) }}</span>
+                  </a-space>
+                </a-form-item>
+                <a-form-item>
+                  <a-space>
+                    <a-button-group>
+                      <a-button @click="modifyPlay(-5)">
+                        <template #icon><step-backward-outlined /></template>
+                        -5s
+                      </a-button>
+                      <a-button @click="modifyPlay(+5)">
+                        <template #icon><step-forward-outlined /></template>
+                        +5s
+                      </a-button>
+                    </a-button-group>
+                    <a-button type="primary" @click="selectFrame()">
+                      <template #icon><scissor-outlined /></template>
+                      {{ selectedMark.recheck ? "开始" : "结束" }}
                     </a-button>
-                    <a-button @click="modifyPlay(+5)">
-                      <template #icon><step-forward-outlined /></template>
-                      +5s
+                    <a-button type="primary" :disabled="!selectedMark.checked" @click="handlerAdd">
+                      <template #icon><plus-outlined /></template>
+                      添加
                     </a-button>
-                  </a-button-group>
-                  <a-button type="primary" @click="selectFrame()">
-                    <template #icon><scissor-outlined /></template>
-                    选择{{ selectedMark.recheck ? "开始" : "结束" }}
-                  </a-button>
-                  <a-button
-                    type="primary"
-                    :disabled="!selectedMark.checked"
-                    @click="handlerAdd"
-                  >
-                    <template #icon><plus-outlined /></template>
-                    添加片段
-                  </a-button>
-                </a-space>
-              </a-form-item>
-              <a-form-item label="处理状态">
-                <a-select v-model:value="mediaInfo.status" style="width: 100%">
-                  <a-select-option value="NONE">不处理</a-select-option>
-                  <a-select-option value="PENDING">待处理</a-select-option>
-                  <a-select-option value="PROCESSING">处理中</a-select-option>
-                  <a-select-option value="SUCCESS">完成</a-select-option>
-                  <a-select-option value="FAIL">失败</a-select-option>
-                  <a-select-option value="DELETED">已删除</a-select-option>
-                </a-select>
-              </a-form-item>
-            </a-form>
-          </div>
-        </a-tab-pane>
+                  </a-space>
+                </a-form-item>
+              </a-form>
+            </div>
+          </a-tab-pane>
 
-        <!-- 编码 -->
-        <a-tab-pane key="ENCODE" tab="编码">
-          <div>
-            <a-form ref="form" :model="mediaInfo" layout="vertical">
-              <a-form-item>
-                <a-space direction="vertical" style="width: 100%">
-                  <a-radio-group
-                    v-model:value="mediaInfo.codec"
-                    button-style="solid"
-                  >
-                    <a-radio-button
-                      v-for="codec in codecs"
-                      :key="codec"
-                      :value="codec"
-                      >{{ codec }}</a-radio-button
-                    >
-                  </a-radio-group>
-                  <a-input-number
-                    v-model:value="mediaInfo.bitRate"
-                    :formatter="(value) => `${value}K`"
-                    :parser="(value) => value.replace('K', '')"
-                    default-value="1000"
-                    :min="1000"
-                    :max="5000"
-                    step="500"
-                    style="width: 200px"
-                    addon-after="码率"
-                  />
-                </a-space>
-              </a-form-item>
-              <a-form-item label="处理状态">
-                <a-select v-model:value="mediaInfo.status" style="width: 100%">
-                  <a-select-option value="NONE">不处理</a-select-option>
-                  <a-select-option value="PENDING">待处理</a-select-option>
-                  <a-select-option value="PROCESSING">处理中</a-select-option>
-                  <a-select-option value="SUCCESS">完成</a-select-option>
-                  <a-select-option value="FAIL">失败</a-select-option>
-                  <a-select-option value="DELETED">已删除</a-select-option>
-                </a-select>
-              </a-form-item>
-              <a-form-item label="视频标题">
-                <a-input
-                  v-model:value="mediaInfo.metaTitle"
-                  placeholder="视频标题"
-                  allow-clear
-                />
-              </a-form-item>
-            </a-form>
-          </div>
-        </a-tab-pane>
-      </a-tabs>
-    </a-spin>
+          <!-- 编码 -->
+          <a-tab-pane key="ENCODE" tab="编码">
+            <div>
+              <a-form ref="form" :model="mediaInfo" layout="vertical">
+                <a-form-item>
+                  <a-space direction="vertical" style="width: 100%">
+                    <a-radio-group v-model:value="mediaInfo.codec" button-style="solid">
+                      <a-radio-button v-for="codec in codecs" :key="codec" :value="codec">{{ codec }}</a-radio-button>
+                    </a-radio-group>
+                    <a-input-number v-model:value="mediaInfo.bitRate" :formatter="(value) => `${value}K`"
+                      :parser="(value) => value.replace('K', '')" default-value="1000" :min="1000" :max="5000"
+                      step="500" style="width: 200px" addon-after="码率" />
+                  </a-space>
+                </a-form-item>
+                <a-form-item label="处理状态">
+                  <a-select v-model:value="mediaInfo.status" style="width: 100%">
+                    <a-select-option value="NONE">不处理</a-select-option>
+                    <a-select-option value="PENDING">待处理</a-select-option>
+                    <a-select-option value="PROCESSING">处理中</a-select-option>
+                    <a-select-option value="SUCCESS">完成</a-select-option>
+                    <a-select-option value="FAIL">失败</a-select-option>
+                    <a-select-option value="DELETED">已删除</a-select-option>
+                  </a-select>
+                </a-form-item>
+                <a-form-item label="视频标题">
+                  <a-input v-model:value="mediaInfo.metaTitle" placeholder="视频标题" allow-clear />
+                </a-form-item>
+              </a-form>
+            </div>
+          </a-tab-pane>
+
+          <a-tab-pane key="MOVE" tab="移动">
+            <h3>移动文件</h3>
+          </a-tab-pane>
+
+          <a-tab-pane key="SUBTITLE" tab="字幕">
+            <h3>转录字幕</h3>
+          </a-tab-pane>
+
+          <a-tab-pane key="TRANSLATE" tab="翻译">
+            <h3>翻译</h3>
+          </a-tab-pane>
+        </a-tabs>
+      </a-spin>
+    </a-row>
+    <!-- 操作按钮 -->
+    <a-row class="bottom-btn-wrapper" :gutter="[16, 16]" justify="center" v-if="viewMode != 'view'">
+      <a-col>
+        <a-select size="small" v-model:value="mediaInfo.status" style="width: 80px">
+          <a-select-option value="NONE">不处理</a-select-option>
+          <a-select-option value="PENDING">待处理</a-select-option>
+          <a-select-option value="PROCESSING">处理中</a-select-option>
+          <a-select-option value="SUCCESS">完成</a-select-option>
+          <a-select-option value="FAIL">失败</a-select-option>
+          <a-select-option value="DELETED">已删除</a-select-option>
+        </a-select>
+      </a-col>
+      <a-col>
+        <a-popconfirm title="确认删除这条数据？" ok-text="确认" okType="danger" cancel-text="取消"
+          @confirm="deleteItemHandle(mediaDetail.Id)" placement="left">
+          <a-button size="small" danger :loading="confirmLoading">删除</a-button>
+        </a-popconfirm>
+      </a-col>
+      <a-col>
+        <a-button size="small" @click="openEmbyPage">查看更多</a-button>
+      </a-col>
+      <a-col>
+        <a-button size="small" @click="loadMetaInfo()">
+          <template #icon><reload-outlined /></template>
+          刷新
+        </a-button>
+      </a-col>
+      <a-col>
+        <a-button size="small" :loading="saveMediaInfoLoading" type="primary" @click="saveMediaInfo()">
+          <template #icon><save-outlined /></template>
+          保存
+        </a-button>
+      </a-col>
+    </a-row>
   </div>
 </template>
 
@@ -337,12 +276,24 @@ const loadMetaInfo = async () => {
   detailLoading.value = true;
   marks.value = [];
 
+  Object.assign(selectedMark, {
+    start: null,
+    recheck: true,
+    end: null,
+    checked: false,
+  });
+
   try {
     const { data } = await request.get(
       `/api/emby-item/detail/${selectedItemId.value}`
     );
     if (data?.mediaInfo?.type) {
       viewMode.value = data.mediaInfo.type;
+      if (data.mediaInfo.type === 'CUT' && data.mediaInfo.marks) {
+        marks.value = data.mediaInfo.marks;
+      }
+    } else {
+      viewMode.value = 'view'
     }
     mediaDetail.value = data;
     playerId.value = data.Id;
@@ -360,7 +311,6 @@ const loadMetaInfo = async () => {
     mediaStream.value.Size = `${(mediaDetail.value.Size / 1024 / 1024).toFixed(
       2
     )} Mb`;
-    console.log("mediaStream", mediaDetail.value);
 
     if (mediaDetail.value.mediaInfo) {
       mediaInfo.value = mediaDetail.value.mediaInfo;
@@ -558,12 +508,6 @@ const tagChangeHandle = (val) => {
   }
 };
 
-// 标签过滤
-const tagFilterHandler = (tagName) => {
-  queryParam.tag = tagName;
-  changeHandler();
-};
-
 const confirmLoading = ref(false);
 // 删除媒体项
 const deleteItemHandle = async (id) => {
@@ -648,6 +592,7 @@ const changeHandler = async () => {
 <style lang="less" scoped>
 .empty-detail {
   height: 450px;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -657,6 +602,7 @@ const changeHandler = async () => {
   height: 330px;
   max-width: 100%;
 }
+
 .video-player-container {
   margin-bottom: 16px;
   border-radius: 4px;
@@ -671,5 +617,9 @@ const changeHandler = async () => {
 
 .wrapper {
   display: flex;
+}
+
+.bottom-btn-wrapper {
+  height: 46px;
 }
 </style>

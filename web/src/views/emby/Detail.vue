@@ -147,7 +147,7 @@
           >
             <img
               class="poster-small"
-              :src="getThumb(item)"
+              :src="getPrimary(item)"
               alt="similar"
               @click="toSimilarItemHandler(item)"
             />
@@ -168,7 +168,7 @@ import { useAppStore } from "@/stores/app";
 import { ref, onActivated, computed, reactive, h } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import request from "@/utils/request";
-import { getThumb } from "@/utils/emby-util";
+import { getThumb,getPrimary } from "@/utils/emby-util";
 import { message, theme } from "ant-design-vue";
 import {
   PlayCircleFilled,
@@ -192,6 +192,10 @@ onActivated(() => {
     return;
   }
   fetchData(id);
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth",
+  });
 });
 
 const loading = ref(false);
@@ -225,7 +229,6 @@ const playHandler = async () => {
 };
 
 const personFilterHandler = async (personId) => {
-  console.log("personId", personId);
   router.push({ name: "EmbyList", query: { personIds: personId } });
 };
 
