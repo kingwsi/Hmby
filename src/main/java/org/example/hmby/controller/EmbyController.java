@@ -22,8 +22,10 @@ import org.example.hmby.repository.ConfigRepository;
 import org.example.hmby.sceurity.EmbyUser;
 import org.example.hmby.sceurity.SimilarResult;
 import org.example.hmby.sceurity.UserContextHolder;
+import org.example.hmby.service.EmbeddingService;
 import org.example.hmby.service.MediaInfoService;
 import org.example.hmby.service.TagService;
+import org.springframework.ai.document.Document;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -65,14 +67,16 @@ public class EmbyController {
     private final TagService tagService;
     private final ObjectMapper objectMapper;
     private final ConfigRepository configRepository;
+    private final EmbeddingService embeddingService;
 
-    public EmbyController(EmbyFeignClient embyClient, PropertiesConfig propertiesConfig, MediaInfoService mediaInfoService, TagService tagService, ObjectMapper objectMapper, ConfigRepository configRepository) {
+    public EmbyController(EmbyFeignClient embyClient, PropertiesConfig propertiesConfig, MediaInfoService mediaInfoService, TagService tagService, ObjectMapper objectMapper, ConfigRepository configRepository, EmbeddingService embeddingService) {
         this.embyClient = embyClient;
         this.propertiesConfig = propertiesConfig;
         this.mediaInfoService = mediaInfoService;
         this.tagService = tagService;
         this.objectMapper = objectMapper;
         this.configRepository = configRepository;
+        this.embeddingService = embeddingService;
     }
 
     @GetMapping("/page")
@@ -272,5 +276,18 @@ public class EmbyController {
                 .formatted(embyServer, itemId, userDetails.getThirdPartyToken());
         playerInfo.setStreamUrl(streamUrl);
         return Response.success(playerInfo);
+    }
+
+    @GetMapping("/similarity/{itemId}")
+    public Response<?> similaritySearch(@PathVariable Long itemId) {
+        Metadata itemMetadata = embyClient.getItemMetadata(itemId);
+        List<String> tags = Optional.ofNullable(itemMetadata.getTagItems())
+                .map(tagItems -> tagItems.stream().map(ItemTag::getName).collect(Collectors.toList()))
+                .orElse(null);
+        if (tags == null) {
+            return Response.success(null);
+        }
+        List<Document> documents = embeddingService.similaritySearch("movie", String.join(" ", tags));
+        return Response.success(documents);
     }
 }

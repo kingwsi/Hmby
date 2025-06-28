@@ -1,7 +1,12 @@
 <template>
   <a-config-provider :theme="app.themeConfig">
     <a-layout class="layout">
-      <a-float-button v-if="app.isMobile && !showDrawer" @click="showDrawer = true" />
+      <div class="float-btn" v-if="app.isMobile && !showDrawer">
+        <a-tooltip title="search">
+          <a-button shape="circle" :icon="h(MenuUnfoldOutlined)" @click="showDrawer = true" />
+        </a-tooltip>
+      </div>
+      <!-- <a-float-button v-if="app.isMobile && !showDrawer" @click="showDrawer = true" /> -->
       <a-layout-header v-if="!isLoginPage && !app.isMobile" class="header"
         :style="{ position: 'fixed', zIndex: 10, width: '100%' }">
         <div class="header-content">
@@ -41,6 +46,7 @@
       </a-drawer>
 
       <a-layout-content :style="contentStyle">
+        <!-- <a-page-header v-if="app.isMobile" :title="currentRoute.name" /> -->
         <div :class="{ 'site-layout-content': !isLoginPage }">
           <router-view v-slot="{ Component }">
             <keep-alive>
@@ -56,7 +62,7 @@
   </a-config-provider>
 </template>
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, h } from 'vue';
 import { LogoutOutlined, MenuUnfoldOutlined } from '@ant-design/icons-vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAppStore } from '@/stores/app';
@@ -164,5 +170,12 @@ onMounted(async () => {
   .logo-text {
     font-size: 16px;
   }
+}
+
+.float-btn {
+  position: fixed;
+  bottom: 15px;
+  left: 10px;
+  z-index: 11;
 }
 </style>

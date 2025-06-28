@@ -32,10 +32,4 @@ public class EmbeddingController {
         }
         return Response.success();
     }
-
-    @GetMapping("/similarity-search/{type}")
-    public Response<?> similaritySearch(@PathVariable String type, String keyword) {
-        List<Document> documents = embeddingService.similaritySearch(type, keyword);
-        return Response.success(documents);
-    }
 }
