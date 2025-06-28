@@ -6,7 +6,10 @@ import feign.RequestInterceptor;
 import feign.codec.EncodeException;
 import feign.querymap.FieldQueryMapEncoder;
 import lombok.extern.slf4j.Slf4j;
+import org.example.hmby.entity.Config;
+import org.example.hmby.enumerate.ConfigKey;
 import org.example.hmby.exception.BusinessException;
+import org.example.hmby.repository.ConfigRepository;
 import org.example.hmby.sceurity.EmbyUser;
 import org.example.hmby.sceurity.SecurityUtils;
 import org.springframework.context.annotation.Bean;
@@ -17,6 +20,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 
@@ -90,7 +94,7 @@ public class EmbyFeignClientConfig {
     }
     
     @Bean
-    public RequestInterceptor requestInterceptor() {
+    public RequestInterceptor requestInterceptor(ConfigRepository configRepository) {
         return requestTemplate -> {
             EmbyUser userDetails = SecurityUtils.getUserInfo()
                     .orElseThrow(() -> new BusinessException("emby认证信息获取异常！"));
@@ -98,13 +102,17 @@ public class EmbyFeignClientConfig {
             requestTemplate.header("X-Emby-Token", userDetails.getThirdPartyToken());
             requestTemplate.header("Accept", "*/*");
             requestTemplate.uri(url);
+            String embyServer = Optional.ofNullable(configRepository.findOneByKey(ConfigKey.emby_server))
+                    .map(Config::getVal)
+                    .orElseThrow(() -> new BusinessException("emby地址未配置"));
+            requestTemplate.target(embyServer);
             if (log.isDebugEnabled()) {
                 log.debug("Userid: {}", userDetails.getUserId());
                 log.debug("X-Emby-Token: {}", userDetails.getThirdPartyToken());
                 if (requestTemplate.body() != null && requestTemplate.body().length > 0) {
-                    log.debug("Feign远程调用: {} \n{}", requestTemplate.url(), new String(requestTemplate.body()));
+                    log.debug("Feign远程调用: {} \n{}", embyServer + requestTemplate.url(), new String(requestTemplate.body()));
                 } else {
-                    log.debug("Feign远程调用: {}", requestTemplate.url());
+                    log.debug("Feign远程调用: {}", embyServer + requestTemplate.url());
                 }
             }
         };

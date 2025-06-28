@@ -19,11 +19,14 @@ import org.springframework.web.bind.annotation.RequestParam;
 import java.util.HashMap;
 import java.util.List;
 
-@FeignClient(name = "emby-server", url = "${hmby.config.emby-server}", configuration = EmbyFeignClientConfig.class)
+@FeignClient(name = "emby-server",
+        url = "emby-server",
+        configuration = EmbyFeignClientConfig.class)
 public interface EmbyFeignClient {
 
     /**
      * 获取列表
+     *
      * @param embyItemRequest
      * @return
      */
@@ -32,6 +35,7 @@ public interface EmbyFeignClient {
 
     /**
      * 获取详细信息
+     *
      * @param id
      * @return
      */
@@ -52,6 +56,7 @@ public interface EmbyFeignClient {
 
     /**
      * 删除文件
+     *
      * @return
      */
     @DeleteMapping("/emby/Items/{id}")
@@ -59,6 +64,7 @@ public interface EmbyFeignClient {
 
     /**
      * 获取所有
+     *
      * @return
      */
     @GetMapping("/Tags")
@@ -66,6 +72,7 @@ public interface EmbyFeignClient {
 
     /**
      * 新增文件
+     *
      * @param request
      * @return
      */
@@ -81,7 +88,7 @@ public interface EmbyFeignClient {
 
     @GetMapping("/emby/Items/{itemId}/Similar")
     ResponseEntity<SimilarResult> similar(@PathVariable Long itemId,
-                                    @RequestParam(value = "Fields") String fields,
-                                    @RequestParam("UserId") String userId,
-                                    @RequestParam("Limit") Integer limit);
+                                          @RequestParam(value = "Fields") String fields,
+                                          @RequestParam("UserId") String userId,
+                                          @RequestParam("Limit") Integer limit);
 }

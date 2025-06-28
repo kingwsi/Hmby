@@ -24,18 +24,17 @@ spring:
         distance-type: COSINE_DISTANCE
         dimensions: 1024
         max-document-batch-size: 1000 # Optional: Maximum number of documents per batch
+  profiles:
+    active: prod
 server:
   port: 8094
   
 hmby:
   config:
-    ffmpeg-path: /opt/homebrew/bin/ffmpeg
-    ffprobe-path: /opt/homebrew/bin/ffprobe
-    emby-server: http://192.168.123.232:8096
-    volume-bind:
-        - \\192.168.123.232\downloads\->/downloads/
-        - \\192.168.123.232\Volume1\->/Volume1
-        - \\192.168.123.232\Volume2\->/Volume2
     output-media-path: /downloads/output
+    volume-bind:
+      - \\192.168.123.232\downloads\->/downloads/
+      - \\192.168.123.232\Volume1\->/Volume1
+      - \\192.168.123.232\Volume2\->/Volume2
 logging.level.org.hibernate.SQL: DEBUG
 logging.level.org.example.hmby.config: DEBUG
