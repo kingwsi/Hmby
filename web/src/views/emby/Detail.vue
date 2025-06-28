@@ -147,7 +147,7 @@
           >
             <img
               class="poster-small"
-              :src="getItemImage(item)"
+              :src="getThumb(item)"
               alt="similar"
               @click="toSimilarItemHandler(item)"
             />
@@ -168,7 +168,7 @@ import { useAppStore } from "@/stores/app";
 import { ref, onActivated, computed, reactive, h } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import request from "@/utils/request";
-import { getItemImage } from "@/utils/emby-util";
+import { getThumb } from "@/utils/emby-util";
 import { message, theme } from "ant-design-vue";
 import {
   PlayCircleFilled,
@@ -201,7 +201,7 @@ const fetchData = async (id) => {
   loading.value = true;
   try {
     const { data } = await request.get(`/api/emby-item/detail/${id}`);
-    const poster = getItemImage(data);
+    const poster = getThumb(data);
     Object.assign(mediaDetail, { ...data, poster: poster });
     fetchSimilar();
   } finally {

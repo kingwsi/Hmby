@@ -88,7 +88,7 @@ public class EmbeddingService {
                         meta.put("index", "movie");
                         meta.put("ImageTags", Optional.ofNullable(item.getImageTags()).orElse(new MovieItem.ImageTags()));
                         meta.put("Name", name);
-                        String text = String.join(" ", Arrays.asList(name, tags));
+                        String text = String.join(" ", tags);
                         return new Document(text, meta);
                     })
                     .toList();

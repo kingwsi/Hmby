@@ -32,7 +32,7 @@ onMounted(() => {
     }
     playerId.value = Number(id);
     // const { data } = await request.get(`/api/emby-item/detail/${id}`);
-    // const poster = getItemImage(data)
+    // const poster = getThumb(data)
     // Object.assign(mediaDetail, { ...data, poster: poster });
 })
 

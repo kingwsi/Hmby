@@ -1,54 +1,49 @@
 <template>
   <a-spin :spinning="loading" style="width: 100%">
-    <a-row :gutter="[16, 16]">
-      <a-col
-        :sm="span.sm"
-        :md="span.md"
-        :lg="span.lg"
-        :xs="span.xs"
-        v-for="item in pageData.Items"
-        :key="item.Id"
-        @click="handleSelectItem(item)"
-      >
-        <div
-          class="card"
-          :style="{
-            borderRadius: token.borderRadius + 'px',
-            border: '1px solid ' + token.colorBorder,
-          }"
-        >
-          <img :src="getItemImage(item)" />
-          <div class="card-title">
-            <ellipsis :length="40" :tooltip="true" :line="3">
-              {{ item.Name }}
-            </ellipsis>
-          </div>
+    <a-row :gutter="[16, 16]" v-if="pageData?.Items?.length > 0">
+      <a-col :sm="span.sm" :md="span.md" :lg="span.lg" :xs="span.xs" v-for="item in pageData.Items" :key="item.Id"
+        @click="handleSelectItem(item)">
+        <div class="card" :style="{
+          borderRadius: token.borderRadiusLG + 'px',
+          border: '1px solid ' + token.colorBorder,
+        }">
+
+          <img :src="getPrimary(item)" alt="Iceland Cabin">
+          <div class="blur-overlay"></div>
           <div class="status">
-            <MediaStatusTag
-              v-if="item.MediaInfo?.status"
-              :status="item.MediaInfo?.status"
-            />
+            <MediaStatusTag v-if="item.MediaInfo?.status" :status="item.MediaInfo?.status" />
+          </div>
+          <div class="card-content">
+            <h2>
+              <ellipsis :length="10" :tooltip="false" :line="1">
+                {{ item.Name }}
+              </ellipsis>
+            </h2>
+            <div class="description">
+              <ellipsis :length="40" :tooltip="true" :line="3">
+                {{ item.Name }}
+              </ellipsis>
+            </div>
           </div>
         </div>
       </a-col>
     </a-row>
+    <a-row justify="center" v-else>
+      <a-empty />
+    </a-row>
   </a-spin>
 
-  <div class="pagination-container">
-    <a-pagination
-      v-model:current="pageData.number"
-      :total="pageData.totalElements"
-      :pageSize="pageData.size"
-      @change="handlePageChange"
-    />
-  </div>
+  <a-row justify="center" class="pagination-container" v-show="pageData?.Items?.length > 0">
+    <a-pagination v-model:current="pageData.number" :pageSize="queryParam.size" :total="pageData.totalElements"
+      :showSizeChanger="false" @change="handlePageChange" />
+  </a-row>
 </template>
 
 <script setup>
 import { ref, reactive } from "vue";
 import request from "@/utils/request";
 import Ellipsis from "@/components/Ellipsis.vue";
-import { getItemImage } from "@/utils/emby-util";
+import { getThumb, getPrimary } from "@/utils/emby-util";
 import { theme } from "ant-design-vue";
 import MediaStatusTag from "@/components/MediaStatusTag.vue";
 const { useToken } = theme;
@@ -59,9 +54,9 @@ const props = defineProps({
     type: Object,
     default: {
       xs: 12,
-      sm: 12,
-      md: 8,
-      lg: 6,
+      sm: 8,
+      md: 6,
+      lg: 4,
     },
   },
 });
@@ -108,48 +103,6 @@ defineExpose({
 </script>
 
 <style scoped lang="less">
-.item-tag {
-  display: flex;
-  justify-content: flex-start;
-  cursor: pointer;
-  flex-wrap: wrap;
-  overflow-y: auto;
-
-  &::-webkit-scrollbar {
-    width: 4px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.1);
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.3);
-    border-radius: 2px;
-  }
-
-  span {
-    font-size: 13px;
-    border-radius: 1px;
-    background: #7f7f7f14;
-    color: #979797;
-    padding: 0px 4px;
-    margin-right: 4px;
-    margin-bottom: 4px;
-    max-width: 130px;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    transition-property: all;
-    transition-duration: 0.8s;
-    height: 22px;
-    line-height: 22px;
-
-    &:hover {
-      background: #7f7f7f45;
-    }
-  }
-}
 
 .pagination-container {
   height: 60px;
@@ -168,59 +121,76 @@ defineExpose({
   }
 }
 
-.info-label {
-  width: 100px;
-  color: rgba(0, 0, 0, 0.45);
-}
-
-.info-value {
-  flex: 1;
-  word-break: break-all;
-}
-
-.tag-container {
-  margin-top: 8px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.video-player-container {
-  margin-bottom: 16px;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.detail-panel {
-  position: sticky;
-  top: 20px;
-  height: calc(100vh - 40px);
-  overflow-y: auto;
-}
-
 .card {
-  border-radius: 10px;
+  position: relative;
+  width: 220px;
+  max-width: 100%;
+  height: 330px;
+  border-radius: 30px;
   overflow: hidden;
-  transition: transform 0.2s ease;
-  cursor: pointer;
-  height: 230px;
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
+}
 
-  img {
-    width: 100%;
-    display: block;
-    object-fit: cover;
-    height: 160px;
-  }
+.card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 
-  .card-title {
-    padding: 8px;
-    text-align: center;
-  }
+.blur-overlay {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 60%;
+  z-index: 1;
+  overflow: hidden;
+}
 
-  .status {
-    position: absolute;
-    top: 5px;
-    left: 10px;
-  }
+.blur-overlay::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  backdrop-filter: blur(100px);
+  /* Increased blur intensity */
+  -webkit-backdrop-filter: blur(100px);
+  background: rgba(0, 0, 0, 0.2);
+  /* Subtle tint for better contrast */
+  mask-image: linear-gradient(to top, rgba(255, 255, 255, 1), transparent 70%);
+  /* Sharper gradient */
+  -webkit-mask-image: linear-gradient(to top, rgba(255, 255, 255, 1), transparent 70%);
+}
+
+.card-content {
+  position: absolute;
+  bottom: 0;
+  padding: 20px;
+  color: white;
+  z-index: 2;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.card-content h2 {
+  font-size: 20px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+  /* Added for readability */
+}
+
+.status {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  z-index: 2;
+}
+
+.description {
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 10px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+  /* Added for readability */
 }
 </style>

@@ -291,7 +291,7 @@ import {
   StepForwardOutlined,
   PlusOutlined,
 } from "@ant-design/icons-vue";
-import { getItemImage } from "../utils/emby-util";
+import { getThumb } from "../utils/emby-util";
 import { useAppStore } from "@/stores/app";
 
 const { useToken } = theme;

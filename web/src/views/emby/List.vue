@@ -32,7 +32,12 @@
             <!-- 列表区域 -->
             <a-skeleton active v-if="loading" />
             <a-col v-else :span="24">
-                <EmbyCard ref="embyCardRef" @click="handleClickItem" />
+                <EmbyCard ref="embyCardRef" :span="{
+                    xs: 12,
+                    sm: 8,
+                    md: 6,
+                    lg: 4,
+                }" @click="handleClickItem" />
             </a-col>
         </a-row>
     </div>
@@ -58,7 +63,7 @@ const queryParam = reactive({
     searchTerm: "",
     tags: undefined,
     page: 1,
-    size: 25,
+    size: 24,
 });
 
 const handleTagChange = (tagName) => {

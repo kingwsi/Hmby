@@ -9,20 +9,20 @@ const routes = [
     redirect: '/home'
   },
   {
+    path: '/search',
+    name: '查询',
+    component: () => import('../views/emby/Search.vue'),
+    meta: { requiresAuth: true, hideInNav: false, keepAlive: true }
+  },
+  {
     path: '/home',
     name: '首页',
     component: Home,
     meta: { requiresAuth: true, hideInNav: false, keepAlive: true }
   },
   {
-    path: '/nav',
-    name: 'nav',
-    component: () => import('../components/NavBar.vue'),
-    meta: { requiresAuth: true, hideInNav: false, keepAlive: true }
-  },
-  {
     path: '/media-info',
-    name: '媒体信息',
+    name: '任务',
     component: () => import('../views/MediaInfo.vue'),
     meta: { requiresAuth: true, hideInNav: false, keepAlive: true }
   },

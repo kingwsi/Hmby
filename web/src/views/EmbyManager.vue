@@ -1,11 +1,11 @@
 <template>
   <div style="padding-top: 15px">
     <!-- 左右分栏布局 -->
-    <a-row >
+    <a-row>
       <!-- 详情区域 - 在非移动端显示 -->
       <a-col v-if="!app.isMobile" :span="12" :xs="24" :sm="24" :md="10">
         <div class="detail-panel">
-            <EmbyDetailPanel :id="selectedItemId" @change="fetchData" />
+          <EmbyDetailPanel :id="selectedItemId" @change="fetchData" />
         </div>
       </a-col>
       <!-- 列表区域 -->
@@ -13,15 +13,15 @@
         <div class="table-page-search-wrapper">
           <a-row :gutter="[16, 16]">
             <a-col>
-              <a-select v-model:value="queryParam.parentId" style="width: 180px;" :allowClear="true"
-                placeholder="媒体库" @change="fetchData">
+              <a-select v-model:value="queryParam.parentId" style="width: 180px;" :allowClear="true" placeholder="媒体库"
+                @change="fetchData">
                 <a-select-option v-for="lib in libraries" :key="lib.Id" :value="lib.Id">
                   {{ lib.Name }}
                 </a-select-option>
               </a-select>
             </a-col>
             <a-col>
-              <a-input v-model:value="queryParam.keyword" placeholder="关键词搜索" style="width: 200px" :allowClear="true"
+              <a-input v-model:value="queryParam.searchTerm" placeholder="关键词搜索" style="width: 200px" :allowClear="true"
                 @change="fetchData" />
             </a-col>
             <a-col>
@@ -35,7 +35,12 @@
           </a-row>
         </div>
 
-        <EmbyCard ref="embyCardRef" @click="handleClickItem" />
+        <EmbyCard ref="embyCardRef" :span="{
+          xs: 12,
+          sm: 12,
+          md: 8,
+          lg: 6,
+        }" @click="handleClickItem" />
       </a-col>
     </a-row>
   </div>
@@ -74,10 +79,10 @@ const selectedItemId = ref(null);
 // 查询参数
 const queryParam = reactive({
   parentId: "",
-  keyword: "",
+  searchTerm: "",
   tags: undefined,
   number: 1,
-  size: 25,
+  size: 24,
 });
 
 const fetchLibraries = async () => {
@@ -120,7 +125,7 @@ onMounted(async () => {
     try {
       const params = JSON.parse(cachedParams);
       queryParam.parentId = params.parentId || "";
-      queryParam.keyword = params.keyword || "";
+      queryParam.searchTerm = params.searchTerm || "";
       queryParam.tag = params.tag;
     } catch (error) {
       console.error("解析缓存参数失败：", error);
@@ -157,10 +162,12 @@ onActivated(async () => {
   padding-right: 10px;
   height: calc(100vh - 64px);
   overflow-y: scroll;
-  -ms-overflow-style: none; /* IE 10+ */
+  -ms-overflow-style: none;
+  /* IE 10+ */
 }
 
 .detail-panel::-webkit-scrollbar {
-  display: none; /* Chrome / Safari / Edge */
+  display: none;
+  /* Chrome / Safari / Edge */
 }
 </style>

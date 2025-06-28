@@ -4,7 +4,7 @@
             <a-col :sm="12" :md="8" :lg="6" :xs="12" v-for="item in libraries" @click="handleClickItem(item)"
                 :key="item.Id">
                 <div class="card" :style="cardStyle">
-                    <img :src="getItemImage(item)">
+                    <img :src="getPrimary(item)">
                     <div class="card-title">
                         <ellipsis :length="20" :tooltip="true" :line="1">
                             {{ item.Name }}
@@ -24,7 +24,7 @@ import {
 } from "vue";
 import request from "@/utils/request";
 import Ellipsis from "@/components/Ellipsis.vue";
-import { getItemImage } from "@/utils/emby-util";
+import { getPrimary } from "@/utils/emby-util";
 import { theme } from "ant-design-vue";
 
 const loading = ref(false);
