@@ -45,7 +45,7 @@
         </template>
       </a-drawer>
 
-      <a-layout-content :style="contentStyle">
+      <a-layout-content :class="{ 'content-wrapper': true, 'content-wrapper-mobile': app.isMobile }">
         <!-- <a-page-header v-if="app.isMobile" :title="currentRoute.name" /> -->
         <div :class="{ 'site-layout-content': !isLoginPage }">
           <router-view v-slot="{ Component }">
@@ -72,7 +72,7 @@ const router = useRouter();
 const route = useRoute();
 
 const routes = computed(() => {
-  return router.options.routes.filter(route => route.name && !route.meta?.hideInNav);
+  return router.options.routes.filter(route => route.name && route.meta && route.meta.hideInNav === false);
 });
 
 const currentRoute = computed(() => {
@@ -90,14 +90,6 @@ const isLoginPage = computed(() => {
 const app = useAppStore();
 const showDrawer = ref(false);
 
-const contentStyle = computed(() => {
-  if (isLoginPage.value) return {};
-  return {
-    marginTop: app.isMobile ? '10px' : '64px',
-    padding: app.isMobile ? '5px 8px' : '12px 10px',
-  };
-});
-
 const handleLogout = async () => {
   try {
     app.logout();
@@ -114,11 +106,22 @@ const handleLogout = async () => {
 // 在组件挂载时获取用户信息
 onMounted(async () => {
   await app.init();
+  console.log('router.options', router.options.routes.filter(route => route.name && route.meta && route.meta.hideInNav === false))
 });
 </script>
 <style scoped>
 .site-layout-content {
   min-height: 100vh;
+}
+
+.content-wrapper {
+  margin-top: 64px;
+  padding: 12px 10px;
+}
+
+.content-wrapper-mobile {
+  margin-top: 10px;
+  padding: 5px 8px;
 }
 
 .mobile-menu-wrapper {

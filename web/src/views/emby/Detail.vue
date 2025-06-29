@@ -1,7 +1,8 @@
 <template>
   <a-skeleton active v-if="loading" />
   <div v-else class="movie-container">
-    <div class="background-overlay"></div>
+    <div class="background-overlay" :style="{ background: `url(${mediaDetail.poster}) no-repeat center center` }">
+    </div>
     <div class="content">
       <!-- PC 端布局 -->
       <div v-if="!isMobile" class="pc-layout">
@@ -12,19 +13,9 @@
           <h1 class="title">{{ mediaDetail.SortName }}</h1>
           <div class="buttons">
             <a-space>
-              <a-button
-                type="primary"
-                @click="playHandler"
-                :icon="h(PlayCircleFilled)"
-                >播放</a-button
-              >
-              <a-button
-                type="primary"
-                @click="openEmbyPage"
-                :icon="h(HeartFilled)"
-                >Emby</a-button
-              >
-              <a-button type="primary" :icon="h(DeleteFilled)">删除</a-button>
+              <div class="btn glass" :style="{ backgroundColor: `${token.colorPrimaryActive}` }" @click="playHandler" :icon="h(PlayCircleFilled)">播放</div>
+              <div class="btn glass" @click="openEmbyPage" :icon="h(HeartFilled)">Emby</div>
+              <div class="btn glass" :icon="h(DeleteFilled)">删除</div>
             </a-space>
           </div>
         </div>
@@ -32,27 +23,14 @@
 
       <!-- 移动端布局 -->
       <div v-else class="mobile-layout">
-        <div
-          class="mobile-header"
-          :style="{ backgroundImage: `url(${mediaDetail.poster})` }"
-        >
+        <div class="mobile-header" :style="{ backgroundImage: `url(${mediaDetail.poster})` }">
           <div class="mobile-overlay">
-            <h1 class="title mobile">Last: Naruto the Movie</h1>
+            <h3 class="title mobile">{{ mediaDetail.SortName }}</h3>
             <div class="buttons mobile">
               <a-space>
-                <a-button
-                  type="primary"
-                  @click="playHandler"
-                  :icon="h(PlayCircleFilled)"
-                  >播放</a-button
-                >
-                <a-button
-                  type="primary"
-                  @click="openEmbyPage"
-                  :icon="h(HeartFilled)"
-                  >收藏</a-button
-                >
-                <a-button type="primary" :icon="h(DeleteFilled)">删除</a-button>
+                <div class="btn glass" :style="{ backgroundColor: `${token.colorPrimaryActive}` }" @click="playHandler" :icon="h(PlayCircleFilled)">播放</div>
+                <div class="btn glass" @click="openEmbyPage" :icon="h(HeartFilled)">Emby</div>
+                <div class="btn glass" :icon="h(DeleteFilled)">删除</div>
               </a-space>
             </div>
           </div>
@@ -61,29 +39,25 @@
 
       <!-- 标签区域 -->
       <div class="tag-section">
-        <span
-          class="tag"
-          :style="{ backgroundColor: token.colorPrimaryBgHover }"
-          v-for="tag in mediaDetail.TagItems"
-          :key="tag"
-          >{{ tag.Name }}</span
-        >
+        <span class="tag glass">{{ videoStream.Codec }}</span>
+        <span class="tag glass">{{ `${videoStream.Width} *
+          ${videoStream.Height}` }}</span>
+        <span class="tag glass">{{ `${videoStream.BitRate / 1000}Mbps`
+        }}</span>
+        <span class="tag glass">{{ `${(videoStream.Size / 1024 /
+          1024).toFixed(2)}Mb` }}</span>
+        <span class="tag glass" @click="tagFilterHandler(tag.Name)" v-for="tag in mediaDetail.TagItems" :key="tag">{{
+          tag.Name
+          }}</span>
       </div>
 
       <!-- 背景图片缩略图区域 -->
       <template v-if="mediaDetail?.BackdropImageTags?.length > 0">
         <div class="similar-scroll">
-          <div
-            class="similar-card"
-            :style="{}"
-            v-for="(chapter, index) in mediaDetail.Chapters"
-            :key="index"
-          >
-            <img
-              class="poster-small"
+          <div class="similar-card" :style="{}" v-for="(chapter, index) in mediaDetail.Chapters" :key="index">
+            <img class="poster-small"
               :src="`${config.emby_server}/emby/Items/${mediaDetail.Id}/Images/Chapter/${chapter.ChapterIndex}?&quality=100`"
-              alt="similar"
-            />
+              alt="similar" />
             <div class="similar-title">
               <ellipsis :length="40" :tooltip="true" :line="3">
                 {{ chapter.Name }}
@@ -93,39 +67,13 @@
         </div>
       </template>
 
-      <!-- 演职人员横向滑动（共用） -->
-      <template v-if="mediaDetail.People?.length > 0">
-        <h2 class="section-title">演职人员</h2>
-        <div class="cast-scroll">
-          <div
-            class="cast-card"
-            v-for="people in mediaDetail.People"
-            :key="people.Id"
-            @click="personFilterHandler(people.Id)"
-          >
-            <div class="avatar">
-              {{ people.Name }}
-            </div>
-            <div class="cast-name">{{ people.Name }}</div>
-            <div class="cast-role">{{ people.Type }}</div>
-          </div>
-        </div>
-      </template>
-
       <!-- 附加内容 -->
-      <template
-        v-if="
-          mediaDetail.specialFeatures && mediaDetail.specialFeatures.length > 0
-        "
-      >
+      <template v-if="
+        mediaDetail.specialFeatures && mediaDetail.specialFeatures.length > 0
+      ">
         <h2 class="section-title">附加内容</h2>
         <div class="similar-scroll">
-          <div
-            class="similar-card"
-            :style="{}"
-            v-for="item in similarMovies"
-            :key="item.title"
-          >
+          <div class="similar-card" :style="{}" v-for="item in similarMovies" :key="item.title">
             <img class="poster-small" :src="posterUrl" alt="similar" />
             <div class="similar-title">
               <ellipsis :length="40" :tooltip="true" :line="3">
@@ -140,22 +88,28 @@
       <template v-if="similarMovies && similarMovies.length > 0">
         <h2 class="section-title">相似推荐</h2>
         <div class="similar-scroll">
-          <div
-            class="similar-card"
-            v-for="item in similarMovies"
-            :key="item.Id"
-          >
-            <img
-              class="poster-small"
-              :src="getPrimary(item)"
-              alt="similar"
-              @click="toSimilarItemHandler(item)"
-            />
+          <div class="similar-card" v-for="item in similarMovies" :key="item.Id">
+            <img class="poster-small" :src="getPrimary(item)" alt="similar" @click="toSimilarItemHandler(item)" />
             <div class="similar-title">
               <ellipsis :length="40" :tooltip="true" :line="3">
                 {{ item.Name }}
               </ellipsis>
             </div>
+          </div>
+        </div>
+      </template>
+
+      <!-- 演职人员横向滑动（共用） -->
+      <template v-if="mediaDetail.People?.length > 0">
+        <h2 class="section-title">演职人员</h2>
+        <div class="cast-scroll">
+          <div class="cast-card glass" v-for="people in mediaDetail.People" :key="people.Id"
+            @click="personFilterHandler(people.Id)">
+            <div class="avatar">
+              {{ people.Name }}
+            </div>
+            <div class="cast-name">{{ people.Name }}</div>
+            <div class="cast-role">{{ people.Type }}</div>
           </div>
         </div>
       </template>
@@ -168,7 +122,7 @@ import { useAppStore } from "@/stores/app";
 import { ref, onActivated, computed, reactive, h } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import request from "@/utils/request";
-import { getThumb,getPrimary } from "@/utils/emby-util";
+import { getThumb, getPrimary } from "@/utils/emby-util";
 import { message, theme } from "ant-design-vue";
 import {
   PlayCircleFilled,
@@ -201,12 +155,24 @@ onActivated(() => {
 const loading = ref(false);
 
 const mediaDetail = reactive({});
+const videoStream = reactive({})
 const fetchData = async (id) => {
   loading.value = true;
   try {
     const { data } = await request.get(`/api/emby-item/detail/${id}`);
     const poster = getThumb(data);
     Object.assign(mediaDetail, { ...data, poster: poster });
+
+    if (data.MediaSources
+      && data.MediaSources.length > 0
+      && data.MediaSources[0].MediaStreams
+      && data.MediaSources[0].MediaStreams.length > 0) {
+      // 过滤视频流并赋值给变量
+      const stream = data.MediaSources[0].MediaStreams.filter(s => s.Type === 'Video');
+      if (stream && stream.length > 0) {
+        Object.assign(videoStream, { ...stream[0], Size: data.MediaSources[0].Size });
+      }
+    }
     fetchSimilar();
   } finally {
     loading.value = false;
@@ -229,8 +195,12 @@ const playHandler = async () => {
 };
 
 const personFilterHandler = async (personId) => {
-  router.push({ name: "EmbyList", query: { personIds: personId } });
+  router.push({ name: "EmbyList", params: { personIds: personId } });
 };
+
+const tagFilterHandler = async (name) => {
+  router.push({ name: "查询", params: { tag: name } });
+}
 
 // 在Emby中打开
 const openEmbyPage = () => {
@@ -261,20 +231,51 @@ const cardStyle = computed(() => {
 });
 </script>
 
-<style scoped lang="less">
-@button-bg: #ffffff22;
-@button-bg-hover: #ffffff44;
+<style lang="less">
 @card-bg: #ffffff11;
 @border-radius: 8px;
+
+.buttons {
+  .btn {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+}
 
 .movie-container {
   min-height: 100vh;
   position: relative;
+  background-size: cover;
+  color: rgba(255, 255, 255, 0.85);
 
   .background-overlay {
-    position: absolute;
+    position: fixed;
+    /* 改为fixed以固定背景 */
     inset: 0;
-    z-index: 1;
+    z-index: 0;
+    margin: 0;
+    padding: 0;
+    font-family: sans-serif;
+    background-size: cover !important;
+    /* 确保背景图覆盖整个容器 */
+    background-position: center center !important;
+    /* 背景图居中显示 */
+    background-repeat: no-repeat !important;
+    /* 不重复显示背景图 */
+    background-attachment: fixed;
+    /* 确保背景图固定 */
+    justify-content: center;
+    align-items: center;
+
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-color: rgba(0, 0, 0, 0.8);
+      /* 添加半透明黑色遮罩 */
+    }
   }
 
   .content {
@@ -349,11 +350,9 @@ const cardStyle = computed(() => {
         overflow: hidden;
 
         .mobile-overlay {
-          background: linear-gradient(
-            to top,
-            rgba(0, 0, 0, 0.8),
-            rgba(0, 0, 0, 0.2)
-          );
+          background: linear-gradient(to top,
+              rgba(23, 23, 23, 0.639),
+              rgba(0, 0, 0, 0));
           position: absolute;
           inset: 0;
           padding: 20px;
@@ -364,7 +363,7 @@ const cardStyle = computed(() => {
           text-align: center;
 
           .title.mobile {
-            font-size: 22px;
+            font-size: 16px;
             margin-bottom: 12px;
           }
         }
@@ -442,8 +441,7 @@ const cardStyle = computed(() => {
         text-align: center;
 
         :hover {
-          transform: scale(1.05);
-          transition: transform 0.3s ease;
+          background-color: rgba(255, 255, 255, 0.2);
         }
 
         .poster-small {
@@ -457,4 +455,24 @@ const cardStyle = computed(() => {
     }
   }
 }
+
+.glass {
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  background-color: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+.glass:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  transform: scale(1.02);
+}
+
+.content-wrapper-mobile {
+  padding: 0 !important;
+  margin-top: 0 !important;
+}
+
+.content-wrapper-mobile {}
 </style>

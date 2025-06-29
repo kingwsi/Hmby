@@ -9,7 +9,7 @@ const routes = [
     redirect: '/home'
   },
   {
-    path: '/search',
+    path: '/search/:tag?',
     name: '查询',
     component: () => import('../views/emby/Search.vue'),
     meta: { requiresAuth: true, hideInNav: false, keepAlive: true }

@@ -22,7 +22,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from "vue";
+import { ref, reactive, onActivated, nextTick } from "vue";
 import request from "@/utils/request";
 import { message } from "ant-design-vue";
 import TagsSelect from "@/components/TagsSelect.vue";
@@ -37,6 +37,17 @@ const queryParam = reactive({
 });
 
 const router = useRouter()
+const route = useRoute()
+
+onActivated(async () => {
+    const { tag } = route.params;
+    if (tag) {
+        queryParam.tags = tag;
+        queryParam.page = 1;
+        await nextTick();
+        embyCardRef.value.fetchData(queryParam);
+    }
+})
 
 const handleTagChange = (tagName) => {
     queryParam.tags = tagName;

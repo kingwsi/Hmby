@@ -1,13 +1,8 @@
 <template>
-    <!-- <a-page-header @back="() => router.back()">
-        <template #title>
-            <div>
-                返回
-            </div>
-        </template>
-    </a-page-header> -->
-    <video-player v-if="playerId && playerId" :key="playerId" ref="videoPlayerRef" :item-id="playerId"
+    <div class="palyer-wrapper">
+        <video-player v-if="playerId && playerId" :key="playerId" ref="videoPlayerRef" :item-id="playerId"
         style="height: 70vh; max-width: 100%" />
+    </div>
 </template>
 
 <script setup>
@@ -42,6 +37,7 @@ onBeforeUnmount(() => {
     }
 })
 onDeactivated(() => {
+    playerId.value = null
     player.value = null
 })
 </script>
@@ -55,5 +51,18 @@ onDeactivated(() => {
 .video-js {
     width: 100%;
     height: auto;
+}
+
+.palyer-wrapper {
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: black;
+}
+
+.content-wrapper-mobile {
+  padding: 0 !important;
+  margin-top: 0 !important;
 }
 </style>
