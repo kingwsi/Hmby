@@ -315,15 +315,7 @@ const showEditor = ref(false);
 const selectedRecord = ref(null);
 const editHandler = async (record) => {
   if (record.type === "TRANSLATE") {
-    const itemId = record.embyId;
-    const subtitleLanguage = record.suffix;
-    router.push({
-      path: "/subtitle-manager",
-      query: {
-        itemId,
-        subtitleLanguage,
-      },
-    });
+    router.push({ name: 'SubtitleManager', params: { id: record.embyId } })
   } else {
     selectedRecord.value = record;
     showEditor.value = true;

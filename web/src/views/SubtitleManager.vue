@@ -49,6 +49,7 @@
           v-for="(item, index) in subtitleData"
           :key="index"
           class="subtitle-card"
+          :style="{ backgroundColor: token.colorBgLayout}"
           size="small"
           :bordered="false"
           :data-subtitle-id="item.id"
@@ -197,7 +198,7 @@
 <script setup>
 import { ref, onMounted, computed, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { message } from "ant-design-vue";
+import { message, theme } from "ant-design-vue";
 import { TranslationOutlined } from "@ant-design/icons-vue";
 import request from "@/utils/request";
 import VideoPlayer from "@/components/VideoPlayer.vue";
@@ -218,6 +219,9 @@ const currentTranslateItem = ref(null);
 const translating = ref(false);
 const videoPlayerRef = ref(null);
 
+const { useToken } = theme;
+const { token } = useToken();
+
 const player = computed(() => videoPlayerRef.value?.player());
 
 const editForm = ref({
@@ -231,7 +235,7 @@ const mediaDetail = ref({});
 const fetchSubtitleData = async () => {
   try {
     loading.value = true;
-    const { id } = route.query;
+    const { id } = route.params;
     const { data } = await request.get(`/api/subtitle/${id}`);
     subtitleData.value = data.map((item) => ({
       id: item.id,
@@ -255,7 +259,8 @@ const fetchSubtitleData = async () => {
 };
 
 onMounted(() => {
-  const { id } = route.query;
+  const { id } = route.params;
+  console.log('id', route.params)
   if (!id) {
     message.error("参数错误");
     router.back();
@@ -489,7 +494,7 @@ watch(
   }
 
   .subtitle-card {
-    background: #fafafa;
+    background: var(--color-bg-layout);
     border-radius: 6px;
     transition: all 0.3s;
     padding: 8px;
@@ -558,7 +563,6 @@ watch(
             font-size: 14px;
             font-weight: 400;
             margin-bottom: 4px;
-            color: #333;
             cursor: pointer;
             padding: 2px 4px;
             border-radius: 4px;
@@ -591,8 +595,6 @@ watch(
   top: 0;
   left: 0;
   right: 0;
-  z-index: 100;
-  background: rgba(255, 255, 255, 0.9);
   padding: 16px;
 
   @media (max-width: 768px) {
@@ -619,14 +621,12 @@ watch(
     font-size: 14px;
     margin-bottom: 16px;
     padding: 8px;
-    background: #f5f5f5;
     border-radius: 4px;
   }
 
   .translated-result {
     font-size: 14px;
     padding: 8px;
-    background: #e6f7ff;
     border-radius: 4px;
   }
 
