@@ -134,19 +134,24 @@
           <!-- 编码 -->
           <a-tab-pane key="ENCODE" tab="编码">
             <div>
+              <a-descriptions :column="1" bordered size="small" style="margin-top: 16px; margin-bottom: 16px"
+                v-if="mediaStream">
+                <a-descriptions-item label="详情">{{ mediaStream.Size }}
+                  <a-divider type="vertical" />
+                  {{ parseInt(mediaStream.BitRate / 1000 / 1000) }} mbps
+                  <a-divider type="vertical" />{{
+                    mediaStream.Width + " * " + mediaStream.Height
+                  }}
+                  <a-divider type="vertical" /> {{ mediaStream.Codec }}
+                </a-descriptions-item>
+              </a-descriptions>
+
               <a-form ref="form" :model="mediaInfo" layout="vertical">
-                <a-form-item>
-                  <a-space direction="vertical" style="width: 100%">
-                    <a-radio-group v-model:value="mediaInfo.codec" button-style="solid">
-                      <a-radio-button v-for="codec in codecs" :key="codec" :value="codec">{{ codec }}</a-radio-button>
-                    </a-radio-group>
-                  </a-space>
-                </a-form-item>
                 <a-form-item label="质量">
                   <a-row align="middle">
                     <a-col flex="30px">高</a-col>
                     <a-col flex="auto">
-                      <a-slider :max="30" :min="18" v-model:value="mediaInfo.crf"/>
+                      <a-slider :max="30" :min="18" v-model:value="mediaInfo.crf" />
                     </a-col>
                     <a-col flex="30px">低</a-col>
                   </a-row>
@@ -328,7 +333,6 @@ const loadMetaInfo = async () => {
         type: "ENCODE",
         fileName: `${fileName}`,
         suffix: `${suffix}`,
-        codec: codecs.value[0],
         crf: 23,
       };
     }
@@ -364,10 +368,7 @@ const saveMediaInfo = async () => {
   try {
     mediaInfo.value.type = viewMode.value;
     if (mediaInfo.value.type === "ENCODE") {
-      if (!mediaInfo.value.codec) {
-        message.error("请选择编码器");
-        return;
-      }
+      mediaInfo.value.codec = 'hevc'
     } else if (mediaInfo.value.type === "CUT") {
       if (!marks.value.length) {
         message.error("请添加剪切片段");
