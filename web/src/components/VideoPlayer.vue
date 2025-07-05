@@ -13,7 +13,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick, onDeactivated, watch } from "vue";
+import { ref, onMounted, nextTick, onUnmounted, watch } from "vue";
 import videojs from "video.js";
 import "video.js/dist/video-js.css";
 import "@/assets/timeline-marker.css";
@@ -213,6 +213,14 @@ watch(
 onMounted(() => {
   initPlayer();
 });
+
+onUnmounted(() =>{
+  // 销毁播放器实例
+  if (player.value) {
+    player.value.dispose();
+    player.value = null;
+  }
+})
 </script>
 
 <style>
