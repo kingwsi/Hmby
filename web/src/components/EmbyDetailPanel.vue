@@ -140,20 +140,16 @@
                     <a-radio-group v-model:value="mediaInfo.codec" button-style="solid">
                       <a-radio-button v-for="codec in codecs" :key="codec" :value="codec">{{ codec }}</a-radio-button>
                     </a-radio-group>
-                    <a-input-number v-model:value="mediaInfo.bitRate" :formatter="(value) => `${value}K`"
-                      :parser="(value) => value.replace('K', '')" default-value="1000" :min="1000" :max="5000"
-                      step="500" style="width: 200px" addon-after="码率" />
                   </a-space>
                 </a-form-item>
-                <a-form-item label="处理状态">
-                  <a-select v-model:value="mediaInfo.status" style="width: 100%">
-                    <a-select-option value="NONE">不处理</a-select-option>
-                    <a-select-option value="PENDING">待处理</a-select-option>
-                    <a-select-option value="PROCESSING">处理中</a-select-option>
-                    <a-select-option value="SUCCESS">完成</a-select-option>
-                    <a-select-option value="FAIL">失败</a-select-option>
-                    <a-select-option value="DELETED">已删除</a-select-option>
-                  </a-select>
+                <a-form-item label="质量">
+                  <a-row align="middle">
+                    <a-col flex="30px">高</a-col>
+                    <a-col flex="auto">
+                      <a-slider :max="30" :min="18" v-model:value="mediaInfo.crf"/>
+                    </a-col>
+                    <a-col flex="30px">低</a-col>
+                  </a-row>
                 </a-form-item>
                 <a-form-item label="视频标题">
                   <a-input v-model:value="mediaInfo.metaTitle" placeholder="视频标题" allow-clear />
@@ -323,18 +319,6 @@ const loadMetaInfo = async () => {
       var suffix = fullFileName.substr(fullFileName.lastIndexOf(".") + 1);
       // 获取文件名，不带后缀
       var fileName = fullFileName.substr(0, fullFileName.lastIndexOf("."));
-      var b = BitRate / 1000;
-      if (b < 1000) {
-        b = 1000;
-      } else if (b < 2000) {
-        b = 1500;
-      } else if (b < 3000) {
-        b = 2000;
-      } else if (b < 4000) {
-        b = 2600;
-      } else if (b > 4000) {
-        b = 3000;
-      }
 
       mediaInfo.value = {
         inputPath: Path,
@@ -345,7 +329,7 @@ const loadMetaInfo = async () => {
         fileName: `${fileName}`,
         suffix: `${suffix}`,
         codec: codecs.value[0],
-        bitRate: b,
+        crf: 23,
       };
     }
   } catch (error) {
@@ -588,6 +572,7 @@ const emit = defineEmits(["change"]);
 const changeHandler = async () => {
   emit("change", mediaDetail.value);
 };
+
 </script>
 <style lang="less" scoped>
 .empty-detail {

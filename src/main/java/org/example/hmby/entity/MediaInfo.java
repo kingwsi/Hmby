@@ -96,4 +96,7 @@ public class MediaInfo extends AuditableEntity {
 
     @Column(name = "meta_title", length = 50)
     private String metaTitle;
+
+    @Column(name = "crf")
+    private Integer crf;
 }

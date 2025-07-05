@@ -68,4 +68,6 @@ public class MediaInfoDTO extends AuditableDTO {
     private Long bitRate;
 
     private String metaTitle;
+    
+    private Integer crf;
 }
