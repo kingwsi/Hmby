@@ -60,7 +60,7 @@ const routes = [
     path: '/emby/player/:id?',
     name: 'EmbyPlayer',
     component: () => import('../views/emby/Player.vue'),
-    meta: { requiresAuth: true, hideInNav: true, keepAlive: true }
+    meta: { requiresAuth: true, hideInNav: true, hideNav: true, keepAlive: true }
   },
   {
     path: '/tag',

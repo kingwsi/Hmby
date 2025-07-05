@@ -6,12 +6,12 @@
           <a-button shape="circle" :icon="h(MenuUnfoldOutlined)" @click="showDrawer = true" />
         </a-tooltip>
       </div>
-      <!-- <a-float-button v-if="app.isMobile && !showDrawer" @click="showDrawer = true" /> -->
-      <a-layout-header v-if="!isLoginPage && !app.isMobile" class="header"
+      <a-float-button v-if="app.isMobile && !showDrawer" @click="showDrawer = true" />
+      <a-layout-header v-if="!currentRoute.meta.hideNav && !app.isMobile" class="header"
         :style="{ position: 'fixed', zIndex: 10, width: '100%' }">
         <div class="header-content">
           <div class="logo">
-            <span class="logo-text">Hmby</span>
+            <span class="logo-text"> {{ currentRoute.hideNav }}</span>
           </div>
           <a-menu v-model:selectedKeys="selectedKeys" theme="dark" mode="horizontal" :style="{ lineHeight: '64px' }"
             class="desktop-menu">
@@ -45,9 +45,9 @@
         </template>
       </a-drawer>
 
-      <a-layout-content :class="{ 'content-wrapper': true, 'content-wrapper-mobile': app.isMobile }">
+      <a-layout-content :class="{ 'content-wrapper': !currentRoute.meta.hideNav, 'content-wrapper-mobile': app.isMobile }">
         <!-- <a-page-header v-if="app.isMobile" :title="currentRoute.name" /> -->
-        <div :class="{ 'site-layout-content': !isLoginPage }">
+        <div :class="{ 'site-layout-content': !currentRoute.meta.hideNav }">
           <router-view v-slot="{ Component }">
             <keep-alive>
               <component :key="currentRoute.meta.name" :is="Component"
@@ -72,7 +72,7 @@ const router = useRouter();
 const route = useRoute();
 
 const routes = computed(() => {
-  return router.options.routes.filter(route => route.name && route.meta && route.meta.hideInNav === false);
+  return router.options.routes.filter(route => route.name && !route.meta?.hideInNav);
 });
 
 const currentRoute = computed(() => {
@@ -81,10 +81,6 @@ const currentRoute = computed(() => {
 
 const selectedKeys = computed(() => {
   return [route.path];
-});
-
-const isLoginPage = computed(() => {
-  return route.path === '/login';
 });
 
 const app = useAppStore();
@@ -106,7 +102,6 @@ const handleLogout = async () => {
 // 在组件挂载时获取用户信息
 onMounted(async () => {
   await app.init();
-  console.log('router.options', router.options.routes.filter(route => route.name && route.meta && route.meta.hideInNav === false))
 });
 </script>
 <style scoped>

@@ -3,32 +3,21 @@
     <!-- 过滤 -->
     <a-row>
       <div class="table-page-search-wrapper">
-        <a-form layout="inline">
           <a-row :gutter="[16, 16]">
             <a-col>
-              <a-form-item label="关键字">
-                <a-input
-                  v-model:value="queryParam.searchTerm"
-                  placeholder="请输入关键词搜索"
-                  style="width: 200px"
-                  :allowClear="true"
-                  @change="handleSearch"
-                />
-              </a-form-item>
+              <a-input v-model:value="queryParam.searchTerm" placeholder="关键词搜索" style="width: 200px" :allowClear="true"
+                @change="fetchData" />
             </a-col>
             <a-col>
-              <a-form-item label="标签">
-                <TagsSelect @change="handleTagChange" />
-              </a-form-item>
+              <TagsSelect @change="handleTagChange" />
             </a-col>
             <a-col>
               <a-form-item>
-                <a-button type="primary" @click="handleSearch">搜索</a-button>
+                <a-button type="primary" @click="fetchData">搜索</a-button>
               </a-form-item>
             </a-col>
           </a-row>
-        </a-form>
-      </div>
+        </div>
     </a-row>
     <a-row :gutter="16">
       <!-- 列表区域 -->
