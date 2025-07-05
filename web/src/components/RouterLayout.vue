@@ -1,11 +1,6 @@
 <template>
   <a-config-provider :theme="app.themeConfig">
     <a-layout class="layout">
-      <div class="float-btn" v-if="app.isMobile && !showDrawer">
-        <a-tooltip title="search">
-          <a-button shape="circle" :icon="h(MenuUnfoldOutlined)" @click="showDrawer = true" />
-        </a-tooltip>
-      </div>
       <a-float-button v-if="app.isMobile && !showDrawer" @click="showDrawer = true" />
       <a-layout-header v-if="!currentRoute.meta.hideNav && !app.isMobile" class="header"
         :style="{ position: 'fixed', zIndex: 10, width: '100%' }">
