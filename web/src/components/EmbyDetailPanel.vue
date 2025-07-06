@@ -138,7 +138,7 @@
                     <a-row align="middle">
                       <a-col flex="30px">高</a-col>
                       <a-col flex="auto">
-                        <a-slider :max="30" :min="18" v-model:value="mediaInfo.crf" />
+                        <a-slider :max="28" :min="5" v-model:value="mediaInfo.crf" />
                       </a-col>
                       <a-col flex="30px">低</a-col>
                     </a-row>
