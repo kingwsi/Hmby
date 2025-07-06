@@ -219,6 +219,7 @@ onUnmounted(() =>{
   if (player.value) {
     player.value.dispose();
     player.value = null;
+    console.log("播放器已销毁");
   }
 })
 </script>

@@ -46,7 +46,7 @@
   </div>
   <!-- 移动端弹窗 -->
   <a-modal v-if="app.isMobile" v-model:open="detailModalVisible" :title="'媒体详情'" :width="'100%'" :footer="null"
-    :destroyOnClose="false" :bodyStyle="{ padding: '12px', maxHeight: '90vh', overflow: 'auto' }" style="top: 20px">
+    :destroyOnClose="true" :bodyStyle="{ padding: '12px', maxHeight: '90vh', overflow: 'auto' }" style="top: 20px">
     <EmbyDetailPanel :id="selectedItemId" @change="fetchData" />
   </a-modal>
 </template>
