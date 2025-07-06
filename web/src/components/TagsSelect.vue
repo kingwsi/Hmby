@@ -1,47 +1,41 @@
 <template>
-  <a-select
-    ref="tagInputRef"
-    v-model:value="tagState.inputValue"
-    show-search
-    allowClear
-    placeholder="请输入标签"
-    :autoClearSearchValue="true"
-    :size="selectSize"
-    :style="{ minWidth: '150px' }"
-    :filter-option="false"
-    :not-found-content="tagState.fetching ? undefined : null"
-    @search="fetchTags"
-    @change="changeHandler"
-  >
+  <a-select ref="tagInputRef" v-model:value="selectedTags" :mode="mode" show-search allowClear placeholder="请输入标签"
+    :autoClearSearchValue="true" :size="selectSize" :style="{ minWidth: '150px' }" :filter-option="false"
+    :not-found-content="tagState.fetching ? undefined : null" @search="fetchTags" @change="changeHandler">
     <template v-if="tagState.fetching" #notFoundContent>
       <a-spin size="small" />
     </template>
-    <a-select-option
-      v-for="tag in tagState.searchResults"
-      :key="tag.value"
-      :value="tag.label"
-    >
+    <a-select-option v-for="tag in tagState.searchResults" :key="tag.value" :value="tag.label">
       {{ tag.label }}
     </a-select-option>
   </a-select>
 </template>
 
 <script setup>
-import { onMounted, ref, watch,computed, reactive } from 'vue';
+import { onMounted, ref, watch, computed, reactive } from 'vue';
 import request from "@/utils/request";
 // 定义props
 const props = defineProps({
-    size: {
-        type: String,
-        default: 'middle',
-        validator: (value) => {
-            return ['small', 'middle', 'large'].includes(value)
-        }
+  size: {
+    type: String,
+    default: 'middle',
+    validator: (value) => {
+      return ['small', 'middle', 'large'].includes(value)
     }
+  },
+  mode: {
+    type: String,
+    default: null
+  },
+  modelValue: {
+    type: [String, Number, Boolean, Array, Object],
+    default: null
+  }
 })
 
 // 使用计算属性来响应props的变化
 const selectSize = computed(() => props.size)
+const selectedTags = ref(props.modelValue)
 
 // Tags处理
 onMounted(() => {
@@ -52,7 +46,7 @@ onMounted(() => {
 // 标签状态管理
 const tagState = reactive({
   data: [],
-  value: [],
+  value: props.value,
   fetching: false,
   tags: [],
   inputVisible: false,
@@ -79,11 +73,11 @@ const fetchTags = async (value) => {
   }
 };
 
-const emit = defineEmits(['change'])
+const emit = defineEmits(['change', 'update:modelValue'])
 const changeHandler = (value) => {
   emit('change', value)
+  emit('update:modelValue', value)
 }
 </script>
 
-<style>
-</style>
+<style></style>

@@ -22,120 +22,28 @@
         <div v-if="!selectedItemId" class="empty-detail">
           <a-empty description="请选择一个媒体项目查看详情" />
         </div>
-        <a-tabs v-else v-model:activeKey="viewMode" class="detail-tabs">
-          <a-tab-pane key="view" tab="预览">
-            <!-- 视频信息区域 -->
-            <a-descriptions :column="1" bordered size="small" style="margin-top: 16px; margin-bottom: 16px"
-              v-if="mediaStream">
-              <a-descriptions-item v-if="mediaInfo.inputPath" :label="mediaDetail.Id">
-                {{ mediaDetail.SortName }}
-              </a-descriptions-item>
-              <a-descriptions-item v-if="mediaInfo.inputPath" label="目录">{{
-                mediaInfo.inputPath.substr(
-                  0,
-                  mediaInfo.inputPath.lastIndexOf("/") + 1
-                )
-              }}</a-descriptions-item>
-              <a-descriptions-item label="详情">{{ mediaStream.Size }}
-                <a-divider type="vertical" />
-                {{ parseInt(mediaStream.BitRate / 1000 / 1000) }} mbps
-                <a-divider type="vertical" />{{
-                  mediaStream.Width + " * " + mediaStream.Height
-                }}
-                <a-divider type="vertical" /> {{ mediaStream.Codec }}
-              </a-descriptions-item>
-            </a-descriptions>
-            <a-descriptions :column="1" bordered size="small" v-if="videoStreamMain">
-              <a-descriptions-item label="字幕语言" v-if="subtitleLanguages && subtitleLanguages.length > 0">
-                <a-space size="large">
-                  <a-tag v-for="item in subtitleLanguages" style="cursor: pointer"
-                    @click="openSubtitle(mediaDetail.Id, item)" :key="item">
-                    {{ item }}</a-tag>
-                </a-space>
-              </a-descriptions-item>
-              <template v-if="mediaDetail.mediaInfo">
-                <a-descriptions-item label="源文件" v-if="mediaDetail.outputMedia">
-                  {{
-                    (mediaDetail.mediaInfo.fileSize / 1024 / 1024).toFixed(2)
-                  }}MB <a-divider type="vertical" />
-                  {{ mediaDetail.mediaInfo.inputPath }}
-                </a-descriptions-item>
-                <a-descriptions-item :label="typeMap[mediaDetail.mediaInfo.type]">
-                  {{
-                    (mediaDetail.mediaInfo.processedSize / 1024 / 1024).toFixed(
-                      2
-                    )
-                  }}MB <a-divider type="vertical" />
-                  {{
-                    (
-                      (mediaDetail.mediaInfo.processedSize * 100) /
-                      mediaDetail.mediaInfo.fileSize
-                    ).toFixed(2)
-                  }}% <a-divider type="vertical" /> 耗时:{{
-                    mediaDetail.mediaInfo.timeCost
-                  }}
-                </a-descriptions-item>
-              </template>
-            </a-descriptions>
-            <div>
-              <!-- 标签编辑 -->
-              <a-space class="tag-edit-section">
-                <template v-for="tag in selectedTags" :key="tag.Id">
-                  <a-tooltip v-if="tag.length > 20" :title="tag">
-                    <a-tag :closable="true" @close="handleTagClose(tag)">
-                      {{ `${tag.slice(0, 20)}...` }}
-                    </a-tag>
-                  </a-tooltip>
-                  <a-tag v-else :closable="true" @close="handleTagClose(tag)">
-                    {{ tag }}
-                  </a-tag>
-                </template>
-                <TagsSelect :size="'small'" @change="tagChangeHandle" />
-                <a-button type="text" @click="saveTagChanges" size="small">保存</a-button>
-              </a-space>
-            </div>
-          </a-tab-pane>
-
-          <a-tab-pane key="CUT" tab="剪辑">
-            <div>
-              <a-form ref="form" :model="mediaInfo" layout="vertical">
-                <a-form-item>
-                  <a-space>
-                    <span>开始时间: {{ formatDuring(selectedMark.start) }}</span>
-                    <span>结束时间: {{ formatDuring(selectedMark.end) }}</span>
-                  </a-space>
-                </a-form-item>
-                <a-form-item>
-                  <a-space>
-                    <a-button-group>
-                      <a-button @click="modifyPlay(-5)">
-                        <template #icon><step-backward-outlined /></template>
-                        -5s
-                      </a-button>
-                      <a-button @click="modifyPlay(+5)">
-                        <template #icon><step-forward-outlined /></template>
-                        +5s
-                      </a-button>
-                    </a-button-group>
-                    <a-button type="primary" @click="selectFrame()">
-                      <template #icon><scissor-outlined /></template>
-                      {{ selectedMark.recheck ? "开始" : "结束" }}
-                    </a-button>
-                    <a-button type="primary" :disabled="!selectedMark.checked" @click="handlerAdd">
-                      <template #icon><plus-outlined /></template>
-                      添加
-                    </a-button>
-                  </a-space>
-                </a-form-item>
-              </a-form>
-            </div>
-          </a-tab-pane>
-
-          <!-- 编码 -->
-          <a-tab-pane key="ENCODE" tab="编码">
-            <div>
+        <div v-else>
+          <a-tabs v-model:activeKey="viewMode" class="detail-tabs" centered>
+            <a-tab-pane key="view" tab="预览">
+              <!-- 视频信息区域 -->
               <a-descriptions :column="1" bordered size="small" style="margin-top: 16px; margin-bottom: 16px"
                 v-if="mediaStream">
+                <a-descriptions-item label="标签">
+                  <!-- 标签编辑 -->
+                  <a-space class="tag-edit-section">
+                    <TagsSelect size="small" mode="tags" v-model="selectedTags" />
+                    <a-button type="text" @click="saveTagChanges" size="small">保存</a-button>
+                  </a-space>
+                </a-descriptions-item>
+                <a-descriptions-item v-if="mediaInfo.inputPath" :label="mediaDetail.Id">
+                  {{ mediaDetail.SortName }}
+                </a-descriptions-item>
+                <a-descriptions-item v-if="mediaInfo.inputPath" label="目录">{{
+                  mediaInfo.inputPath.substr(
+                    0,
+                    mediaInfo.inputPath.lastIndexOf("/") + 1
+                  )
+                }}</a-descriptions-item>
                 <a-descriptions-item label="详情">{{ mediaStream.Size }}
                   <a-divider type="vertical" />
                   {{ parseInt(mediaStream.BitRate / 1000 / 1000) }} mbps
@@ -144,72 +52,152 @@
                   }}
                   <a-divider type="vertical" /> {{ mediaStream.Codec }}
                 </a-descriptions-item>
+                <a-descriptions-item label="字幕语言" v-if="subtitleLanguages && subtitleLanguages.length > 0">
+                  <a-space size="large">
+                    <a-tag v-for="item in subtitleLanguages" style="cursor: pointer"
+                      @click="openSubtitle(mediaDetail.Id, item)" :key="item">
+                      {{ item }}</a-tag>
+                  </a-space>
+                </a-descriptions-item>
+                <template v-if="mediaDetail.mediaInfo">
+                  <a-descriptions-item label="源文件" v-if="mediaDetail.outputMedia">
+                    {{
+                      (mediaDetail.mediaInfo.fileSize / 1024 / 1024).toFixed(2)
+                    }}MB <a-divider type="vertical" />
+                    {{ mediaDetail.mediaInfo.inputPath }}
+                  </a-descriptions-item>
+                  <a-descriptions-item :label="typeMap[mediaDetail.mediaInfo.type]">
+                    {{
+                      (mediaDetail.mediaInfo.processedSize / 1024 / 1024).toFixed(2)
+                    }}MB <a-divider type="vertical" />
+                    {{
+                      (
+                        (mediaDetail.mediaInfo.processedSize * 100) /
+                        mediaDetail.mediaInfo.fileSize
+                      ).toFixed(2)
+                    }}% <a-divider type="vertical" /> 耗时:{{
+                      mediaDetail.mediaInfo.timeCost
+                    }}
+                  </a-descriptions-item>
+                </template>
               </a-descriptions>
+            </a-tab-pane>
 
-              <a-form ref="form" :model="mediaInfo" layout="vertical">
-                <a-form-item label="质量">
-                  <a-row align="middle">
-                    <a-col flex="30px">高</a-col>
-                    <a-col flex="auto">
-                      <a-slider :max="30" :min="18" v-model:value="mediaInfo.crf" />
-                    </a-col>
-                    <a-col flex="30px">低</a-col>
-                  </a-row>
-                </a-form-item>
-                <a-form-item label="视频标题">
-                  <a-input v-model:value="mediaInfo.metaTitle" placeholder="视频标题" allow-clear />
-                </a-form-item>
-              </a-form>
-            </div>
-          </a-tab-pane>
+            <a-tab-pane key="CUT" tab="剪辑">
+              <div>
+                <a-form ref="form" :model="mediaInfo" layout="vertical">
+                  <a-form-item>
+                    <a-space>
+                      <span>开始时间: {{ formatDuring(selectedMark.start) }}</span>
+                      <span>结束时间: {{ formatDuring(selectedMark.end) }}</span>
+                    </a-space>
+                  </a-form-item>
+                  <a-form-item>
+                    <a-space>
+                      <a-button-group>
+                        <a-button @click="modifyPlay(-5)">
+                          <template #icon><step-backward-outlined /></template>
+                          -5s
+                        </a-button>
+                        <a-button @click="modifyPlay(+5)">
+                          <template #icon><step-forward-outlined /></template>
+                          +5s
+                        </a-button>
+                      </a-button-group>
+                      <a-button type="primary" @click="selectFrame()">
+                        <template #icon><scissor-outlined /></template>
+                        {{ selectedMark.recheck ? "开始" : "结束" }}
+                      </a-button>
+                      <a-button type="primary" :disabled="!selectedMark.checked" @click="handlerAdd">
+                        <template #icon><plus-outlined /></template>
+                        添加
+                      </a-button>
+                    </a-space>
+                  </a-form-item>
+                </a-form>
+              </div>
+            </a-tab-pane>
 
-          <a-tab-pane key="MOVE" tab="移动">
-            <h3>移动文件</h3>
-          </a-tab-pane>
+            <!-- 编码 -->
+            <a-tab-pane key="ENCODE" tab="编码">
+              <div>
+                <a-descriptions :column="1" bordered size="small" style="margin-top: 16px; margin-bottom: 16px"
+                  v-if="mediaStream">
+                  <a-descriptions-item label="详情">{{ mediaStream.Size }}
+                    <a-divider type="vertical" />
+                    {{ parseInt(mediaStream.BitRate / 1000 / 1000) }} mbps
+                    <a-divider type="vertical" />{{
+                      mediaStream.Width + " * " + mediaStream.Height
+                    }}
+                    <a-divider type="vertical" /> {{ mediaStream.Codec }}
+                  </a-descriptions-item>
+                </a-descriptions>
 
-          <a-tab-pane key="SUBTITLE" tab="字幕">
-            <h3>转录字幕</h3>
-          </a-tab-pane>
+                <a-form ref="form" :model="mediaInfo" layout="vertical">
+                  <a-form-item label="质量">
+                    <a-row align="middle">
+                      <a-col flex="30px">高</a-col>
+                      <a-col flex="auto">
+                        <a-slider :max="30" :min="18" v-model:value="mediaInfo.crf" />
+                      </a-col>
+                      <a-col flex="30px">低</a-col>
+                    </a-row>
+                  </a-form-item>
+                  <a-form-item label="视频标题">
+                    <a-input v-model:value="mediaInfo.metaTitle" placeholder="视频标题" allow-clear />
+                  </a-form-item>
+                </a-form>
+              </div>
+            </a-tab-pane>
 
-          <a-tab-pane key="TRANSLATE" tab="翻译">
-            <h3>翻译</h3>
-          </a-tab-pane>
-        </a-tabs>
+            <a-tab-pane key="MOVE" tab="移动">
+              <h3>移动文件</h3>
+            </a-tab-pane>
+
+            <a-tab-pane key="SUBTITLE" tab="字幕">
+              <h3>转录字幕</h3>
+            </a-tab-pane>
+
+            <a-tab-pane key="TRANSLATE" tab="翻译">
+              <h3>翻译</h3>
+            </a-tab-pane>
+          </a-tabs>
+          <!-- 操作按钮 -->
+          <a-row class="bottom-btn-wrapper" :gutter="[16, 16]" justify="center">
+            <a-col v-if="viewMode != 'view'">
+              <a-select size="small" v-model:value="mediaInfo.status" style="width: 80px">
+                <a-select-option value="NONE">不处理</a-select-option>
+                <a-select-option value="PENDING">待处理</a-select-option>
+                <a-select-option value="PROCESSING">处理中</a-select-option>
+                <a-select-option value="SUCCESS">完成</a-select-option>
+                <a-select-option value="FAIL">失败</a-select-option>
+                <a-select-option value="DELETED">已删除</a-select-option>
+              </a-select>
+            </a-col>
+            <a-col>
+              <a-popconfirm title="确认删除这条数据？" ok-text="确认" okType="danger" cancel-text="取消"
+                @confirm="deleteItemHandle(mediaDetail.Id)" placement="left">
+                <a-button size="small" danger :loading="confirmLoading">删除</a-button>
+              </a-popconfirm>
+            </a-col>
+            <a-col>
+              <a-button size="small" @click="openEmbyPage">查看更多</a-button>
+            </a-col>
+            <a-col v-if="viewMode != 'view'">
+              <a-button size="small" @click="loadMetaInfo()">
+                <template #icon><reload-outlined /></template>
+                刷新
+              </a-button>
+            </a-col>
+            <a-col v-if="viewMode != 'view'">
+              <a-button size="small" :loading="saveMediaInfoLoading" type="primary" @click="saveMediaInfo()">
+                <template #icon><save-outlined /></template>
+                保存
+              </a-button>
+            </a-col>
+          </a-row>
+        </div>
       </a-spin>
-    </a-row>
-    <!-- 操作按钮 -->
-    <a-row class="bottom-btn-wrapper" :gutter="[16, 16]" justify="center" v-if="viewMode != 'view'">
-      <a-col>
-        <a-select size="small" v-model:value="mediaInfo.status" style="width: 80px">
-          <a-select-option value="NONE">不处理</a-select-option>
-          <a-select-option value="PENDING">待处理</a-select-option>
-          <a-select-option value="PROCESSING">处理中</a-select-option>
-          <a-select-option value="SUCCESS">完成</a-select-option>
-          <a-select-option value="FAIL">失败</a-select-option>
-          <a-select-option value="DELETED">已删除</a-select-option>
-        </a-select>
-      </a-col>
-      <a-col>
-        <a-popconfirm title="确认删除这条数据？" ok-text="确认" okType="danger" cancel-text="取消"
-          @confirm="deleteItemHandle(mediaDetail.Id)" placement="left">
-          <a-button size="small" danger :loading="confirmLoading">删除</a-button>
-        </a-popconfirm>
-      </a-col>
-      <a-col>
-        <a-button size="small" @click="openEmbyPage">查看更多</a-button>
-      </a-col>
-      <a-col>
-        <a-button size="small" @click="loadMetaInfo()">
-          <template #icon><reload-outlined /></template>
-          刷新
-        </a-button>
-      </a-col>
-      <a-col>
-        <a-button size="small" :loading="saveMediaInfoLoading" type="primary" @click="saveMediaInfo()">
-          <template #icon><save-outlined /></template>
-          保存
-        </a-button>
-      </a-col>
     </a-row>
   </div>
 </template>
@@ -218,7 +206,6 @@
 import { onMounted, ref, watch, computed, reactive, nextTick } from "vue";
 import VideoPlayer from "@/components/VideoPlayer.vue";
 import request from "@/utils/request";
-import Ellipsis from "@/components/Ellipsis.vue";
 import { message, theme } from "ant-design-vue";
 import TagsSelect from "@/components/TagsSelect.vue";
 import { useRouter } from "vue-router";
@@ -231,7 +218,6 @@ import {
   StepForwardOutlined,
   PlusOutlined,
 } from "@ant-design/icons-vue";
-import { getThumb } from "../utils/emby-util";
 import { useAppStore } from "@/stores/app";
 
 const { useToken } = theme;
@@ -244,7 +230,7 @@ const props = defineProps({
   },
 });
 // 组件逻辑可以在这里添加
-const viewMode = ref("view"); // 'view' 或 'edit'
+const viewMode = ref(null);
 // 使用props中的id初始化selectedItemId
 const selectedItemId = ref(props.id);
 
@@ -255,7 +241,7 @@ watch(
     selectedItemId.value = newId;
     if (newId) {
       try {
-        // 使用 nextTick 确保在 loadMetaInfo 函数定义后再调用
+        viewMode.value = null;
         await nextTick();
         await loadMetaInfo();
       } catch (err) {
@@ -285,13 +271,15 @@ const loadMetaInfo = async () => {
   });
 
   try {
-    const { data } = await request.get(
-      `/api/emby-item/detail/${selectedItemId.value}`
-    );
+    const { data } = await request.get(`/api/emby-item/detail/${selectedItemId.value}`);
     if (data?.mediaInfo?.type) {
-      viewMode.value = data.mediaInfo.type;
+      if (!viewMode.value) {
+        viewMode.value = data.mediaInfo.type;
+      }
       if (data.mediaInfo.type === 'CUT' && data.mediaInfo.marks) {
         marks.value = data.mediaInfo.marks;
+      } else {
+        marks.value = [];
       }
     } else {
       viewMode.value = 'view'
@@ -315,24 +303,17 @@ const loadMetaInfo = async () => {
 
     if (mediaDetail.value.mediaInfo) {
       mediaInfo.value = mediaDetail.value.mediaInfo;
-      marks.value = mediaDetail.value.mediaInfo?.marks || [];
     } else {
       const { ServerId, Size, Path } = mediaDetail.value;
-      const { BitRate } = mediaStream.value;
       const fullFileName = Path.substr(Path.lastIndexOf("/") + 1, Path.length);
-      // 获取文件后缀
-      var suffix = fullFileName.substr(fullFileName.lastIndexOf(".") + 1);
-      // 获取文件名，不带后缀
-      var fileName = fullFileName.substr(0, fullFileName.lastIndexOf("."));
-
       mediaInfo.value = {
         inputPath: Path,
         hash: ServerId,
         status: "PENDING",
         fileSize: Size,
         type: "ENCODE",
-        fileName: `${fileName}`,
-        suffix: `${suffix}`,
+        fileName: `${fullFileName.substr(0, fullFileName.lastIndexOf("."))}`,
+        suffix: `${fullFileName.substr(fullFileName.lastIndexOf(".") + 1)}`,
         crf: 23,
       };
     }
@@ -340,17 +321,6 @@ const loadMetaInfo = async () => {
     console.error("加载元数据失败：", error);
   } finally {
     detailLoading.value = false;
-  }
-};
-
-// 加载编码器列表
-const codecs = ref([]);
-const loadCodecs = async () => {
-  try {
-    const { data } = await request.get("/api/media-info/codecs");
-    codecs.value = data;
-  } catch (error) {
-    console.error("加载编码器列表失败：", error);
   }
 };
 
@@ -409,24 +379,6 @@ const mediaDetail = ref({});
 
 // 获取媒体详情
 const playerId = ref(null);
-const fetchMediaDetail = async (itemId) => {
-  try {
-    detailLoading.value = true;
-    const { data } = await request.get(`/api/emby-item/detail/${itemId}`);
-    mediaDetail.value = data;
-    playerId.value = data.Id;
-
-    // 初始化标签数据
-    if (data.TagItems && Array.isArray(data.TagItems)) {
-      // 从TagItems中提取name属性到selectedTags数组
-      selectedTags.value = data.TagItems?.map((item) => item.Name) || [];
-    }
-  } catch (error) {
-    console.error("获取媒体详情失败：", error);
-  } finally {
-    detailLoading.value = false;
-  }
-};
 
 const typeMap = {
   CUT: "剪切",
@@ -467,30 +419,17 @@ const subtitleLanguages = computed(() => {
   return languages;
 });
 
-// Tags处理
 onMounted(() => {
-  loadCodecs();
 });
 
+// Tags处理
 const selectedTags = ref([]);
 const saveTagChanges = async () => {
   await request.post(`/api/emby-item/${mediaDetail.value.Id}/tags`, {
     Tags: selectedTags.value,
   });
   message.success("标签保存成功");
-  fetchMediaDetail(mediaDetail.value.Id);
-};
-
-const handleTagClose = (tag) => {
-  selectedTags.value = selectedTags.value.filter((t) => t !== tag);
-};
-
-const tagChangeHandle = (val) => {
-  if (!val) return;
-  // 检查标签是否已存在
-  if (!selectedTags.value.includes(val)) {
-    selectedTags.value.push(val);
-  }
+  loadMetaInfo();
 };
 
 const confirmLoading = ref(false);
@@ -514,7 +453,7 @@ const deleteItemHandle = async (id) => {
 // 在Emby中打开
 const { config } = useAppStore();
 const openEmbyPage = () => {
-  if (mediaDetail.value && mediaDetail.value.embyServer) {
+  if (mediaDetail.value) {
     window.open(
       `${config.emby_server}/web/index.html#!/item?id=${mediaDetail.value.Id}&serverId=${mediaDetail.value.ServerId}`,
       "_blank"
@@ -529,8 +468,6 @@ const openSubtitle = (id, language) => {
   router.push(`/subtitle-manager?id=${id}&language=${language}`);
 };
 
-// 编辑器
-// 视频播放器相关
 const handlerAdd = () => {
   if (
     selectedMark.start !== null &&
@@ -598,7 +535,7 @@ const changeHandler = async () => {
 .tag-edit-section {
   display: flex;
   flex-wrap: wrap;
-  min-height: 200px;
+  max-height: 200px;
 }
 
 .wrapper {

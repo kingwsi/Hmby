@@ -78,7 +78,7 @@ const selectedItemId = ref(null);
 
 // 查询参数
 const queryParam = reactive({
-  parentId: "",
+  parentId: "1551",
   searchTerm: "",
   tags: undefined,
   number: 1,
@@ -118,19 +118,6 @@ const handleClickItem = (item) => {
 // 生命周期
 onMounted(async () => {
   await fetchLibraries();
-
-  // 从localStorage读取缓存的查询参数
-  const cachedParams = localStorage.getItem("embyCardQueryParams");
-  if (cachedParams) {
-    try {
-      const params = JSON.parse(cachedParams);
-      queryParam.parentId = params.parentId || "";
-      queryParam.searchTerm = params.searchTerm || "";
-      queryParam.tag = params.tag;
-    } catch (error) {
-      console.error("解析缓存参数失败：", error);
-    }
-  }
   await fetchData();
 });
 
@@ -160,7 +147,6 @@ onActivated(async () => {
   position: sticky;
   top: 84px;
   padding-right: 10px;
-  padding-bottom: 60px;
   height: calc(100vh - 64px);
   overflow-y: scroll;
   -ms-overflow-style: none;

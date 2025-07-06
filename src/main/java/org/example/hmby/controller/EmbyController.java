@@ -177,14 +177,13 @@ public class EmbyController {
         Metadata metadata = embyClient.getItemMetadata(itemId);
         Assert.notNull(metadataRequest.getTags(), "tags is null");
 
-        tagService.saveIfNotExist(metadataRequest.getTags());
-
         metadataRequest.setProviderIds(metadata.getProviderIds());
         metadataRequest.setName(metadata.getSortName());
         metadataRequest.setId(metadata.getId());
         metadataRequest.setTagItems(metadataRequest.getTags().stream().map(ItemTag::new).collect(Collectors.toList()));
         try (feign.Response response = embyClient.updateMetadata(itemId, metadataRequest)) {
             if (response.status() == 204) {
+                tagService.saveIfNotExist(metadataRequest.getTags());
                 return Response.success();
             }
             return Response.fail(response.reason(), response.status());
