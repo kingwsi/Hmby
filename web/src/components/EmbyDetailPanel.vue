@@ -18,7 +18,7 @@
         </div>
       </div>
       <template v-if="selectedItemId">
-        <a-row justify="center">
+        <a-row justify="center" class="switch-btn">
           <a-space direction="vertical">
             <a-radio-group v-model:value="viewMode">
               <a-radio-button value="view">详情</a-radio-button>
@@ -542,27 +542,30 @@ const changeHandler = async () => {
   max-width: 100%;
 }
 
-.video-player-container {
-  margin-bottom: 16px;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
 .tag-edit-section {
   display: flex;
   flex-wrap: wrap;
   max-height: 200px;
 }
 
-.wrapper {
-  display: flex;
-}
-
 .bottom-btn-wrapper {
-  line-height: 46px;
+  line-height: 60px;
+  position: sticky;
+  bottom: 0;
+  width: 100%;
+  z-index: 2;
+  padding: 10px 0;
+  text-align: center;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
 }
 
+.switch-btn{
+  margin-top: 10px;
+}
 .option-panel {
-  height: 100%;
+  min-height: 280px;
 }
 </style>
