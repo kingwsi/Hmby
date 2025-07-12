@@ -55,7 +55,7 @@
                 <a-descriptions-item label="字幕语言" v-if="subtitleLanguages && subtitleLanguages.length > 0">
                   <a-space size="large">
                     <a-tag v-for="item in subtitleLanguages" style="cursor: pointer"
-                      @click="openSubtitle(mediaDetail.Id, item)" :key="item">
+                      @click="openSubtitle(mediaDetail.Id)" :key="item">
                       {{ item }}</a-tag>
                   </a-space>
                 </a-descriptions-item>
@@ -463,9 +463,8 @@ const openEmbyPage = () => {
 
 const router = useRouter();
 // 打开字幕
-const openSubtitle = (id, language) => {
-  console.log("l", id);
-  router.push(`/subtitle-manager?id=${id}&language=${language}`);
+const openSubtitle = (id) => {
+  router.push({ name: 'SubtitleManager', params: { id: id } })
 };
 
 const handlerAdd = () => {
