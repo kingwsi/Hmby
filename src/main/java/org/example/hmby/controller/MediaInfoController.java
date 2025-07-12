@@ -47,10 +47,7 @@ import java.util.stream.Collectors;
 public class MediaInfoController {
     private final MediaInfoService mediaInfoService;
 
-    private final ThreadPoolExecutor singleThreadExecutor;
-
     private final ConcurrentHashMap<Object, Object> localCache;
-    private final PropertiesConfig propertiesConfig;
     private final ConfigRepository configRepository;
 
     @PostMapping

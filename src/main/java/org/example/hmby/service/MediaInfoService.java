@@ -114,8 +114,10 @@ public class MediaInfoService {
     public MediaInfoDTO getMediaAndMarks(Long id) {
         MediaInfo mediaInfo = mediaInfoRepository.findById(id).orElseThrow(() -> new BusinessException("未查询到记录"));
         MediaInfoDTO mediaInfoDTO = mediainfoConvertMapper.toMediaInfoDTO(mediaInfo);
-        List<MediaMark> mediaMarks = mediaMarkRepository.findByMediaId(id).stream().sorted(Comparator.comparing(MediaMark::getStart)).collect(Collectors.toList());
-        mediaInfoDTO.setMarks(mediaMarks);
+        if (mediaInfoDTO.getType() == MediaConvertType.CUT) {
+            List<MediaMark> mediaMarks = mediaMarkRepository.findByMediaId(id).stream().sorted(Comparator.comparing(MediaMark::getStart)).collect(Collectors.toList());
+            mediaInfoDTO.setMarks(mediaMarks);
+        }
         return mediaInfoDTO;
     }
 
