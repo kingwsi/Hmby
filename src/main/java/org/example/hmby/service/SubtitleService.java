@@ -158,6 +158,10 @@ public class SubtitleService {
             }
         }
         this.outputToFile(mediaId);
+        mediaInfoRepository.findById(mediaId).ifPresent(mediaInfo -> {
+            mediaInfo.setStatus(MediaStatus.DONE);
+            mediaInfoRepository.save(mediaInfo);
+        });
         return null;
     }
 
