@@ -6,19 +6,7 @@ import NotFound from '../views/NotFound.vue'
 const routes = [
   {
     path: '/',
-    redirect: '/home'
-  },
-  {
-    path: '/search/:tag?',
-    name: '查询',
-    component: () => import('../views/emby/Search.vue'),
-    meta: { requiresAuth: true, hideInNav: false, keepAlive: true }
-  },
-  {
-    path: '/home',
-    name: '首页',
-    component: Home,
-    meta: { requiresAuth: true, hideInNav: false, keepAlive: true }
+    redirect: '/media-info'
   },
   {
     path: '/media-info',
@@ -38,12 +26,12 @@ const routes = [
     component: () => import('../views/EmbyOutputList.vue'),
     meta: { requiresAuth: true, hideInNav: false, keepAlive: true }
   },
-  {
-    path: '/emby',
-    name: 'Emby',
-    component: () => import('../views/emby/Library.vue'),
-    meta: { requiresAuth: true, hideInNav: false, keepAlive: true }
-  },
+  // {
+  //   path: '/emby',
+  //   name: 'Emby',
+  //   component: () => import('../views/emby/Library.vue'),
+  //   meta: { requiresAuth: true, hideInNav: false, keepAlive: true }
+  // },
   {
     path: '/emby/list',
     name: 'EmbyList',
@@ -78,13 +66,13 @@ const routes = [
     path: '/subtitle-manager/:id?',
     name: 'SubtitleManager',
     component: () => import('../views/SubtitleManager.vue'),
-    meta: { requiresAuth: true, hideInNav: true, keepAlive: false }
+    meta: { requiresAuth: true, keepAlive: false, hideInNav: true, hideNav: true }
   },
   {
     path: '/login',
-    name: '登录',
+    name: 'Login',
     component: () => import('../views/Login.vue'),
-    meta: { hideInNav: true }
+    meta: { hideInNav: true, hideNav: true }
   },
   {
     path: '/:pathMatch(.*)*',
@@ -97,6 +85,30 @@ const routes = [
 const router = createRouter({
   history: createWebHistory('/web/'),
   routes
+})
+
+router.beforeEach((to, from, next) => {
+  // ⚠️ 必须在守卫里调用 useAppStore，否则会报 “getActivePinia” 错误
+  const appStore = useAppStore()
+
+  // 1. 已登录用户访问 /login → 直接跳首页
+  if (to.name === 'Login' && appStore.isAuthenticated) {
+    next('/')
+    return
+  }
+
+  // 2. 未登录用户访问非白名单页面 → 跳登录并记录 redirect
+  const whiteList = ['Login']
+  if (!whiteList.includes(to.name) && !appStore.isAuthenticated) {
+    next({
+      path: '/login',
+      query: { redirect: to.fullPath }
+    })
+    return
+  }
+
+  // 3. 其余情况放行
+  next()
 })
 
 

@@ -1,154 +1,140 @@
 <template>
-    <div class="login-container">
-        <div class="login-content">
-            <div class="login-header">
-                <img src="/vite.svg" alt="Logo" class="login-logo" />
-                <h1 class="login-title">Hmby</h1>
-                <p class="login-subtitle"></p>
-            </div>
-            <a-card class="login-card">
-                <a-form :model="formState" name="basic" :label-col="{ span: 0 }" :wrapper-col="{ span: 24 }"
-                    autocomplete="off" @finish="onFinish">
-                    <a-form-item name="username" :rules="[{ required: true, message: '请输入用户名!' }]">
-                        <a-input v-model:value="formState.username" size="large" placeholder="请输入用户名">
-                            <template #prefix>
-                                <user-outlined />
-                            </template>
-                        </a-input>
-                    </a-form-item>
+  <!-- 整屏 flex 居中 -->
+  <div class="login-wrapper">
+    <a-row type="flex" justify="center" align="middle" class="login-row">
+      <!-- 响应式：≥576px 占 8 格，≥992px 占 6 格，其余占满 24 格 -->
+      <a-col :xs="22" :sm="16" :md="12" :lg="8" :xl="6">
+        <a-card class="login-card" :bordered="false">
+          <div class="login-title">
+            <!-- <img src="@assets/vue.svg" alt="logo" class="logo" /> -->
+            <span>Hmby</span>
+          </div>
 
-                    <a-form-item name="password" :rules="[{ required: true, message: '请输入密码!' }]">
-                        <a-input-password v-model:value="formState.password" size="large" placeholder="请输入密码">
-                            <template #prefix>
-                                <lock-outlined />
-                            </template>
-                        </a-input-password>
-                    </a-form-item>
+          <a-form
+            ref="formRef"
+            :model="formState"
+            :rules="rules"
+            layout="vertical"
+            @finish="handleSubmit"
+          >
+            <a-form-item label="用户名" name="username">
+              <a-input
+                v-model:value="formState.username"
+                placeholder="请输入用户名"
+                size="large"
+                allow-clear
+              />
+            </a-form-item>
 
-                    <a-form-item>
-                        <a-button type="primary" html-type="submit" :loading="loading" size="large" block>登录</a-button>
-                    </a-form-item>
-                </a-form>
-            </a-card>
-        </div>
-    </div>
+            <a-form-item label="密码" name="password">
+              <a-input-password
+                v-model:value="formState.password"
+                placeholder="请输入密码"
+                size="large"
+                allow-clear
+                @keyup.enter="handleSubmit"
+              />
+            </a-form-item>
+
+            <a-form-item>
+              <a-button
+                type="primary"
+                html-type="submit"
+                size="large"
+                :loading="loading"
+                block
+              >
+                登录
+              </a-button>
+            </a-form-item>
+          </a-form>
+        </a-card>
+      </a-col>
+    </a-row>
+  </div>
 </template>
 
 <script setup>
-import { reactive, ref, computed } from 'vue';
-import { message } from 'ant-design-vue';
-import { useRouter, useRoute } from 'vue-router';
-import { UserOutlined, LockOutlined } from '@ant-design/icons-vue';
-import { useAppStore } from '@/stores/app';
+import { reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { message } from 'ant-design-vue'
+import { useAppStore } from '@/stores/app' // 根据你的 store 路径调整
 
-const router = useRouter();
-const route = useRoute();
-const appStore = useAppStore();
+const router = useRouter()
+const appStore = useAppStore()
 
-// 使用store的loading状态
-const loading = computed(() => appStore.loading);
-
-// 获取重定向路径
-const getRedirectPath = () => {
-    const redirect = route.query.redirect;
-    // 确保重定向路径是安全的
-    if (redirect && typeof redirect === 'string' && !redirect.startsWith('/login')) {
-        return redirect;
-    }
-    return '/home';
-};
-
+// 表单
+const formRef = ref()
 const formState = reactive({
-    username: '',
-    password: ''
-});
+  username: '',
+  password: ''
+})
 
-const onFinish = async (values) => {
-    try {
-        const result = await appStore.login({
-            username: formState.username,
-            password: formState.password
-        });
-        
-        if (result.success) {
-            message.success('登录成功');
-            // 登录成功后重定向到原始目标路由
-            router.push(getRedirectPath());
-        } else {
-            message.error(result.error || '登录失败，请检查用户名和密码');
-        }
-    } catch (error) {
-        console.error('登录过程中发生错误:', error);
-        message.error('登录过程中发生错误，请稍后重试');
+// 校验规则
+const rules = {
+  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
+}
+
+// 登录加载
+const loading = ref(false)
+
+// 提交
+const handleSubmit = async () => {
+  try {
+    await formRef.value.validate()
+    loading.value = true
+    const result = await appStore.login({
+      username: formState.username,
+      password: formState.password
+    })
+    if (result.success) {
+      message.success('登录成功')
+      router.push(getRedirectPath())
     }
-};
+  } catch (error) {
+    // 校验失败或请求失败已在 store 中处理
+  } finally {
+    loading.value = false
+  }
+}
+
+// 根据路由 query 获取重定向地址
+const getRedirectPath = () => {
+  const { redirect } = router.currentRoute.value.query
+  return typeof redirect === 'string' ? redirect : '/'
+}
 </script>
 
 <style scoped>
-.login-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    background: linear-gradient(135deg, #1890ff11 0%, #f0f2f5 100%);
+.login-wrapper {
+  width: 100%;
+  height: 100vh;
 }
 
-.login-content {
-    padding: 32px 0;
-    text-align: center;
-}
-
-.login-header {
-    margin-bottom: 40px;
-}
-
-.login-logo {
-    width: 64px;
-    height: 64px;
-    margin-bottom: 16px;
-}
-
-.login-title {
-    margin: 0;
-    font-size: 33px;
-    font-weight: 600;
-    color: rgba(0, 0, 0, 0.85);
-}
-
-.login-subtitle {
-    margin: 12px 0 0;
-    font-size: 14px;
-    color: rgba(0, 0, 0, 0.45);
+.login-row {
+  height: 100%;
 }
 
 .login-card {
-    width: 368px;
-    margin: 0 auto;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.09);
-    border-radius: 8px;
+  padding: 32px 24px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-.login-card :deep(.ant-card-body) {
-    padding: 32px 24px 24px;
+.login-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
 }
 
-.login-card :deep(.ant-form-item:last-child) {
-    margin-bottom: 0;
-}
-
-.login-card :deep(.ant-input-affix-wrapper) {
-    background-color: #f5f5f5;
-    border: none;
-    transition: all 0.3s;
-}
-
-.login-card :deep(.ant-input-affix-wrapper:hover),
-.login-card :deep(.ant-input-affix-wrapper:focus) {
-    background-color: #fff;
-    box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
-}
-
-.login-card :deep(.anticon) {
-    color: rgba(0, 0, 0, 0.45);
+.logo {
+  width: 32px;
+  height: 32px;
+  margin-right: 8px;
 }
 </style>

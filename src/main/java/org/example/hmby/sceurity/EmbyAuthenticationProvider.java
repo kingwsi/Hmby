@@ -92,7 +92,9 @@ public class EmbyAuthenticationProvider implements AuthenticationProvider {
                 return objectMapper.readValue(responseStr, EmbyAuthResult.class);
             }
             throw new InsufficientAuthenticationException(response.code() + " " + response.message());
-        } catch (Exception e) {
+        } catch (InsufficientAuthenticationException e) {
+            throw new InsufficientAuthenticationException("请检查用户名或密码！");
+        }catch (Exception e) {
             throw new InsufficientAuthenticationException("账号验证异常：" + e.getMessage());
         }
     }

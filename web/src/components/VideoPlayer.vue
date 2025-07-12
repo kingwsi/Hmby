@@ -1,6 +1,6 @@
 <template>
   <div class="video-container">
-    <video ref="videoPlayer" class="video-js">
+    <video ref="videoPlayer" class="video-js" crossOrigin="anonymous">
       <track
         kind="captions"
         v-for="(item, index) in subtitles"

@@ -260,7 +260,6 @@ const fetchSubtitleData = async () => {
 
 onMounted(() => {
   const { id } = route.params;
-  console.log('id', route.params)
   if (!id) {
     message.error("参数错误");
     router.back();
@@ -596,6 +595,7 @@ watch(
   left: 0;
   right: 0;
   padding: 16px;
+  z-index: 10;
 
   @media (max-width: 768px) {
     padding: 10px;
