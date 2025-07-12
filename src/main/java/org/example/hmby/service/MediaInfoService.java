@@ -22,6 +22,7 @@ import org.example.hmby.sceurity.SecurityUtils;
 import org.example.hmby.vo.MediaInfoDTO;
 import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.data.domain.Example;
+import org.springframework.data.domain.Limit;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -211,7 +212,7 @@ public class MediaInfoService {
     }
 
     public MediaInfoDTO getMediaDetail(String inputPath) {
-        MediaInfo mediaInfo = mediaInfoRepository.findByInputPathOrOutputPath(inputPath, inputPath);
+        MediaInfo mediaInfo = mediaInfoRepository.findByInputPathOrOutputPath(inputPath, inputPath, Limit.of(1));
         if (mediaInfo == null) {
             return null;
         }
@@ -241,7 +242,8 @@ public class MediaInfoService {
                     return path;
                 }
                 if (path.startsWith(embyVolume)) {
-                    String realPath = path.replaceFirst(embyVolume, hostVolume.replace(File.separatorChar, '/'));
+                    String realPath =  hostVolume.replace(File.separatorChar, '/') + path.substring(embyVolume.length());
+//                    String realPath = path.replaceFirst(embyVolume, hostVolume.replace(File.separatorChar, '/'));
                     log.info("Volume path replace : {} ->{}", path, realPath);
                     return realPath.replace('/', File.separatorChar);
                 }

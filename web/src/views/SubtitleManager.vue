@@ -34,7 +34,7 @@
       </template>
       <template #extra>
         <a-space size="small">
-          <a-button size="small" @click="execute()">翻译</a-button>
+          <a-button size="small" @click="execute(mediaDetail.mediaInfo.id)">翻译</a-button>
           <a-button size="small" @click="fetchSubtitleData()">刷新</a-button>
           <a-button size="small" @click="scrollToUntranslated()"
             >下一条未翻译</a-button
@@ -377,8 +377,8 @@ const applyTranslation = () => {
 };
 
 const execute = async (id) => {
-  await request.post(
-    `/api/media-info/execute/${mediaDetail.value.mediaInfo.id}`
+  await request.put(
+    `/api/subtitle/translate/${id}`
   );
   message.success("执行成功");
 };
