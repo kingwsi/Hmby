@@ -18,7 +18,46 @@
         </div>
       </div>
       <template v-if="selectedItemId">
-        <a-row justify="center" class="switch-btn">
+        <!-- 操作按钮 -->
+        <a-row class="bottom-btn-wrapper" :gutter="[16, 16]" justify="center">
+          <a-col v-if="viewMode !== 'view'">
+            <a-select size="small" v-model:value="mediaInfo.status" style="width: 80px">
+              <a-select-option value="NONE">不处理</a-select-option>
+              <a-select-option value="PENDING">待处理</a-select-option>
+              <a-select-option value="PROCESSING">处理中</a-select-option>
+              <a-select-option value="SUCCESS">完成</a-select-option>
+              <a-select-option value="FAIL">失败</a-select-option>
+              <a-select-option value="DELETED">已删除</a-select-option>
+            </a-select>
+          </a-col>
+          <a-col>
+            <a-popconfirm title="确认删除这条数据？" ok-text="确认" okType="danger" cancel-text="取消"
+                          @confirm="deleteItemHandle(mediaDetail.Id)" placement="left">
+              <a-button size="small" danger :loading="confirmLoading">删除</a-button>
+            </a-popconfirm>
+          </a-col>
+          <a-col>
+            <a-button size="small" @click="openEmbyPage">查看更多</a-button>
+          </a-col>
+          <a-col v-if="viewMode !== 'view'">
+            <a-button size="small" @click="loadMetaInfo()">
+              <template #icon>
+                <reload-outlined/>
+              </template>
+              刷新
+            </a-button>
+          </a-col>
+          <a-col v-if="viewMode !== 'view'">
+            <a-button size="small" :loading="saveMediaInfoLoading" type="primary" @click="saveMediaInfo()">
+              <template #icon>
+                <save-outlined/>
+              </template>
+              保存
+            </a-button>
+          </a-col>
+        </a-row>
+        <!-- 操作选择 -->
+        <a-row justify="center">
           <a-space direction="vertical">
             <a-radio-group v-model:value="viewMode">
               <a-radio-button value="view">详情</a-radio-button>
@@ -31,7 +70,7 @@
           </a-space>
         </a-row>
         <a-row justify="center">
-          <div class="option-panel">
+          <div>
             <template v-if="viewMode==='view'">
               <!-- 视频信息区域 -->
               <a-descriptions :column="1" bordered size="small" style="margin-top: 16px; margin-bottom: 16px"
@@ -171,45 +210,6 @@
               </a-form>
             </template>
           </div>
-        </a-row>
-
-        <!-- 操作按钮 -->
-        <a-row class="bottom-btn-wrapper" :gutter="[16, 16]" justify="center">
-          <a-col v-if="viewMode !== 'view'">
-            <a-select size="small" v-model:value="mediaInfo.status" style="width: 80px">
-              <a-select-option value="NONE">不处理</a-select-option>
-              <a-select-option value="PENDING">待处理</a-select-option>
-              <a-select-option value="PROCESSING">处理中</a-select-option>
-              <a-select-option value="SUCCESS">完成</a-select-option>
-              <a-select-option value="FAIL">失败</a-select-option>
-              <a-select-option value="DELETED">已删除</a-select-option>
-            </a-select>
-          </a-col>
-          <a-col>
-            <a-popconfirm title="确认删除这条数据？" ok-text="确认" okType="danger" cancel-text="取消"
-                          @confirm="deleteItemHandle(mediaDetail.Id)" placement="left">
-              <a-button size="small" danger :loading="confirmLoading">删除</a-button>
-            </a-popconfirm>
-          </a-col>
-          <a-col>
-            <a-button size="small" @click="openEmbyPage">查看更多</a-button>
-          </a-col>
-          <a-col v-if="viewMode !== 'view'">
-            <a-button size="small" @click="loadMetaInfo()">
-              <template #icon>
-                <reload-outlined/>
-              </template>
-              刷新
-            </a-button>
-          </a-col>
-          <a-col v-if="viewMode !== 'view'">
-            <a-button size="small" :loading="saveMediaInfoLoading" type="primary" @click="saveMediaInfo()">
-              <template #icon>
-                <save-outlined/>
-              </template>
-              保存
-            </a-button>
-          </a-col>
         </a-row>
       </template>
       <div v-else class="empty-detail">
@@ -549,23 +549,10 @@ const changeHandler = async () => {
 }
 
 .bottom-btn-wrapper {
-  line-height: 60px;
-  position: sticky;
-  bottom: 0;
+  line-height: 45px;
   width: 100%;
   z-index: 2;
-  padding: 10px 0;
-  text-align: center;
-  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(10px);
   display: flex;
   align-items: center;
-}
-
-.switch-btn{
-  margin-top: 10px;
-}
-.option-panel {
-  min-height: 280px;
 }
 </style>
