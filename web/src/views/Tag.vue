@@ -373,8 +373,8 @@ const initWordCloud = async () => {
         height: '100%',
         right: null,
         bottom: null,
-        sizeRange: [12, 60], // 字体大小范围
-        rotationRange: [-0, 0], // 旋转角度范围
+        sizeRange: [12, 35], // 字体大小范围
+        rotationRange: [-90, 90], // 旋转角度范围
         rotationStep: 45, // 旋转步进
         gridSize: 5, // 网格大小，值越大，词之间的间隔越大
         drawOutOfBound: false,
