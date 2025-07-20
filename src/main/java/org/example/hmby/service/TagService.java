@@ -156,7 +156,7 @@ public class TagService {
         Example<Tag> example = Example.of(probe, matcher);
 
         // 第 0 页，每页 limit 条，按 createTime 降序排序
-        Pageable pageable = PageRequest.of(0, 5, Sort.by(Sort.Direction.DESC, "updatedAt"));
+        Pageable pageable = PageRequest.of(0, 8, Sort.by(Sort.Direction.DESC, "count"));
         Page<Tag> resultPage = tagRepository.findAll(example, pageable);
         List<Tag> tags = resultPage.getContent();
 
