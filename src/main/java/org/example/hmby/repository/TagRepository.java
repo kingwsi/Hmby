@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 
@@ -21,4 +22,6 @@ public interface TagRepository extends JpaRepository<Tag, Long> {
     List<Tag> findByNameIn(Collection<String> names);
 
     List<Tag> findAllByNameContainsOrderByUpdatedAtDesc(String name);
+
+    Integer deleteBySyncAtNot(Instant syncAt);
 }

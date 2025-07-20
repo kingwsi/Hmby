@@ -6,6 +6,8 @@ import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 
+import java.time.Instant;
+
 /**
 * description:  <br>
 * date: 2022-04-08 <br>
@@ -30,6 +32,8 @@ public class Tag extends AuditableEntity {
     @ColumnDefault("true")
     @Column(name = "show", nullable = false)
     private Boolean show;
+
+    private Instant syncAt;
 
 
     public Tag(String name, Long count, Boolean show) {

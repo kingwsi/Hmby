@@ -14,6 +14,7 @@ import org.example.hmby.entity.Tag;
 import org.example.hmby.exception.BusinessException;
 import org.example.hmby.emby.EmbyFeignClient;
 import org.example.hmby.repository.TagRepository;
+import org.example.hmby.sceurity.EmbyUser;
 import org.example.hmby.sceurity.SecurityUtils;
 import org.example.hmby.vo.TagVO;
 import org.springframework.ai.document.Document;
@@ -26,13 +27,22 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -92,7 +102,6 @@ public class TagService {
     }
 
     public Page<Tag> listOfPage(TagVO vo, Pageable pageable) {
-        PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.Direction.DESC, "updatedAt", "createdAt");
         if (vo.getEmbyMediaId() != null) {
             Metadata metadata = embyFeignClient.getItemMetadata(vo.getEmbyMediaId());
             if (metadata != null && metadata.getTagItems() != null) {
@@ -211,5 +220,67 @@ public class TagService {
                     .toList();
             tagRepository.saveAll(list);
         }
+    }
+
+    public void syncTags(SecurityContext securityContext) {
+        ExecutorService executor = new ThreadPoolExecutor(10, 20,
+                10L, TimeUnit.SECONDS,
+                new ArrayBlockingQueue<>(120), Executors.defaultThreadFactory(), new ThreadPoolExecutor.AbortPolicy());
+        
+        int pageSize = 100;
+        int startIndex = 0;
+        Instant syncAt = Instant.now();
+        List<ItemTag> tags = Optional.ofNullable(embyFeignClient.getTags(null, 0, pageSize))
+                .map(PageWrapper::getItems)
+                .orElse(new ArrayList<>());
+
+        while (!tags.isEmpty()) {
+            Map<String, Tag> tagMap = tagRepository.findByNameIn(
+                    tags.stream().map(ItemTag::getName).toList()
+            ).stream().collect(Collectors.toMap(Tag::getName, tag -> tag));
+
+            List<CompletableFuture<Tag>> futureList = tags.stream().map(t ->
+                    CompletableFuture.supplyAsync(() -> {
+                        SecurityContextHolder.setContext(securityContext);
+                        Tag tag = tagMap.get(t.getName());
+                        if (tag == null) {
+                            tag = new Tag(t.getName(), 0L, true);
+                        }
+                        tag.setSyncAt(syncAt);
+
+                        EmbyItemRequest embyItemRequest = new EmbyItemRequest();
+                        embyItemRequest.setLimit(1);
+                        embyItemRequest.setStartIndex(0);
+                        embyItemRequest.setTags(t.getName());
+
+                        try {
+                            PageWrapper<MovieItem> wrapper = embyFeignClient.getItems(embyItemRequest);
+                            if (wrapper != null && wrapper.getTotalRecordCount() != null) {
+                                tag.setCount(wrapper.getTotalRecordCount());
+                            }
+                        } catch (Exception e) {
+                            // 建议添加日志记录错误
+                            log.error("Failed to fetch tag count for: {}", t.getName(), e);
+                        }
+                        return tag;
+                    }, executor)
+            ).toList();
+
+            List<Tag> list = futureList.stream()
+                    .map(CompletableFuture::join)
+                    .toList();
+
+            tagRepository.saveAll(list);
+
+            startIndex = startIndex + pageSize;
+            tags = Optional.ofNullable(embyFeignClient.getTags(null, startIndex, pageSize))
+                    .map(PageWrapper::getItems)
+                    .orElse(new ArrayList<>());
+            log.info("getTags: {} 条", startIndex);
+        }
+        executor.shutdown();
+        
+        Integer deletedNum = tagRepository.deleteBySyncAtNot(syncAt);
+        log.info("清理失效: {}", deletedNum);
     }
 }
