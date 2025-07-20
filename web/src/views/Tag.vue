@@ -10,8 +10,8 @@
             </a-form-item>
           </a-col>
           <a-col>
-            <a-form-item label="使用次数">
-              <a-input-number v-model:value="queryParam.count" placeholder="最小使用次数" style="width: 100%" />
+            <a-form-item label="是否展示">
+              <a-switch v-model:checked="queryParam.show" checked-children="是" un-checked-children="否" />
             </a-form-item>
           </a-col>
           <a-col>
@@ -40,6 +40,7 @@
             <template v-if="column.key === 'action'">
               <a-space>
                 <a-button type="link" @click="handleEdit(record)">编辑</a-button>
+                <a-button type="link" @click="handleSync(record)">同步</a-button>
                 <a-popconfirm title="确定要删除这个标签吗？" @confirm="handleDelete(record)" ok-text="确定" cancel-text="取消">
                   <a-button type="link" danger>删除</a-button>
                 </a-popconfirm>
@@ -138,7 +139,7 @@ const columns = [
     title: '操作',
     key: 'action',
     fixed: 'right',
-    width: 150
+    width: 220
   }
 ]
 
@@ -296,7 +297,12 @@ const handleDelete = async (record) => {
 
 // 全量同步
 const handleFullSync = async () => {
-  await request.put('/api/emby-item/sync')
+  await request.put('/api/tags/sync')
+  message.success('同步成功')
+}
+const handleSync = async (record) => {
+  await request.put('/api/tags/sync/'+ record.name)
+  loadData();
   message.success('同步成功')
 }
 
@@ -329,7 +335,8 @@ const initWordCloud = async () => {
     params: {
       page: 0,
       size: 999,
-      show: true
+      show: true,
+      sort: 'count,desc',
     }
   })
   allTagsData.value = data.content
@@ -367,9 +374,9 @@ const initWordCloud = async () => {
         right: null,
         bottom: null,
         sizeRange: [12, 60], // 字体大小范围
-        rotationRange: [-90, 90], // 旋转角度范围
+        rotationRange: [-0, 0], // 旋转角度范围
         rotationStep: 45, // 旋转步进
-        gridSize: 8, // 网格大小，值越大，词之间的间隔越大
+        gridSize: 5, // 网格大小，值越大，词之间的间隔越大
         drawOutOfBound: false,
         textStyle: {
           fontFamily: 'sans-serif',

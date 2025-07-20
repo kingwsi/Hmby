@@ -27,9 +27,11 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -222,11 +224,15 @@ public class TagService {
         }
     }
 
+    @Async
+    @Transactional
     public void syncTags(SecurityContext securityContext) {
+        SecurityContextHolder.setContext(securityContext);
+        
         ExecutorService executor = new ThreadPoolExecutor(10, 20,
                 10L, TimeUnit.SECONDS,
                 new ArrayBlockingQueue<>(120), Executors.defaultThreadFactory(), new ThreadPoolExecutor.AbortPolicy());
-        
+
         int pageSize = 100;
         int startIndex = 0;
         Instant syncAt = Instant.now();
@@ -259,7 +265,6 @@ public class TagService {
                                 tag.setCount(wrapper.getTotalRecordCount());
                             }
                         } catch (Exception e) {
-                            // 建议添加日志记录错误
                             log.error("Failed to fetch tag count for: {}", t.getName(), e);
                         }
                         return tag;
@@ -268,6 +273,7 @@ public class TagService {
 
             List<Tag> list = futureList.stream()
                     .map(CompletableFuture::join)
+                    .filter(tag -> tag.getCount() > 0)
                     .toList();
 
             tagRepository.saveAll(list);
@@ -279,8 +285,32 @@ public class TagService {
             log.info("getTags: {} 条", startIndex);
         }
         executor.shutdown();
-        
+
         Integer deletedNum = tagRepository.deleteBySyncAtNot(syncAt);
         log.info("清理失效: {}", deletedNum);
+    }
+
+    public void syncTagByName(String name) {
+        Optional.ofNullable(embyFeignClient.getTags(name, 0, 1))
+                .map(PageWrapper::getItems)
+                .flatMap(o -> o.stream().findFirst())
+                .orElseThrow(() -> new BusinessException("媒体库未查询到标签：" + name));
+        Tag tag = tagRepository.findTagByName(name);
+        if (tag == null) {
+            tag = new Tag(name, 0L, true);
+        }
+        EmbyItemRequest embyItemRequest = new EmbyItemRequest();
+        embyItemRequest.setLimit(1);
+        embyItemRequest.setStartIndex(0);
+        embyItemRequest.setTags(name);
+        PageWrapper<MovieItem> wrapper = embyFeignClient.getItems(embyItemRequest);
+        if (wrapper != null && wrapper.getTotalRecordCount() != null) {
+            tag.setCount(wrapper.getTotalRecordCount());
+        }
+        if (tag.getCount() != 0) {
+            tagRepository.save(tag);
+        } else if (tag.getId() != null) {
+            tagRepository.deleteById(tag.getId());
+        }
     }
 }

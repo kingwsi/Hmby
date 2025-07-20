@@ -64,4 +64,10 @@ public class TagsController {
         tagService.syncTags(context);
         return Response.success();
     }
+
+    @PutMapping("/sync/{name}")
+    public Response<List<Tag>> syncTagByName(@PathVariable String name) {
+        tagService.syncTagByName(name);
+        return Response.success();
+    }
 }
