@@ -197,11 +197,13 @@
               <a-form ref="form" :model="mediaInfo" layout="vertical">
                 <a-form-item label="质量">
                   <a-row align="middle">
-                    <a-col flex="30px">高</a-col>
-                    <a-col flex="auto">
-                      <a-slider :max="30" :min="18" v-model:value="mediaInfo.crf"/>
+                    <a-col>
+                      <a-input-number v-model:value="mediaInfo.crf" :max="31" :min="23"></a-input-number>
                     </a-col>
-                    <a-col flex="30px">低</a-col>
+                    <a-col offset="1">
+                      <a-switch v-model:checked="mediaInfo.gpu" checked-children="GPU" un-checked-children="CPU"/>
+                    </a-col>
+                    
                   </a-row>
                 </a-form-item>
                 <a-form-item label="视频标题">
@@ -332,6 +334,7 @@ const loadMetaInfo = async () => {
         fileName: `${fullFileName.substr(0, fullFileName.lastIndexOf("."))}`,
         suffix: `${fullFileName.substr(fullFileName.lastIndexOf(".") + 1)}`,
         crf: 23,
+        gpu: true
       };
     }
   } catch (error) {
@@ -355,7 +358,6 @@ const saveMediaInfo = async () => {
   try {
     mediaInfo.value.type = viewMode.value;
     if (mediaInfo.value.type === "ENCODE") {
-      mediaInfo.value.codec = 'hevc'
     } else if (mediaInfo.value.type === "CUT") {
       if (!marks.value.length) {
         message.error("请添加剪切片段");

@@ -70,4 +70,6 @@ public class MediaInfoDTO extends AuditableDTO {
     private String metaTitle;
     
     private Integer crf;
+
+    private Boolean gpu;
 }

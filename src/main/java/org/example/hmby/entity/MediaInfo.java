@@ -6,7 +6,6 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import lombok.Getter;
 import lombok.Setter;
-import org.example.hmby.enumerate.MediaCodec;
 import org.example.hmby.enumerate.MediaConvertType;
 import org.example.hmby.enumerate.MediaStatus;
 
@@ -81,11 +80,10 @@ public class MediaInfo extends AuditableEntity {
     private MediaConvertType type;
 
     /**
-     * 编码类型
+     * GPU加速
      */
-    @Column(name = "codec")
-    @Enumerated(EnumType.STRING)
-    private MediaCodec codec;
+    @Column(name = "gpu")
+    private Boolean gpu;
 
 
     /**

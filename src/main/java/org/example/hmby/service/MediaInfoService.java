@@ -61,11 +61,6 @@ public class MediaInfoService {
         if (exist != null) {
             mediaInfo.setId(exist.getId());
         }
-        if (mediaInfo.getType() == MediaConvertType.ENCODE && mediaInfo.getCodec() == null) {
-            throw new BusinessException("编码类型不能为空！");
-        } else if (mediaInfo.getType() != MediaConvertType.ENCODE) {
-            mediaInfo.setCodec(null);
-        }
         mediaInfoRepository.save(mediaInfo);
         if (mediainfoDTO.getMarks() != null && !mediainfoDTO.getMarks().isEmpty()) {
             checkTime(mediainfoDTO.getMarks());

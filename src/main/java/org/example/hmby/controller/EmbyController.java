@@ -250,9 +250,9 @@ public class EmbyController {
 
         for (Metadata.MediaStream mediaStream : mediaSource.getMediaStreams()) {
             if ("Subtitle".equals(mediaStream.getType())) {
-                Map<String, String> subtitle = Map.of("label", mediaStream.getDisplayLanguage(),
+                Map<String, String> subtitle = Map.of("label", Optional.ofNullable(mediaStream.getDisplayLanguage()).orElse("Unknown"),
                         "url", subtitleUrl.formatted(itemId, mediaSource.getId(), index),
-                        "srclang", mediaStream.getLanguage());
+                        "srclang", Optional.ofNullable(mediaStream.getLanguage()).orElse("Unknown"));
                 subtitles.add(subtitle);
             }
             index++;

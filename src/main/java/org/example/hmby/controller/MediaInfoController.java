@@ -5,19 +5,16 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.example.hmby.Response;
-import org.example.hmby.config.PropertiesConfig;
 import org.example.hmby.entity.Config;
 import org.example.hmby.entity.MediaInfo;
 import org.example.hmby.enumerate.CacheKey;
 import org.example.hmby.enumerate.ConfigKey;
-import org.example.hmby.enumerate.MediaCodec;
 import org.example.hmby.enumerate.MediaStatus;
 import org.example.hmby.exception.BusinessException;
 import org.example.hmby.exception.ConfigNotFoundException;
 import org.example.hmby.repository.ConfigRepository;
 import org.example.hmby.service.MediaInfoService;
 import org.example.hmby.vo.MediaInfoDTO;
-import org.example.hmby.vo.MediaQueueVO;
 import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -90,14 +87,6 @@ public class MediaInfoController {
     public Response<Object> progress() {
 //        ProgressInfo progressInfo = new ProgressInfo("Hello World.mp4", Progress.Status.CONTINUE, 12, String.format("%.0f%%", 0.89 * 100), 2, "", "00:12:21");
         return Response.success(localCache.get(CacheKey.CACHE_ENCODING_PROGRESS));
-    }
-
-    @GetMapping("/codecs")
-    public Response<List<String>> codecs() {
-        List<String> mediaCodecs = new ArrayList<>(MediaCodec.getCodecs());
-        String s = Optional.ofNullable(configRepository.findOneByKey(ConfigKey.runner_server))
-                .map(Config::getVal).orElseThrow(() -> new ConfigNotFoundException(ConfigKey.runner_server));
-        return Response.success(mediaCodecs);
     }
 
     @GetMapping("/status")
