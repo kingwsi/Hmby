@@ -50,6 +50,10 @@
         <a-descriptions-item label="类型" :span="3">
           {{ selectedItem.mediaInfo.type }}
           <a-divider type="vertical" /> {{ (stream.BitRate / 1000).toFixed(0) }} K
+          <a-divider type="vertical"/>
+          {{ selectedItem.mediaInfo.gpu ? 'GPU' : 'CPU' }}
+          <a-divider type="vertical"/>
+          CRF {{ selectedItem.mediaInfo.crf }}
         </a-descriptions-item>
         <a-descriptions-item label="输入路径" :span="3">{{
           selectedItem.mediaInfo?.inputPath
