@@ -55,6 +55,22 @@ const duration = ref(null);
 // 暴露播放器实例
 defineExpose({
   player: () => player.value,
+  capture: () => {
+    if (!player.value) {
+      console.error("Player not initialized");
+      return null;
+    }
+    const videoEl = videoPlayer.value;
+    if (!videoEl) {
+        return null;
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = videoEl.videoWidth;
+    canvas.height = videoEl.videoHeight;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/png");
+  },
 });
 
 // 创建时间线标记插件

@@ -69,6 +69,12 @@ const routes = [
     meta: { requiresAuth: true, keepAlive: false, hideInNav: true, hideNav: true }
   },
   {
+    path: '/thumb-maker/:itemId',
+    name: 'ThumbMaker',
+    component: () => import('../views/ThumbMaker.vue'),
+    meta: { requiresAuth: true, hideInNav: true }
+  },
+  {
     path: '/login',
     name: 'Login',
     component: () => import('../views/Login.vue'),

@@ -39,6 +39,9 @@
           <a-col>
             <a-button size="small" @click="openEmbyPage">查看更多</a-button>
           </a-col>
+          <a-col>
+            <a-button size="small" @click="openMakeThumbPage">缩略图</a-button>
+          </a-col>
           <a-col v-if="viewMode !== 'view'">
             <a-button size="small" @click="loadMetaInfo()">
               <template #icon>
@@ -484,6 +487,16 @@ const router = useRouter();
 // 打开字幕
 const openSubtitle = (id) => {
   router.push({name: 'SubtitleManager', params: {id: id}})
+};
+
+const openMakeThumbPage = () => {
+  if (mediaDetail.value) {
+    const routeData = router.resolve({
+        name: 'ThumbMaker',
+        params: { itemId: mediaDetail.value.Id }
+    });
+    window.open(routeData.href, '_blank');
+  }
 };
 
 const handlerAdd = () => {
