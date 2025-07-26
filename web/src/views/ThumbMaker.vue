@@ -12,16 +12,8 @@
               <a-button @click="captureScreenshot" type="primary" :loading="isCapturing" :disabled="!itemId">截取当前帧</a-button>
               <a-button @click="openCropModal" :disabled="!itemId">从视频裁剪</a-button>
               <a-button @click="deleteSelectedObject" :disabled="!selectedObject">删除选中</a-button>
-              <a-button @click="saveImage" type="primary" danger :disabled="!itemId">保存缩略图</a-button>
-            </div>
-          </div>
-          <div class="screenshots-gallery-wrapper" v-if="screenshots.length > 0">
-            <h3>截图画廊 (拖动图片到右侧画布)</h3>
-            <div class="screenshots-gallery">
-              <div v-for="(src, index) in screenshots" :key="index" class="screenshot-item">
-                <img :src="src" @dragstart="handleDragStart($event, index)" draggable="true" />
-                <a-button size="small" @click="removeScreenshot(index)" class="delete-btn" danger>删除</a-button>
-              </div>
+              <a-button @click="autoArrange" :disabled="canvasObjects.length === 0">自动排版</a-button>
+              <a-button @click="saveImage" type="primary" danger :disabled="!itemId" :loading="isSaving">保存缩略图</a-button>
             </div>
           </div>
         </div>
@@ -30,7 +22,7 @@
         <div class="canvas-section">
           <h3>缩略图画布 (16:9)</h3>
           <div class="canvas-container" ref="canvasContainerRef">
-            <canvas ref="canvasRef" @dragover.prevent @drop="handleDrop" @mousedown="handleCanvasMouseDown" @mousemove="handleCanvasMouseMove" @mouseup="handleCanvasMouseUp" @mouseleave="handleCanvasMouseUp"></canvas>
+            <canvas ref="canvasRef" @dragover.prevent @mousedown="handleCanvasMouseDown" @mousemove="handleCanvasMouseMove" @mouseup="handleCanvasMouseUp" @mouseleave="handleCanvasMouseUp"></canvas>
           </div>
         </div>
       </a-col>
@@ -63,21 +55,22 @@ import VideoPlayer from '@/components/VideoPlayer.vue';
 import { Button as AButton, Row as ARow, Col as ACol, message, Modal as AModal } from 'ant-design-vue';
 import VueCropper from 'vue-cropperjs';
 import '/public/css/cropper.min.css';
+import request from '@/utils/request';
 
 const route = useRoute();
 const itemId = ref(null);
 
 // Refs
 const videoPlayerRef = ref(null);
-const screenshots = ref([]);
 const canvasRef = ref(null);
 const canvasContainerRef = ref(null);
 const isCapturing = ref(false);
 const cropperRef = ref(null);
+const isSaving = ref(false);
 
 // Canvas state
 let ctx = null;
-let canvasObjects = [];
+const canvasObjects = ref([]);
 let selectedObject = null;
 let isDragging = false;
 let isResizing = false;
@@ -131,29 +124,38 @@ const setupCanvas = () => {
     }
 }
 
+const addImageToCanvas = (dataUrl) => {
+    const img = new Image();
+    img.src = dataUrl;
+    img.onload = () => {
+        const canvas = canvasRef.value;
+        const aspectRatio = img.width / img.height;
+        const height = 300;
+        const width = height * aspectRatio;
+        canvasObjects.value.push({ img, x: (canvas.width - width) / 2, y: (canvas.height - height) / 2, width, height, aspectRatio });
+        redrawCanvas();
+    };
+}
+
 // Methods
 const captureScreenshot = () => {
   if (!videoPlayerRef.value) return;
   isCapturing.value = true;
   const dataUrl = videoPlayerRef.value.capture();
   if (dataUrl) {
-    screenshots.value.push(dataUrl);
-    message.success('截图成功');
+    addImageToCanvas(dataUrl);
+    message.success('截图已添加到画布');
   } else {
     message.error('截图失败');
   }
   isCapturing.value = false;
 };
 
-const removeScreenshot = (index) => {
-    screenshots.value.splice(index, 1);
-}
-
 const deleteSelectedObject = () => {
     if (selectedObject) {
-        const index = canvasObjects.indexOf(selectedObject);
+        const index = canvasObjects.value.indexOf(selectedObject);
         if (index > -1) {
-            canvasObjects.splice(index, 1);
+            canvasObjects.value.splice(index, 1);
             selectedObject = null;
             redrawCanvas();
         }
@@ -166,33 +168,12 @@ const handleKeyDown = (event) => {
     }
 }
 
-const handleDragStart = (event, index) => {
-  event.dataTransfer.setData('text/plain', index);
-  event.dataTransfer.effectAllowed = 'copy';
-};
-
-const handleDrop = (event) => {
-  event.preventDefault();
-  const index = event.dataTransfer.getData('text/plain');
-  const { x, y } = getMousePos(event);
-
-  const img = new Image();
-  img.src = screenshots.value[index];
-  img.onload = () => {
-    const aspectRatio = img.width / img.height;
-    const height = 300;
-    const width = height * aspectRatio;
-    canvasObjects.push({ img, x: x - width / 2, y: y - height / 2, width, height, aspectRatio });
-    redrawCanvas();
-  };
-};
-
 const redrawCanvas = () => {
   if (!ctx) return;
   const canvas = canvasRef.value;
   ctx.fillStyle = '#181818';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  canvasObjects.forEach(obj => {
+  canvasObjects.value.forEach(obj => {
     ctx.drawImage(obj.img, obj.x, obj.y, obj.width, obj.height);
   });
   if (selectedObject) {
@@ -248,15 +229,15 @@ const handleCanvasMouseDown = (event) => {
   }
 
   selectedObject = null;
-  for (let i = canvasObjects.length - 1; i >= 0; i--) {
-    const obj = canvasObjects[i];
+  for (let i = canvasObjects.value.length - 1; i >= 0; i--) {
+    const obj = canvasObjects.value[i];
     if (x >= obj.x && x <= obj.x + obj.width && y >= obj.y && y <= obj.y + obj.height) {
       selectedObject = obj;
       isDragging = true;
       offsetX = x - obj.x;
       offsetY = y - obj.y;
-      canvasObjects.splice(i, 1);
-      canvasObjects.push(selectedObject);
+      canvasObjects.value.splice(i, 1);
+      canvasObjects.value.push(selectedObject);
       break;
     }
   }
@@ -303,8 +284,8 @@ const handleCanvasMouseMove = (event) => {
           }
       }
       if (cursor === 'default') {
-          for (let i = canvasObjects.length - 1; i >= 0; i--) {
-              const obj = canvasObjects[i];
+          for (let i = canvasObjects.value.length - 1; i >= 0; i--) {
+              const obj = canvasObjects.value[i];
               if (x >= obj.x && x <= obj.x + obj.width && y >= obj.y && y <= obj.y + obj.height) {
                   cursor = 'move';
                   break;
@@ -337,20 +318,67 @@ const openCropModal = () => {
 const confirmCrop = () => {
     if (cropperRef.value) {
         const croppedDataUrl = cropperRef.value.getCroppedCanvas().toDataURL();
-        screenshots.value.push(croppedDataUrl);
-        message.success('裁剪成功并已添加到画廊');
+        addImageToCanvas(croppedDataUrl);
+        message.success('裁剪成功并已添加到画布');
         isCropModalVisible.value = false;
     }
 }
 
-const saveImage = () => {
+const autoArrange = () => {
+    const canvas = canvasRef.value;
+    const numImages = canvasObjects.value.length;
+    if (numImages === 0) return;
+
+    selectedObject = null;
+
+    const canvasWidth = canvas.width;
+    const canvasHeight = canvas.height;
+
+    const cols = Math.ceil(Math.sqrt(numImages));
+    const rows = Math.ceil(numImages / cols);
+
+    const cellWidth = canvasWidth / cols;
+    const cellHeight = canvasHeight / rows;
+
+    for (let i = 0; i < numImages; i++) {
+        const obj = canvasObjects.value[i];
+        const row = Math.floor(i / cols);
+        const col = i % cols;
+
+        const target = {
+            x: col * cellWidth,
+            y: row * cellHeight,
+            width: cellWidth,
+            height: cellHeight
+        };
+
+        const scale = Math.max(target.width / obj.img.width, target.height / obj.img.height);
+        obj.width = obj.img.width * scale;
+        obj.height = obj.img.height * scale;
+        obj.x = target.x + (target.width - obj.width) / 2;
+        obj.y = target.y + (target.height - obj.height) / 2;
+    }
+
+    redrawCanvas();
+}
+
+const saveImage = async () => {
+  isSaving.value = true;
   selectedObject = null;
   redrawCanvas();
 
   const canvas = canvasRef.value;
   const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
-  console.log('Saved Image Data URL:', dataUrl);
-  message.success('图片已保存到控制台，请F12查看');
+
+  try {
+    await request.post(`/api/emby-item/thumb/${itemId.value}`, { imageData: dataUrl });
+    message.success('缩略图上传成功');
+  } catch (error) {
+    console.error("缩略图上传失败：", error);
+    message.error('缩略图上传失败');
+  } finally {
+    isSaving.value = false;
+  }
 };
 
 </script>
@@ -371,7 +399,7 @@ const saveImage = () => {
 .video-wrapper {
     position: relative;
 }
-.video-section, .canvas-section, .screenshots-gallery-wrapper {
+.video-section, .canvas-section {
     background: #2a2a2a;
     padding: 16px;
     border-radius: 8px;
@@ -400,40 +428,6 @@ const saveImage = () => {
 h3 {
     margin-bottom: 12px;
     color: #e0e0e0;
-}
-.screenshots-gallery {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 10px;
-}
-.screenshot-item {
-    position: relative;
-}
-.screenshot-item img {
-  width: 100%;
-  height: 90px;
-  object-fit: cover;
-  cursor: grab;
-  border: 2px solid #444;
-  border-radius: 4px;
-  transition: all 0.2s ease-in-out;
-}
-.screenshot-item img:hover {
-    transform: scale(1.05);
-    border-color: #1890ff;
-}
-.delete-btn {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    display: none;
-    opacity: 0.8;
-}
-.screenshot-item:hover .delete-btn {
-    display: block;
-}
-.delete-btn:hover {
-    opacity: 1;
 }
 .canvas-container {
   border: 2px dashed #444;

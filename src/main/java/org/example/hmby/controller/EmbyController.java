@@ -40,8 +40,16 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -288,5 +296,43 @@ public class EmbyController {
         }
         List<Document> documents = embeddingService.similaritySearch("movie", String.join(" ", tags));
         return Response.success(documents);
+    }
+
+    @PostMapping("/thumb/{id}")
+    public Response<?> saveThumb(@PathVariable("id") Long id, @RequestBody Map<String, String> data) throws IOException {
+        // 去除 base64 头部（如果有）
+        String base64Image = data.get("imageData");
+        if (StringUtils.isBlank(base64Image)) {
+            throw new IllegalArgumentException();
+        }
+        if (base64Image.contains(",")) {
+            base64Image = base64Image.substring(base64Image.indexOf(",") + 1);
+        }
+
+        // 解码 Base64 -> 字节
+        byte[] imageBytes;
+        try {
+            imageBytes = Base64.getDecoder().decode(base64Image);
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Base64 解码失败", e);
+        }
+
+        // 获取保存目录（假设 embyClient 是你的服务类）
+        String BASE_DIR = Optional.ofNullable(embyClient.getItemMetadata(id))
+                .map(Metadata::getPath)
+                .orElseThrow(() -> new RuntimeException("Not Found Media Source " + id));
+        Path path = Paths.get(BASE_DIR);
+        File file = path.toFile();
+        if (!file.exists() || file.isDirectory()) {
+            throw new IllegalArgumentException("目录资源异常！");
+        }
+        Path parent = path.getParent();
+        // 构造目标路径
+        Path savePath = Paths.get(parent.toString(), "thumb.jpg");
+
+        // 保存文件
+        Files.write(savePath, imageBytes, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+
+        return Response.success();
     }
 }
