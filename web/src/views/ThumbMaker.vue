@@ -29,7 +29,7 @@
     </a-row>
 
     <!-- Cropper Modal -->
-    <a-modal v-model:visible="isCropModalVisible" title="裁剪图片" @ok="confirmCrop" :width="800" okText="确认" cancelText="取消">
+    <a-modal v-model:visible="isCropModalVisible" title="裁剪图片" @ok="confirmCrop" :width="800" okText="确认" cancelText="取消" :mask-closable="false">
       <div v-if="imageToCrop" style="max-height: 60vh; overflow: hidden;">
         <vue-cropper
           :key="cropperKey"
