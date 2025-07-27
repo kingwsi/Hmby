@@ -148,6 +148,7 @@ const setupCanvas = () => {
 
 const addImageToCanvas = (dataUrl) => {
     const img = new Image();
+    img.crossOrigin = 'Anonymous';
     img.src = dataUrl;
     img.onload = () => {
         const canvas = canvasRef.value;
@@ -156,6 +157,9 @@ const addImageToCanvas = (dataUrl) => {
         const width = height * aspectRatio;
         canvasObjects.value.push({ img, x: (canvas.width - width) / 2, y: (canvas.height - height) / 2, width, height, aspectRatio });
         redrawCanvas();
+    };
+    img.onerror = () => {
+        message.error('图片加载失败。这可能是由于跨域问题 (CORS) 导致的。');
     };
 }
 
