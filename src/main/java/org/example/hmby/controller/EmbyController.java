@@ -325,7 +325,6 @@ public class EmbyController {
         String BASE_DIR = Optional.ofNullable(embyClient.getItemMetadata(id))
                 .map(Metadata::getPath)
                 .orElseThrow(() -> new RuntimeException("Not Found Media Source " + id));
-        BASE_DIR = "/Users/ws/Downloads/test_medias/test.mp4";
         Path path = Paths.get(BASE_DIR);
         // 获取文件名（带后缀）
         String fileNameWithExt = path.getFileName().toString();
