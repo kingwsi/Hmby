@@ -325,14 +325,21 @@ public class EmbyController {
         String BASE_DIR = Optional.ofNullable(embyClient.getItemMetadata(id))
                 .map(Metadata::getPath)
                 .orElseThrow(() -> new RuntimeException("Not Found Media Source " + id));
+        BASE_DIR = "/Users/ws/Downloads/test_medias/test.mp4";
         Path path = Paths.get(BASE_DIR);
+        // 获取文件名（带后缀）
+        String fileNameWithExt = path.getFileName().toString();
+        // 去除后缀名
+        int dotIndex = fileNameWithExt.lastIndexOf('.');
+        String fileName = (dotIndex == -1) ? fileNameWithExt : fileNameWithExt.substring(0, dotIndex);
+        
         File file = path.toFile();
         if (!file.exists() || file.isDirectory()) {
             throw new IllegalArgumentException("目录资源异常！");
         }
         Path parent = path.getParent();
         // 构造目标路径
-        Path savePath = Paths.get(parent.toString(), type + ".jpg");
+        Path savePath = Paths.get(parent.toString(), "%s-%s.jpg".formatted(fileName, type));
 
         // 保存文件
         Files.write(savePath, imageBytes, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
