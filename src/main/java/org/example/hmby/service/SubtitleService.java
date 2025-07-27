@@ -57,7 +57,7 @@ public class SubtitleService {
     }
 
     public String translateHandler(Long mediaId) {
-        int chunkSize = 30;
+        int chunkSize = 10;
         List<Subtitle> fullSubtitles = subtitleRepository.findAllByMediaId(mediaId, Sort.by(Sort.Direction.ASC, "sequence"));
         FixedSizeQueue<Subtitle> fixedSizeQueue = new FixedSizeQueue<>(chunkSize);
         ChatAssistant assistant = assistantService.getAssistantByCode(AssistantCode.TRANSLATE_SUBTITLE);
