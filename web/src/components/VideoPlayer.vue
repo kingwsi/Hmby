@@ -55,11 +55,16 @@ const duration = ref(null);
 // 暴露播放器实例
 defineExpose({
   player: () => player.value,
-  capture: () => {
+  capture: (options = { usePoster: false }) => {
     if (!player.value) {
       console.error("Player not initialized");
       return null;
     }
+
+    if (options.usePoster) {
+        return player.value.poster();
+    }
+
     const videoEl = videoPlayer.value;
     if (!videoEl) {
         return null;

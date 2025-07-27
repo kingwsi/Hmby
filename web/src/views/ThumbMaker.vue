@@ -1,7 +1,7 @@
 <template>
   <div class="thumb-make-container" @keydown="handleKeyDown" tabindex="0">
     <a-row :gutter="[16, 16]">
-      <a-col :span="10">
+      <a-col :span="8">
         <div class="left-panel">
           <div class="video-section">
             <div v-if="itemId" class="video-wrapper">
@@ -11,6 +11,7 @@
             <div class="actions">
               <a-button @click="captureScreenshot" type="primary" :loading="isCapturing" :disabled="!itemId">截取当前帧</a-button>
               <a-button @click="openCropModal" :disabled="!itemId">从视频裁剪</a-button>
+              <a-button @click="getCover" :disabled="!itemId">获取封面</a-button>
               <a-button @click="deleteSelectedObject" :disabled="!selectedObject">删除选中</a-button>
               <a-button @click="autoArrange" :disabled="canvasObjects.length === 0">自动排版</a-button>
               <a-button @click="saveImage" type="primary" danger :disabled="!itemId" :loading="isSaving">保存缩略图</a-button>
@@ -18,9 +19,27 @@
           </div>
         </div>
       </a-col>
+      <a-col :span="2">
+        <div class="layers-panel">
+          <div class="layer-thumbnails">
+            <div
+              v-for="(obj, index) in canvasObjects"
+              :key="index"
+              class="layer-thumbnail"
+              :class="{ 'selected': obj === selectedObject }"
+              @click="selectObject(obj)"
+              draggable="true"
+              @dragstart="handleDragStart(obj)"
+              @dragover.prevent
+              @drop="handleDrop(obj)"
+            >
+              <img :src="obj.img.src" />
+            </div>
+          </div>
+        </div>
+      </a-col>
       <a-col :span="14">
         <div class="canvas-section">
-          <h3>缩略图画布 (16:9)</h3>
           <div class="canvas-container" ref="canvasContainerRef">
             <canvas ref="canvasRef" @dragover.prevent @mousedown="handleCanvasMouseDown" @mousemove="handleCanvasMouseMove" @mouseup="handleCanvasMouseUp" @mouseleave="handleCanvasMouseUp"></canvas>
           </div>
@@ -37,8 +56,8 @@
           :src="imageToCrop"
           :aspect-ratio="NaN"
           :view-mode="2"
-          :drag-mode="'move'"
-          :auto-crop-area="0.8"
+          :drag-mode="'crop'"
+          :auto-crop="false"
           :background="true"
           :rotatable="true"
           :scalable="true"
@@ -85,6 +104,9 @@ const isCropModalVisible = ref(false);
 const imageToCrop = ref(null);
 const cropperKey = ref(0);
 
+// Drag and drop state
+let draggedObject = null;
+
 // Lifecycle
 onMounted(() => {
   const id = parseInt(route.params.itemId, 10);
@@ -115,8 +137,8 @@ const setupCanvas = () => {
     const canvas = canvasRef.value;
     const container = canvasContainerRef.value;
     if (canvas && container) {
-        canvas.width = 1920;
-        canvas.height = 1080;
+        canvas.width = 800;
+        canvas.height = 530;
         ctx = canvas.getContext('2d');
         redrawCanvas();
     } else {
@@ -160,6 +182,78 @@ const deleteSelectedObject = () => {
             redrawCanvas();
         }
     }
+}
+
+const bringToFront = () => {
+    if (selectedObject) {
+        const index = canvasObjects.value.indexOf(selectedObject);
+        if (index > -1 && index < canvasObjects.value.length - 1) {
+            canvasObjects.value.splice(index, 1);
+            canvasObjects.value.push(selectedObject);
+            redrawCanvas();
+        }
+    }
+}
+
+const sendToBack = () => {
+    if (selectedObject) {
+        const index = canvasObjects.value.indexOf(selectedObject);
+        if (index > 0) {
+            canvasObjects.value.splice(index, 1);
+            canvasObjects.value.unshift(selectedObject);
+            redrawCanvas();
+        }
+    }
+}
+
+const bringForward = () => {
+    if (selectedObject) {
+        const index = canvasObjects.value.indexOf(selectedObject);
+        if (index > -1 && index < canvasObjects.value.length - 1) {
+            const temp = canvasObjects.value[index + 1];
+            canvasObjects.value[index + 1] = selectedObject;
+            canvasObjects.value[index] = temp;
+            redrawCanvas();
+        }
+    }
+}
+
+const sendBackward = () => {
+    if (selectedObject) {
+        const index = canvasObjects.value.indexOf(selectedObject);
+        if (index > 0) {
+            const temp = canvasObjects.value[index - 1];
+            canvasObjects.value[index - 1] = selectedObject;
+            canvasObjects.value[index] = temp;
+            redrawCanvas();
+        }
+    }
+}
+
+const selectObject = (obj) => {
+    selectedObject = obj;
+    redrawCanvas();
+}
+
+const handleDragStart = (obj) => {
+    draggedObject = obj;
+}
+
+const handleDrop = (targetObj) => {
+    if (!draggedObject || draggedObject === targetObj) return;
+
+    const fromIndex = canvasObjects.value.indexOf(draggedObject);
+    const toIndex = canvasObjects.value.indexOf(targetObj);
+
+    if (fromIndex > -1 && toIndex > -1) {
+        // Remove the dragged object from its original position
+        canvasObjects.value.splice(fromIndex, 1);
+        // Insert it at the new position
+        canvasObjects.value.splice(toIndex, 0, draggedObject);
+    }
+
+    draggedObject = null;
+    redrawCanvas();
 }
 
 const handleKeyDown = (event) => {
@@ -228,19 +322,30 @@ const handleCanvasMouseDown = (event) => {
       }
   }
 
-  selectedObject = null;
+  let clickedObject = null;
   for (let i = canvasObjects.value.length - 1; i >= 0; i--) {
     const obj = canvasObjects.value[i];
     if (x >= obj.x && x <= obj.x + obj.width && y >= obj.y && y <= obj.y + obj.height) {
-      selectedObject = obj;
-      isDragging = true;
-      offsetX = x - obj.x;
-      offsetY = y - obj.y;
-      canvasObjects.value.splice(i, 1);
-      canvasObjects.value.push(selectedObject);
+      clickedObject = obj;
       break;
     }
   }
+
+  if (clickedObject) {
+      selectedObject = clickedObject;
+      isDragging = true;
+      offsetX = x - selectedObject.x;
+      offsetY = y - selectedObject.y;
+      // Move to top for rendering order, but not for layer panel order
+      const index = canvasObjects.value.indexOf(selectedObject);
+      if (index < canvasObjects.value.length - 1) {
+          canvasObjects.value.splice(index, 1);
+          canvasObjects.value.push(selectedObject);
+      }
+  } else {
+      selectedObject = null;
+  }
+
   redrawCanvas();
 };
 
@@ -362,6 +467,17 @@ const autoArrange = () => {
     redrawCanvas();
 }
 
+const getCover = () => {
+    if (!videoPlayerRef.value) return;
+    const coverUrl = videoPlayerRef.value.capture({ usePoster: true });
+    if (coverUrl) {
+        addImageToCanvas(coverUrl);
+        message.success('封面已添加到画布');
+    } else {
+        message.error('获取封面失败');
+    }
+}
+
 const saveImage = async () => {
   isSaving.value = true;
   selectedObject = null;
@@ -434,12 +550,57 @@ h3 {
   border-radius: 8px;
   overflow: hidden;
   width: 100%;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 8 / 5.38;
   position: relative;
 }
 canvas {
     display: block;
     width: 100%;
     height: 100%;
+}
+
+.layers-panel {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.layer-thumbnails {
+    display: flex;
+    flex-direction: column; /* Vertical layout */
+    gap: 8px;
+    overflow-y: auto;
+    background: #333;
+    padding: 8px;
+    border-radius: 4px;
+    flex-grow: 1;
+}
+
+.layer-thumbnail {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.layer-thumbnail:hover {
+    background-color: #444;
+}
+
+.layer-thumbnail.selected {
+    border-color: #1890ff;
+    background-color: #2c3e50;
+}
+
+.layer-thumbnail img {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    border-radius: 2px;
 }
 </style>
