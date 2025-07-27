@@ -14,7 +14,9 @@
               <a-button @click="getCover" :disabled="!itemId">获取封面</a-button>
               <a-button @click="deleteSelectedObject" :disabled="!selectedObject">删除选中</a-button>
               <a-button @click="autoArrange" :disabled="canvasObjects.length === 0">自动排版</a-button>
-              <a-button @click="saveImage" type="primary" danger :disabled="!itemId" :loading="isSaving">保存缩略图</a-button>
+              <a-button @click="saveImage('fanart')" type="link" danger :disabled="!itemId" :loading="isSaving">保存封面</a-button>
+              <a-button @click="saveImage('poster')" type="link" danger :disabled="!itemId" :loading="isSaving">保存海报</a-button>
+              <a-button @click="saveImage('thumb')" type="link" danger :disabled="!itemId" :loading="isSaving">保存缩略图</a-button>
             </div>
           </div>
         </div>
@@ -54,7 +56,7 @@
           :key="cropperKey"
           ref="cropperRef"
           :src="imageToCrop"
-          :aspect-ratio="NaN"
+          :aspect-ratio="cropAspectRatio"
           :view-mode="2"
           :drag-mode="'crop'"
           :auto-crop="false"
@@ -103,6 +105,8 @@ const handleSize = 10;
 const isCropModalVisible = ref(false);
 const imageToCrop = ref(null);
 const cropperKey = ref(0);
+const cropAspectRatio = ref(NaN);
+const cropCallback = ref(null);
 
 // Drag and drop state
 let draggedObject = null;
@@ -183,52 +187,6 @@ const deleteSelectedObject = () => {
         if (index > -1) {
             canvasObjects.value.splice(index, 1);
             selectedObject = null;
-            redrawCanvas();
-        }
-    }
-}
-
-const bringToFront = () => {
-    if (selectedObject) {
-        const index = canvasObjects.value.indexOf(selectedObject);
-        if (index > -1 && index < canvasObjects.value.length - 1) {
-            canvasObjects.value.splice(index, 1);
-            canvasObjects.value.push(selectedObject);
-            redrawCanvas();
-        }
-    }
-}
-
-const sendToBack = () => {
-    if (selectedObject) {
-        const index = canvasObjects.value.indexOf(selectedObject);
-        if (index > 0) {
-            canvasObjects.value.splice(index, 1);
-            canvasObjects.value.unshift(selectedObject);
-            redrawCanvas();
-        }
-    }
-}
-
-const bringForward = () => {
-    if (selectedObject) {
-        const index = canvasObjects.value.indexOf(selectedObject);
-        if (index > -1 && index < canvasObjects.value.length - 1) {
-            const temp = canvasObjects.value[index + 1];
-            canvasObjects.value[index + 1] = selectedObject;
-            canvasObjects.value[index] = temp;
-            redrawCanvas();
-        }
-    }
-}
-
-const sendBackward = () => {
-    if (selectedObject) {
-        const index = canvasObjects.value.indexOf(selectedObject);
-        if (index > 0) {
-            const temp = canvasObjects.value[index - 1];
-            canvasObjects.value[index - 1] = selectedObject;
-            canvasObjects.value[index] = temp;
             redrawCanvas();
         }
     }
@@ -417,6 +375,8 @@ const openCropModal = () => {
     const frame = videoPlayerRef.value?.capture();
     if (frame) {
         imageToCrop.value = frame;
+        cropAspectRatio.value = NaN;
+        cropCallback.value = null;
         cropperKey.value++; // Force re-render
         isCropModalVisible.value = true;
     } else {
@@ -426,9 +386,14 @@ const openCropModal = () => {
 
 const confirmCrop = () => {
     if (cropperRef.value) {
-        const croppedDataUrl = cropperRef.value.getCroppedCanvas().toDataURL();
-        addImageToCanvas(croppedDataUrl);
-        message.success('裁剪成功并已添加到画布');
+        const croppedDataUrl = cropperRef.value.getCroppedCanvas().toDataURL('image/jpeg', 0.9);
+        if (cropCallback.value) {
+            cropCallback.value(croppedDataUrl);
+            cropCallback.value = null;
+        } else {
+            addImageToCanvas(croppedDataUrl);
+            message.success('裁剪成功并已添加到画布');
+        }
         isCropModalVisible.value = false;
     }
 }
@@ -482,23 +447,46 @@ const getCover = () => {
     }
 }
 
-const saveImage = async () => {
-  isSaving.value = true;
-  selectedObject = null;
-  redrawCanvas();
+const uploadImage = async (imageData, type) => {
+    isSaving.value = true;
+    try {
+        await request.post(`/api/emby-item/thumb/${itemId.value}`, { imageData, type });
+        message.success('上传成功');
+    } catch (error) {
+        console.error("上传失败：", error);
+        message.error('上传失败');
+    } finally {
+        isSaving.value = false;
+    }
+};
 
-  const canvas = canvasRef.value;
-  const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+const saveImage = (type) => {
+    AModal.confirm({
+        title: '确认保存',
+        content: `您确定要将当前画布内容保存为 ${type} 吗？`,
+        okText: '确认',
+        cancelText: '取消',
+        onOk: () => {
+            selectedObject = null;
+            redrawCanvas();
 
-  try {
-    await request.post(`/api/emby-item/thumb/${itemId.value}`, { imageData: dataUrl });
-    message.success('缩略图上传成功');
-  } catch (error) {
-    console.error("缩略图上传失败：", error);
-    message.error('缩略图上传失败');
-  } finally {
-    isSaving.value = false;
-  }
+            const canvas = canvasRef.value;
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+
+            if (type === 'poster') {
+                imageToCrop.value = dataUrl;
+                cropAspectRatio.value = 379 / 538;
+                cropCallback.value = (croppedDataUrl) => {
+                    uploadImage(croppedDataUrl, type);
+                };
+                cropperKey.value++;
+                isCropModalVisible.value = true;
+            } else {
+                uploadImage(dataUrl, type);
+            }
+        },
+        onCancel() {},
+    });
 };
 
 </script>

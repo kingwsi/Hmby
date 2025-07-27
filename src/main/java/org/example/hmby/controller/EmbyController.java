@@ -302,8 +302,12 @@ public class EmbyController {
     public Response<?> saveThumb(@PathVariable("id") Long id, @RequestBody Map<String, String> data) throws IOException {
         // 去除 base64 头部（如果有）
         String base64Image = data.get("imageData");
+        String type = data.get("type");
         if (StringUtils.isBlank(base64Image)) {
             throw new IllegalArgumentException();
+        }
+        if (StringUtils.isBlank(type)) {
+            type = "thumb";
         }
         if (base64Image.contains(",")) {
             base64Image = base64Image.substring(base64Image.indexOf(",") + 1);
@@ -328,7 +332,7 @@ public class EmbyController {
         }
         Path parent = path.getParent();
         // 构造目标路径
-        Path savePath = Paths.get(parent.toString(), "thumb.jpg");
+        Path savePath = Paths.get(parent.toString(), type + ".jpg");
 
         // 保存文件
         Files.write(savePath, imageBytes, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
