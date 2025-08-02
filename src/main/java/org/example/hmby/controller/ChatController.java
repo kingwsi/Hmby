@@ -4,15 +4,15 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.hmby.Response;
 import org.example.hmby.dto.Completion;
-import org.example.hmby.entity.ChatAssistant;
 import org.example.hmby.entity.ChatConversation;
 import org.example.hmby.entity.ChatMessage;
+import org.example.hmby.entity.ChatPrompt;
 import org.example.hmby.entity.Subtitle;
-import org.example.hmby.repository.ChatAssistantRepository;
-import org.example.hmby.sceurity.SecurityUtils;
+import org.example.hmby.repository.ChatPromptRepository;
 import org.example.hmby.service.ChatService;
 import org.example.hmby.service.SubtitleService;
 import org.example.hmby.utils.TextUtil;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.Embedding;
 import org.springframework.ai.embedding.EmbeddingModel;
@@ -22,18 +22,17 @@ import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/chat")
@@ -41,26 +40,26 @@ import java.util.Map;
 @Slf4j
 public class ChatController {
     private final ChatService chatService;
-    private final ChatAssistantRepository chatAssistantRepository;
     private final SubtitleService subtitleService;
     private final EmbeddingModel embeddingModel;
     private final VectorStore vectorStore;
+    private final ChatPromptRepository chatPromptRepository;
 
-    @GetMapping("/assistants")
-    public Response<List<ChatAssistant>> listChatAssistants() {
-        List<ChatAssistant> list = chatAssistantRepository.findAllByUserIdOrderByUpdatedAtDesc(SecurityUtils.getUserId());
-        return Response.success(list);
+    @PostMapping("/prompt/list")
+    public Response<List<ChatPrompt>> listPrompts() {
+        List<ChatPrompt> all = chatPromptRepository.findAll(Sort.by(Sort.Direction.DESC, "id"));
+        return Response.success(all);
     }
 
-    @PostMapping("/assistants")
-    public Response<List<ChatAssistant>> saveChatAssistant(@RequestBody ChatAssistant chatAssistant) {
-        chatAssistantRepository.save(chatAssistant);
+    @PostMapping("/prompt")
+    public Response<?> savePrompt(@RequestBody ChatPrompt chatPrompt) {
+        chatPromptRepository.save(chatPrompt);
         return Response.success();
     }
 
     @GetMapping("/conversation")
-    public Response<ChatConversation> getConversation(String assistantCode) {
-        return Response.success(chatService.getConversation(assistantCode));
+    public Response<ChatConversation> getConversation(Long promptId) {
+        return Response.success(chatService.getConversation(promptId));
     }
 
     @GetMapping("/conversation/{conversationId}/messages")
@@ -74,9 +73,9 @@ public class ChatController {
         return Response.success(chatService.listConversation(pageable));
     }
 
-    @PostMapping("/completions")
-    public SseEmitter completions(@RequestBody Completion completion) {
-        return chatService.completions(completion);
+    @GetMapping("/{conversationId}/completions")
+    public SseEmitter completions(@PathVariable String conversationId, Long promptId, String text) {
+        return chatService.completions(conversationId, promptId, text);
     }
 
     @GetMapping("/translate/{subtitleId}/completions")

@@ -97,6 +97,7 @@ const handleLogout = async () => {
 // 在组件挂载时获取用户信息
 onMounted(async () => {
   await app.init();
+  console.log(app.themeConfig)
 });
 </script>
 <style scoped>

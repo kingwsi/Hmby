@@ -11,7 +11,7 @@ import org.springframework.data.annotation.CreatedBy;
 @Getter
 @Setter
 @Entity
-@Table(name = "chat_conversations")
+@Table(name = "chat_conversation")
 public class ChatConversation extends AuditableEntity {
     
     @CreatedBy
@@ -20,10 +20,8 @@ public class ChatConversation extends AuditableEntity {
     @Column(name = "title", length = 200)
     private String title;
 
-    @Column(name = "assistant_id" ,nullable = false)
-    private Long assistantId;
-
-    @Column(name = "activated" ,nullable = false)
-    @ColumnDefault("false")
-    private Boolean activated;
+    private Long promptId;
+    
+    @Column(unique = true)
+    private String conversationId;
 }

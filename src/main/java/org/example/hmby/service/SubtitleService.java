@@ -7,14 +7,14 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.hmby.emby.EmbyFeignClient;
 import org.example.hmby.emby.Metadata;
-import org.example.hmby.entity.ChatAssistant;
+import org.example.hmby.entity.ChatPrompt;
 import org.example.hmby.entity.MediaInfo;
 import org.example.hmby.entity.Subtitle;
-import org.example.hmby.enumerate.AssistantCode;
 import org.example.hmby.enumerate.MediaConvertType;
 import org.example.hmby.enumerate.MediaStatus;
 import org.example.hmby.enumerate.SseEventType;
 import org.example.hmby.enumerate.SubtitleStatus;
+import org.example.hmby.repository.ChatPromptRepository;
 import org.example.hmby.repository.MediaInfoRepository;
 import org.example.hmby.repository.SubtitleRepository;
 import org.example.hmby.utils.FixedSizeQueue;
@@ -45,12 +45,13 @@ import java.util.stream.Collectors;
 @AllArgsConstructor
 public class SubtitleService {
 
-    private final AssistantService assistantService;
     private final SubtitleRepository subtitleRepository;
     private final MediaInfoRepository mediaInfoRepository;
     private final EmbyFeignClient embyFeignClient;
     private final ObjectMapper objectMapper;
     private final MediaInfoService mediaInfoService;
+    private final ChatClient chatClient;
+    private final ChatPromptRepository chatPromptRepository;
 
     public List<Subtitle> listSubtitles(Long mediaId) {
         return subtitleRepository.findAllByMediaId(mediaId, Sort.by(Sort.Direction.ASC, "sequence"));
@@ -60,7 +61,6 @@ public class SubtitleService {
         int chunkSize = 10;
         List<Subtitle> fullSubtitles = subtitleRepository.findAllByMediaId(mediaId, Sort.by(Sort.Direction.ASC, "sequence"));
         FixedSizeQueue<Subtitle> fixedSizeQueue = new FixedSizeQueue<>(chunkSize);
-        ChatAssistant assistant = assistantService.getAssistantByCode(AssistantCode.TRANSLATE_SUBTITLE);
         int beginIndex = 0;
         int size = fullSubtitles.size();
         while (beginIndex < size) {
@@ -96,7 +96,7 @@ public class SubtitleService {
             while (!finish && retryCount < 10) {
                 try {
                     int errNum = 0;
-                    Map<String, String> resultMap = this.translateChunk(assistant, inputs, translatedText);
+                    Map<String, String> resultMap = this.translateChunk(inputs, translatedText);
                     for (Subtitle s : inputSubtitles) {
                         String text = resultMap.get(s.getText());
                         s.setTranslatedText(text);
@@ -170,12 +170,10 @@ public class SubtitleService {
      * 单条翻译
      */
     public String translateBySubtitleId(Long subtitleId) {
-        ChatAssistant assistant = assistantService.getAssistantByCode(AssistantCode.TRANSLATE_SINGLE);
         Subtitle subtitle = subtitleRepository.findById(subtitleId).orElseThrow(() -> new RuntimeException("No subtitle found"));
         String translatedText = this.listSubtitleContext(subtitleId, 10);
 
-        String prompt = "/no_think\n" + assistant.getPrompt();
-        ChatClient chatClient = assistantService.buildChatClient(assistant);
+        String prompt = chatPromptRepository.findById(1L).map(ChatPrompt::getPrompt).orElseThrow(() -> new RuntimeException("No prompt found: 1"));
         ChatClient.ChatClientRequestSpec chatClientRequestSpec = chatClient.prompt().user(subtitle.getText());
         if (StringUtils.hasText(translatedText)) {
             prompt = prompt + "\n ### 参考上下文（仅作参考 不用返回在结果中）" + translatedText;
@@ -185,13 +183,12 @@ public class SubtitleService {
         return TextUtil.removeXmlTag(content, "think");
     }
 
-    public Map<String, String> translateChunk(ChatAssistant assistant, List<String> inputs, String preContext) throws JsonProcessingException {
+    public Map<String, String> translateChunk(List<String> inputs, String preContext) throws JsonProcessingException {
         String text = inputs.stream().map(t -> String.format("\"%s\"", t))
                 .collect(Collectors.joining(","));
         text = "[%s]".formatted(text);
         log.info("translateChunk: \n{}", text);
-        String prompt = "/no_think\n" + assistant.getPrompt();
-        ChatClient chatClient = assistantService.buildChatClient(assistant);
+        String prompt = chatPromptRepository.findById(1L).map(ChatPrompt::getPrompt).orElseThrow(() -> new RuntimeException("No prompt found: 1"));
         ChatClient.ChatClientRequestSpec chatClientRequestSpec = chatClient.prompt().user(text);
         if (StringUtils.hasText(preContext)) {
             prompt = prompt.replace("{TRANSLATED}", preContext);
@@ -275,8 +272,6 @@ public class SubtitleService {
     }
     
     public SseEmitter commonTranslate(String content, String subtitleContext, boolean reasoning) {
-        ChatAssistant assistant = assistantService.getAssistantByCode(AssistantCode.TRANSLATE_COMMON);
-        ChatClient chatClient = assistantService.buildChatClient(assistant);
         
         SseEmitter sseEmitter = new SseEmitter(180000L); // 设置3分钟超时
         sseEmitter.onCompletion(() -> log.info("SSE completed"));
@@ -284,7 +279,7 @@ public class SubtitleService {
         sseEmitter.onError(ex -> log.error("SSE error", ex));
         new Thread(() -> {
             try {
-                String prompt = assistant.getPrompt();
+                String prompt = chatPromptRepository.findById(1L).map(ChatPrompt::getPrompt).orElseThrow(() -> new RuntimeException("No prompt found: 1"));
                 if (StringUtils.hasText(subtitleContext)) {
                     prompt = prompt + "\n 参考上下文（以下内容不需要翻译）\n" + subtitleContext;
                 }

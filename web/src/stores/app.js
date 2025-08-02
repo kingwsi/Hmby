@@ -30,7 +30,7 @@ export const useAppStore = defineStore('app', () => {
       fontSize: 12,
       wireframe: false
     },
-    algorithm: config.value.dark ? theme.darkAlgorithm : theme.defaultAlgorithm,
+    algorithm: theme.defaultAlgorithm
   }));
 
 

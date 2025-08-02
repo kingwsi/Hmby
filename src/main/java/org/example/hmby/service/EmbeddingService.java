@@ -1,6 +1,7 @@
 package org.example.hmby.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.example.hmby.emby.EmbyFeignClient;
 import org.example.hmby.emby.ItemTag;
@@ -30,19 +31,11 @@ import java.util.stream.Collectors;
  * 2025/6/22
  */
 @Service
+@AllArgsConstructor
 public class EmbeddingService {
 
     private final PgVectorStore vectorStore;
     private final EmbyFeignClient embyFeignClient;
-    private final ConfigRepository configRepository;
-    private final ObjectMapper objectMapper;
-
-    public EmbeddingService(PgVectorStore vectorStore, EmbyFeignClient embyFeignClient, ConfigRepository configRepository, ObjectMapper objectMapper) {
-        this.vectorStore = vectorStore;
-        this.embyFeignClient = embyFeignClient;
-        this.configRepository = configRepository;
-        this.objectMapper = objectMapper;
-    }
 
     public void embeddingTags() {
         FilterExpressionBuilder b = new FilterExpressionBuilder();
@@ -99,11 +92,10 @@ public class EmbeddingService {
     public List<Document> similaritySearch(String type, String content) {
         FilterExpressionBuilder b = new FilterExpressionBuilder();
 
-        List<Document> documents = vectorStore.similaritySearch(SearchRequest.builder()
+        return vectorStore.similaritySearch(SearchRequest.builder()
                 .query(content)
                 .topK(10)
                 .similarityThreshold(0.6)
                 .filterExpression(b.eq("index", type).build()).build());
-        return documents;
     }
 }

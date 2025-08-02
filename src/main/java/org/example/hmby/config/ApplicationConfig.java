@@ -16,25 +16,31 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
 import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 import org.apache.commons.lang3.StringUtils;
-import org.example.hmby.entity.ChatAssistant;
-import org.example.hmby.entity.Config;
-import org.example.hmby.enumerate.AssistantCode;
-import org.example.hmby.enumerate.ConfigKey;
-import org.example.hmby.repository.ConfigRepository;
 import org.example.hmby.sceurity.SecurityUtils;
-import org.example.hmby.service.AssistantService;
-import org.example.hmby.service.EmbeddingService;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.document.MetadataMode;
 import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.ai.model.NoopApiKey;
+import org.springframework.ai.model.SimpleApiKey;
+import org.springframework.ai.openai.OpenAiChatModel;
+import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.openai.OpenAiEmbeddingModel;
 import org.springframework.ai.openai.OpenAiEmbeddingOptions;
 import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.ai.retry.RetryUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.domain.AuditorAware;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
+import org.springframework.http.client.reactive.JdkClientHttpConnector;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.reactive.function.client.WebClient;
+
 import java.io.IOException;
+import java.net.http.HttpClient;
 import java.text.SimpleDateFormat;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -61,7 +67,7 @@ public class ApplicationConfig {
         DateTimeFormatter format = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         JavaTimeModule javaTimeModule = new JavaTimeModule();
         javaTimeModule.addSerializer(LocalDateTime.class, new LocalDateTimeSerializer(format));
-        javaTimeModule.addSerializer(Instant.class, new JsonSerializer<Instant>() {
+        javaTimeModule.addSerializer(Instant.class, new JsonSerializer<>() {
             @Override
             public void serialize(Instant instant, JsonGenerator jsonGenerator, SerializerProvider serializerProvider) throws IOException {
                 if (instant == null) {
@@ -72,7 +78,7 @@ public class ApplicationConfig {
             }
         });
         javaTimeModule.addSerializer(Date.class, new DateSerializer(false, new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")));
-        javaTimeModule.addDeserializer(Instant.class, new JsonDeserializer<Instant>() {
+        javaTimeModule.addDeserializer(Instant.class, new JsonDeserializer<>() {
             @Override
             public Instant deserialize(JsonParser p, DeserializationContext ctxt)
                     throws IOException {
@@ -109,7 +115,47 @@ public class ApplicationConfig {
     }
     
     @Bean
-    public EmbeddingModel embeddingModel(AssistantService assistantService){
-        return assistantService.buildEmbeddingModel();
+    public EmbeddingModel embeddingModel(OpenAiApi openAiApi,
+                                         @Value("${openai.embedding-model}") String model){
+        return new OpenAiEmbeddingModel(
+                openAiApi,
+                MetadataMode.EMBED,
+                OpenAiEmbeddingOptions.builder()
+                        .model(model)
+                        .build(),
+                RetryUtils.DEFAULT_RETRY_TEMPLATE);
+    }
+    
+    @Bean
+    public OpenAiApi openAiApi(@Value("${openai.base-url}") String baseUrl, @Value("${openai.api-key}")String apiKey) {
+        return OpenAiApi.builder()
+                .baseUrl(baseUrl)
+                .completionsPath("/chat/completions")
+                .embeddingsPath("/embeddings")
+                .apiKey(apiKey != null ? new SimpleApiKey(apiKey) : new NoopApiKey())
+                .webClientBuilder(WebClient.builder()
+                        // Force HTTP/1.1 for streaming
+                        .clientConnector(new JdkClientHttpConnector(HttpClient.newBuilder()
+                                .version(HttpClient.Version.HTTP_1_1)
+                                .connectTimeout(Duration.ofSeconds(100))
+                                .build())))
+                .restClientBuilder(RestClient.builder()
+                        // Force HTTP/1.1 for non-streaming
+                        .requestFactory(new JdkClientHttpRequestFactory(HttpClient.newBuilder()
+                                .version(HttpClient.Version.HTTP_1_1)
+                                .connectTimeout(Duration.ofSeconds(100))
+                                .build())))
+                .build();
+    }
+    
+    @Bean
+    public ChatClient chatClient(OpenAiApi openAiApi, @Value("${openai.model}") String model) {
+
+        OpenAiChatModel build = OpenAiChatModel.builder()
+                .defaultOptions(OpenAiChatOptions.builder().model(model).build())
+                .openAiApi(openAiApi).build();
+
+        return ChatClient.builder(build)
+                .build();
     }
 }
