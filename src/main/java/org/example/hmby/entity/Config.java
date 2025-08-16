@@ -23,8 +23,8 @@ import org.example.hmby.enumerate.ConfigKey;
 public class Config {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private String id;
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    private Long id;
 
     @Column(unique = true, nullable = false)
     @Enumerated(EnumType.STRING)

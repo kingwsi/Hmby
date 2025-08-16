@@ -18,7 +18,7 @@ import java.util.Optional;
 public class SecurityUtils {
 
     private static final Key key = Keys.hmacShaKeyFor(Base64.getEncoder().encodeToString("your-secure-key-32bytes".getBytes(StandardCharsets.UTF_8)).getBytes());
-    private static final long EXPIRATION_TIME = 1000 * 60 * 60 * 24 * 7;
+    private static final long EXPIRATION_TIME = 1000 * 60 * 60 * 24 * 20;
 
     /**
      * 生成 JWT 令牌，包含多个用户信息

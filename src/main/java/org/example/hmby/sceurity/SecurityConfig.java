@@ -1,10 +1,12 @@
 package org.example.hmby.sceurity;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.AllArgsConstructor;
 import org.example.hmby.Response;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
@@ -17,6 +19,7 @@ import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 
 import java.util.List;
 
@@ -27,6 +30,23 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final EmbyAuthenticationProvider embyAuthenticationProvider;
 
+
+    @Bean
+    @Order(1) // 确保优先匹配
+    public SecurityFilterChain sseSecurityFilterChain(HttpSecurity http) throws Exception {
+        return http
+                .securityMatcher(new RequestMatcher() {
+                    @Override
+                    public boolean matches(HttpServletRequest request) {
+                        String accept = request.getHeader("Accept");
+                        return "text/event-stream".equalsIgnoreCase(accept);
+                    }
+                })
+                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll()) // 允许所有 SSE 请求
+                .csrf(AbstractHttpConfigurer::disable)
+                .build();
+    }
+    
     /**
      * 配置 Spring Security 过滤器链
      */
@@ -38,7 +58,6 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/web/**").permitAll()
                         .requestMatchers("/api/auth/login").permitAll()
-                        .requestMatchers("/api/chat/**").permitAll()
                         .anyRequest().authenticated() // 其他请求需要认证
                 )
                 .authenticationProvider(embyAuthenticationProvider)

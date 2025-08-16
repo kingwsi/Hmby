@@ -17,7 +17,6 @@ import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
 import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 import org.apache.commons.lang3.StringUtils;
 import org.example.hmby.sceurity.SecurityUtils;
-import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.document.MetadataMode;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.model.NoopApiKey;
@@ -112,50 +111,5 @@ public class ApplicationConfig {
         return new ThreadPoolExecutor(1, 1,
                 0L, TimeUnit.MILLISECONDS,
                 new ArrayBlockingQueue<>(100), Executors.defaultThreadFactory(), new ThreadPoolExecutor.AbortPolicy());
-    }
-    
-    @Bean
-    public EmbeddingModel embeddingModel(OpenAiApi openAiApi,
-                                         @Value("${openai.embedding-model}") String model){
-        return new OpenAiEmbeddingModel(
-                openAiApi,
-                MetadataMode.EMBED,
-                OpenAiEmbeddingOptions.builder()
-                        .model(model)
-                        .build(),
-                RetryUtils.DEFAULT_RETRY_TEMPLATE);
-    }
-    
-    @Bean
-    public OpenAiApi openAiApi(@Value("${openai.base-url}") String baseUrl, @Value("${openai.api-key}")String apiKey) {
-        return OpenAiApi.builder()
-                .baseUrl(baseUrl)
-                .completionsPath("/chat/completions")
-                .embeddingsPath("/embeddings")
-                .apiKey(apiKey != null ? new SimpleApiKey(apiKey) : new NoopApiKey())
-                .webClientBuilder(WebClient.builder()
-                        // Force HTTP/1.1 for streaming
-                        .clientConnector(new JdkClientHttpConnector(HttpClient.newBuilder()
-                                .version(HttpClient.Version.HTTP_1_1)
-                                .connectTimeout(Duration.ofSeconds(100))
-                                .build())))
-                .restClientBuilder(RestClient.builder()
-                        // Force HTTP/1.1 for non-streaming
-                        .requestFactory(new JdkClientHttpRequestFactory(HttpClient.newBuilder()
-                                .version(HttpClient.Version.HTTP_1_1)
-                                .connectTimeout(Duration.ofSeconds(100))
-                                .build())))
-                .build();
-    }
-    
-    @Bean
-    public ChatClient chatClient(OpenAiApi openAiApi, @Value("${openai.model}") String model) {
-
-        OpenAiChatModel build = OpenAiChatModel.builder()
-                .defaultOptions(OpenAiChatOptions.builder().model(model).build())
-                .openAiApi(openAiApi).build();
-
-        return ChatClient.builder(build)
-                .build();
     }
 }

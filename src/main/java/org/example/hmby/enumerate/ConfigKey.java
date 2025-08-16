@@ -61,5 +61,9 @@ public enum ConfigKey {
     /**
      * 任务执行器服务
      */
-    runner_server
+    runner_server,
+    model_name,
+    openai_base_url,
+    embedding_model_name,
+    ;
 }

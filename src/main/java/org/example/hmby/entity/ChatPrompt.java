@@ -24,4 +24,7 @@ public class ChatPrompt {
 
     @Column(name = "prompt", length = 500, nullable = false)
     private String prompt;
+
+    @Column(length = 500)
+    private String title;
 }

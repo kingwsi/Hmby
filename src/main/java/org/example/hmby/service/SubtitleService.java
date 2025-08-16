@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.hmby.ai.ChatModelService;
 import org.example.hmby.emby.EmbyFeignClient;
 import org.example.hmby.emby.Metadata;
 import org.example.hmby.entity.ChatPrompt;
@@ -12,6 +13,7 @@ import org.example.hmby.entity.MediaInfo;
 import org.example.hmby.entity.Subtitle;
 import org.example.hmby.enumerate.MediaConvertType;
 import org.example.hmby.enumerate.MediaStatus;
+import org.example.hmby.enumerate.PromptPlaceholder;
 import org.example.hmby.enumerate.SseEventType;
 import org.example.hmby.enumerate.SubtitleStatus;
 import org.example.hmby.repository.ChatPromptRepository;
@@ -19,10 +21,12 @@ import org.example.hmby.repository.MediaInfoRepository;
 import org.example.hmby.repository.SubtitleRepository;
 import org.example.hmby.utils.FixedSizeQueue;
 import org.example.hmby.utils.SRTParser;
-import org.example.hmby.utils.TextUtil;
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
+import org.example.hmby.utils.TaskManager;
+import org.springframework.ai.chat.messages.SystemMessage;
+import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.data.domain.Sort;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -50,14 +54,16 @@ public class SubtitleService {
     private final EmbyFeignClient embyFeignClient;
     private final ObjectMapper objectMapper;
     private final MediaInfoService mediaInfoService;
-    private final ChatClient chatClient;
     private final ChatPromptRepository chatPromptRepository;
+    private final ChatModelService chatModelService;
+    private final TaskManager taskManager;
 
     public List<Subtitle> listSubtitles(Long mediaId) {
         return subtitleRepository.findAllByMediaId(mediaId, Sort.by(Sort.Direction.ASC, "sequence"));
     }
 
-    public String translateHandler(Long mediaId) {
+    @Async
+    public void translateHandler(Long mediaId) throws JsonProcessingException {
         int chunkSize = 10;
         List<Subtitle> fullSubtitles = subtitleRepository.findAllByMediaId(mediaId, Sort.by(Sort.Direction.ASC, "sequence"));
         FixedSizeQueue<Subtitle> fixedSizeQueue = new FixedSizeQueue<>(chunkSize);
@@ -80,10 +86,8 @@ public class SubtitleService {
             // 上下文
             Map<String, String> collect = fixedSizeQueue.stream().collect(Collectors.toMap(Subtitle::getText, Subtitle::getTranslatedText, (o1, o2) -> o1));
             String translatedText = null;
-            try {
+            if (!collect.isEmpty()) {
                 translatedText = objectMapper.writeValueAsString(collect);
-            } catch (JsonProcessingException e) {
-                throw new RuntimeException(e);
             }
 
             if (inputSubtitles.isEmpty()) {
@@ -104,7 +108,7 @@ public class SubtitleService {
                         if (!StringUtils.hasText(text)) {
                             log.warn("翻译失败,尝试补偿: {}", s.getText());
                             s.setStatus(SubtitleStatus.ERROR);
-                            text = translateBySubtitleId(s.getId());
+                            text = this.translateBySubtitleId(s.getId());
                             if (!StringUtils.hasText(text)) {
                                 log.warn("翻译失败: {}", s.getText());
                                 errNum++;
@@ -115,31 +119,6 @@ public class SubtitleService {
                             }
                         }
                     }
-//                    List<String> texts = this.translateChunk(assistant, inputs, translatedText);
-//                    if (texts.size() != inputSubtitles.size()) {
-//                        log.error("重试{}: 返回结果长度不一致", retryCount);
-//                        retryCount++;
-//                        continue;
-//                    }for (int i = 0; i < inputSubtitles.size(); i++) {
-//                        Subtitle subtitle = inputSubtitles.get(i);
-//                        String result = texts.get(i);
-//                        subtitle.setStatus(SubtitleStatus.FINISHED);
-//                        subtitle.setTranslatedText(result);
-//                        
-//                        if (!StringUtils.hasText(result)) {
-//                            log.warn("翻译失败,尝试补偿: {}", subtitle.getText());
-//                            subtitle.setStatus(SubtitleStatus.ERROR);
-//                            String s = translateBySubtitleId(subtitle.getId());
-//                            if (!StringUtils.hasText(s)) {
-//                                log.warn("翻译失败: {}", subtitle.getText());
-//                                errNum++;
-//                            } else {
-//                                log.warn("翻译补偿：{} -> {}", subtitle.getText(), s);
-//                                subtitle.setTranslatedText(s);
-//                                subtitle.setStatus(SubtitleStatus.COMPENSATE);
-//                            }
-//                        }
-//                    }
                     if (errNum >= chunkSize * 0.2) {
                         log.error("重试{}: 失败数量超过设定阈值！", errNum);
                         retryCount++;
@@ -156,13 +135,14 @@ public class SubtitleService {
             if (!finish) {
                 throw new RuntimeException("达到最大重试次数，停止任务！");
             }
+            taskManager.updateProgress(SseEventType.MESSAGE, TaskManager.Prefix.TRANSLATE + mediaId, Map.of("chunks", inputSubtitles));
         }
         this.outputToFile(mediaId);
         mediaInfoRepository.findById(mediaId).ifPresent(mediaInfo -> {
             mediaInfo.setStatus(MediaStatus.DONE);
             mediaInfoRepository.save(mediaInfo);
         });
-        return null;
+        taskManager.completionProgress(TaskManager.Prefix.TRANSLATE + mediaId);
     }
 
 
@@ -171,16 +151,19 @@ public class SubtitleService {
      */
     public String translateBySubtitleId(Long subtitleId) {
         Subtitle subtitle = subtitleRepository.findById(subtitleId).orElseThrow(() -> new RuntimeException("No subtitle found"));
-        String translatedText = this.listSubtitleContext(subtitleId, 10);
 
-        String prompt = chatPromptRepository.findById(1L).map(ChatPrompt::getPrompt).orElseThrow(() -> new RuntimeException("No prompt found: 1"));
-        ChatClient.ChatClientRequestSpec chatClientRequestSpec = chatClient.prompt().user(subtitle.getText());
-        if (StringUtils.hasText(translatedText)) {
-            prompt = prompt + "\n ### 参考上下文（仅作参考 不用返回在结果中）" + translatedText;
+        String prompt = chatPromptRepository.findById(4L).map(ChatPrompt::getPrompt).orElseThrow(() -> new RuntimeException("No prompt found: 1"));
+        if (prompt.contains(PromptPlaceholder.TRANS.getPlaceholder())) {
+            String translatedText = this.listSubtitleContext(subtitleId, 10);
+            String placeholder = "None";
+            if (StringUtils.hasText(translatedText)) {
+                placeholder = translatedText;
+            }
+            prompt = prompt.replace(PromptPlaceholder.TRANS.getPlaceholder(), placeholder);
         }
-        chatClientRequestSpec.system(prompt);
-        String content = chatClientRequestSpec.call().content();
-        return TextUtil.removeXmlTag(content, "think");
+        
+        ChatModel chatModel = chatModelService.createChatModel();
+        return chatModel.call(SystemMessage.builder().text(prompt).build(), UserMessage.builder().text(subtitle.getText()).build());
     }
 
     public Map<String, String> translateChunk(List<String> inputs, String preContext) throws JsonProcessingException {
@@ -188,17 +171,19 @@ public class SubtitleService {
                 .collect(Collectors.joining(","));
         text = "[%s]".formatted(text);
         log.info("translateChunk: \n{}", text);
-        String prompt = chatPromptRepository.findById(1L).map(ChatPrompt::getPrompt).orElseThrow(() -> new RuntimeException("No prompt found: 1"));
-        ChatClient.ChatClientRequestSpec chatClientRequestSpec = chatClient.prompt().user(text);
-        if (StringUtils.hasText(preContext)) {
-            prompt = prompt.replace("{TRANSLATED}", preContext);
+        String prompt = chatPromptRepository.findById(2L).map(ChatPrompt::getPrompt).orElseThrow(() -> new RuntimeException("No prompt found: 1"));
+
+        if (prompt.contains(PromptPlaceholder.TRANS.getPlaceholder())) {
+            String placeholder = "None";
+            if (StringUtils.hasText(preContext)) {
+                placeholder = preContext;
+            }
+            prompt = prompt.replace(PromptPlaceholder.TRANS.getPlaceholder(), placeholder);
         }
-        chatClientRequestSpec.system(prompt);
-        String content = chatClientRequestSpec.call().content();
-        content = TextUtil.removeXmlTag(content, "think");
-        if (content != null) {
-            content = content.trim();
-        }
+
+        ChatModel chatModel = chatModelService.createChatModel();
+        String content = chatModel
+                .call(SystemMessage.builder().text(prompt).build(), UserMessage.builder().text(text).build());
         log.info("translateChunk: \n{}", content);
         return objectMapper.readValue(content, new TypeReference<>() {
         });
@@ -271,42 +256,30 @@ public class SubtitleService {
         mediaInfoRepository.save(mediaInfo);
     }
     
-    public SseEmitter commonTranslate(String content, String subtitleContext, boolean reasoning) {
-        
+    public SseEmitter commonTranslate(String content, String subtitleContext) {
         SseEmitter sseEmitter = new SseEmitter(180000L); // 设置3分钟超时
         sseEmitter.onCompletion(() -> log.info("SSE completed"));
         sseEmitter.onTimeout(() -> log.warn("SSE timeout"));
         sseEmitter.onError(ex -> log.error("SSE error", ex));
         new Thread(() -> {
             try {
-                String prompt = chatPromptRepository.findById(1L).map(ChatPrompt::getPrompt).orElseThrow(() -> new RuntimeException("No prompt found: 1"));
-                if (StringUtils.hasText(subtitleContext)) {
-                    prompt = prompt + "\n 参考上下文（以下内容不需要翻译）\n" + subtitleContext;
+                String prompt = chatPromptRepository.findById(2L).map(ChatPrompt::getPrompt).orElseThrow(() -> new RuntimeException("No prompt found: 1"));
+                if (prompt.contains(PromptPlaceholder.TRANS.getPlaceholder())) {
+                    String placeholder = "None";
+                    if (StringUtils.hasText(subtitleContext)) {
+                        placeholder = subtitleContext;
+                    }
+                    prompt = prompt.replace(PromptPlaceholder.TRANS.getPlaceholder(), placeholder);
                 }
-                if (!reasoning) {
-                    prompt = "/no_think \n" + prompt;
-                    ChatClient.ChatClientRequestSpec chatClientRequestSpec = chatClient.prompt(prompt)
-                            .user(content);
-                    String result = Optional.ofNullable(TextUtil.removeXmlTag(chatClientRequestSpec.call().content(), "think"))
-                            .orElse("No Content");
-                    sseEmitter.send(SseEmitter.event().name(SseEventType.MESSAGE.name()).data(result).build());
-                    sseEmitter.complete();
-                } else {
-                    chatClient.prompt(prompt)
-                            .advisors(new SimpleLoggerAdvisor())
-                            .user(content)
-                            .stream()
-                            .content()
-                            .doOnComplete(sseEmitter::complete)
-                            .doOnError(sseEmitter::completeWithError)
-                            .subscribe(t -> {
-                                try {
-                                    sseEmitter.send(SseEmitter.event().name(SseEventType.MESSAGE.name()).data(t).build());
-                                } catch (Exception e) {
-                                    log.error("Error sending SSE content", e);
-                                }
-                            });
-                }
+
+                ChatModel chatModel = chatModelService.createChatModel();
+                String result = chatModel
+                        .call(SystemMessage.builder().text(prompt).build(), UserMessage.builder().text(content).build());
+                Map<String, String> map = objectMapper.readValue(result, new TypeReference<>() {
+                });
+                String resultText = map.keySet().stream().findFirst().map(map::get).orElseThrow(() -> new RuntimeException("返回结果错误，请重试"));
+                sseEmitter.send(SseEmitter.event().name(SseEventType.MESSAGE.name()).data(resultText).build());
+                sseEmitter.complete();
             } catch (Exception e) {
                 log.error("SSE error", e);
                 sseEmitter.completeWithError(e);

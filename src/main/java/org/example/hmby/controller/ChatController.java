@@ -3,7 +3,7 @@ package org.example.hmby.controller;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.hmby.Response;
-import org.example.hmby.dto.Completion;
+import org.example.hmby.ai.ChatModelService;
 import org.example.hmby.entity.ChatConversation;
 import org.example.hmby.entity.ChatMessage;
 import org.example.hmby.entity.ChatPrompt;
@@ -12,7 +12,6 @@ import org.example.hmby.repository.ChatPromptRepository;
 import org.example.hmby.service.ChatService;
 import org.example.hmby.service.SubtitleService;
 import org.example.hmby.utils.TextUtil;
-import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.Embedding;
 import org.springframework.ai.embedding.EmbeddingModel;
@@ -41,9 +40,8 @@ import java.util.List;
 public class ChatController {
     private final ChatService chatService;
     private final SubtitleService subtitleService;
-    private final EmbeddingModel embeddingModel;
-    private final VectorStore vectorStore;
     private final ChatPromptRepository chatPromptRepository;
+    private final ChatModelService chatModelService;
 
     @PostMapping("/prompt/list")
     public Response<List<ChatPrompt>> listPrompts() {
@@ -80,9 +78,9 @@ public class ChatController {
 
     @GetMapping("/translate/{subtitleId}/completions")
     public SseEmitter translateCompletions(@PathVariable Long subtitleId, boolean reasoning) {
-        String subtitleContext = subtitleService.listSubtitleContext(subtitleId, 2);
+        String subtitleContext = subtitleService.listSubtitleContext(subtitleId, 10);
         Subtitle subtitle = subtitleService.findById(subtitleId);
-        return subtitleService.commonTranslate(subtitle.getText(), subtitleContext, reasoning);
+        return subtitleService.commonTranslate(subtitle.getText(), subtitleContext);
     }
 
     @DeleteMapping("/conversation/{conversationId}")
@@ -94,6 +92,7 @@ public class ChatController {
     @GetMapping("/embedding")
     public Response<Integer> embedding(String text) {
         List<String> list = List.of(TextUtil.removeChinesePunctuation(text));
+        EmbeddingModel embeddingModel = chatModelService.createEmbeddingModel();
         EmbeddingResponse embeddingResponse = embeddingModel.embedForResponse(list);
         List<Embedding> embedding = embeddingResponse.getResults();
         return Response.success(embedding.size());
@@ -103,7 +102,8 @@ public class ChatController {
     public Response<List<Document>> similaritySearch(String index, String text) {
         FilterExpressionBuilder b = new FilterExpressionBuilder();
         SearchRequest.builder().filterExpression(b.eq("index", index).build()).query(text);
-        List<Document> results = this.vectorStore.similaritySearch(SearchRequest.builder().query(text).topK(5).build());
+        VectorStore vectorStore = chatModelService.createVectorStore();
+        List<Document> results = vectorStore.similaritySearch(SearchRequest.builder().query(text).topK(5).build());
         return Response.success(results);
     }
 }

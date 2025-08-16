@@ -59,10 +59,8 @@ public class SubtitleController {
     }
 
     @PutMapping("/translate/{mediaId}")
-    public Response<?> translate(@PathVariable Long mediaId) {
-        new Thread(() -> {
-            subtitleService.translateHandler(mediaId);
-        }).start();
+    public Response<?> translate(@PathVariable Long mediaId) throws JsonProcessingException {
+        subtitleService.translateHandler(mediaId);
         return Response.success();
     }
 

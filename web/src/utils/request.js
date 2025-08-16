@@ -192,7 +192,6 @@ export const eventHandler = (options) => {
     const handleAuthError = (status) => {
         if (status === 401 || status === 403) {
             localStorage.removeItem('token');
-            localStorage.removeItem('unitInfo');
             // 使用setTimeout确保在下一个事件循环中执行路由跳转
             setTimeout(() => {
                 router.push({

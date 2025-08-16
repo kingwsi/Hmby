@@ -13,10 +13,7 @@
             <a-menu-item v-for="route in routes" :key="route.path">
               <router-link :to="route.path">{{ route.name }}</router-link>
             </a-menu-item>
-            <a-menu-item style="margin-left: auto">
-              <ThemeSwitch />
-            </a-menu-item>
-            <a-menu-item @click="handleLogout">
+            <a-menu-item @click="handleLogout" style="margin-left: auto">
               <a><logout-outlined /> 登出</a>
             </a-menu-item>
           </a-menu>
@@ -34,7 +31,6 @@
         </a-menu>
         <template #footer>
           <a-space>
-            <ThemeSwitch />
             <a-button type="link" class="logout-btn" @click="handleLogout">登出</a-button>
           </a-space>
         </template>
@@ -58,10 +54,9 @@
 </template>
 <script setup>
 import { ref, computed, onMounted, h } from 'vue';
-import { LogoutOutlined, MenuUnfoldOutlined } from '@ant-design/icons-vue';
+import { LogoutOutlined } from '@ant-design/icons-vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAppStore } from '@/stores/app';
-import ThemeSwitch from '@/components/ThemeSwitch.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -97,7 +92,6 @@ const handleLogout = async () => {
 // 在组件挂载时获取用户信息
 onMounted(async () => {
   await app.init();
-  console.log(app.themeConfig)
 });
 </script>
 <style scoped>

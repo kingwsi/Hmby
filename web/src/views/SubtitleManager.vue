@@ -167,10 +167,7 @@
   >
     <template #footer>
       <a-space>
-        <a-button :loading="translating" @click="() => handleTranslate(true)"
-          >推理翻译</a-button
-        >
-        <a-button :loading="translating" @click="() => handleTranslate(false)"
+        <a-button :loading="translating" @click="() => handleTranslate()"
           >快速翻译</a-button
         >
         <a-button
@@ -196,7 +193,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from "vue";
+import { ref, onMounted, computed, watch, onBeforeUnmount } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { message, theme } from "ant-design-vue";
 import { TranslationOutlined } from "@ant-design/icons-vue";
@@ -250,6 +247,8 @@ const fetchSubtitleData = async () => {
       `/api/emby-item/subtitle/detail/${selectedItem.value}/ja`
     );
     mediaDetail.value = detailResponse.data;
+    // 订阅消息
+    progressSubscribe(mediaDetail.value.mediaInfo.id)
   } catch (error) {
     message.error("获取字幕数据失败");
     console.error("获取字幕数据失败：", error);
@@ -269,6 +268,12 @@ onMounted(() => {
   language.value = "ja";
   fetchSubtitleData();
 });
+
+onBeforeUnmount(() =>{
+  if (progressController.value) {
+    progressController.value.abort();
+  }
+})
 
 const handleBack = () => {
   router.back();
@@ -323,14 +328,14 @@ const completionsResult = ref({
   content: "",
   raw: "",
 });
-const handleTranslate = (reasoning) => {
+const handleTranslate = () => {
   try {
     translating.value = true;
     completionsResult.value = {};
 
     // 使用eventHandler处理SSE事件流
     const controller = eventHandler({
-      path: `api/chat/translate/${currentTranslateItem.value.id}/completions?reasoning=${reasoning}`,
+      path: `api/chat/translate/${currentTranslateItem.value.id}/completions`,
       method: "GET",
       // 处理不同类型的事件
       eventHandlers: {
@@ -381,6 +386,62 @@ const execute = async (id) => {
   );
   message.success("执行成功");
 };
+
+const progressController = ref({})
+
+// 进度监听
+const progressSubscribe = (id) => {
+  if (!id) {
+    message.error("mediaId is required");
+    return;
+  }
+  progressController.value = eventHandler({
+    path: `api/task/subscribe/TRANSLATE_${id}`,
+    method: "GET",
+    // 处理不同类型的事件
+    eventHandlers: {
+      // 处理翻译完成事件
+      complete: (data) => {
+        fetchSubtitleData()
+      },
+      MESSAGE: (data) => {
+        if (data) {
+          const { chunks } = JSON.parse(data)
+          console.log(chunks)
+          updateSubtitles(chunks);
+          // 滚动
+          const {id} = chunks[chunks.length - 1];
+          const element = document.querySelector(
+              `[data-subtitle-id="${id}"]`
+          );
+          if (element) {
+            element.scrollIntoView({behavior: "smooth", block: "center"});
+          }
+        }
+      },
+    },
+    // 处理错误
+    onError: (error) => {},
+    // 连接关闭
+    onClose: () => {},
+  });
+}
+
+// 更新数组
+const updateSubtitles = (chunks) => {
+  const map = new Map(
+      chunks.map(item => [item.id, item])
+  );
+
+  return subtitleData.value.map(item => {
+    const update = map.get(item.id);
+    if (update) {
+      item.translation = update.translatedText;
+      item.status = update.status;
+    }
+    return item;  // 合并更新字段
+  });
+}
 
 const canvasRef = ref();
 const capturedImages = ref([]);
@@ -479,6 +540,7 @@ watch(
   },
   { deep: true }
 );
+
 </script>
 
 <style lang="less" scoped>
@@ -651,7 +713,7 @@ watch(
     overflow: hidden;
     text-overflow: ellipsis;
     font-size: 12px;
-    color: #666;
+    color: #c5c5c5;
   }
 }
 </style>

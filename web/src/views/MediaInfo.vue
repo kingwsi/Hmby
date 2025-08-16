@@ -274,16 +274,6 @@ const handleDelete = async (record) => {
   }
 };
 
-const execute = async (id) => {
-  await request.post(`/api/media-info/execute/${id}`);
-  message.success("执行成功");
-  setTimeout(() => {
-    loadData();
-    progressTimer = setInterval(loadProgressInfo, 2000);
-  }, 1000);
-  loadData();
-};
-
 // 详情弹窗相关变量
 const detailVisible = ref(false);
 const currentRecord = ref(null);
@@ -296,19 +286,6 @@ const showDetail = (record) => {
 
 const progressInfo = ref(null);
 
-const loadProgressInfo = async () => {
-  const response = await request.get("/api/media-info/progress");
-  if (!response.data) {
-    clearProgressInterval();
-    return;
-  }
-  progressInfo.value = response.data;
-  if (response.data?.status === "END") {
-    message.success("完成");
-    loadData();
-    clearProgressInterval();
-  }
-};
 
 // 编辑
 const showEditor = ref(false);
@@ -333,8 +310,6 @@ const clearProgressInterval = () => {
 // 初始加载
 onActivated(() => {
   loadData();
-  loadProgressInfo();
-  progressTimer = setInterval(loadProgressInfo, 2000);
 });
 
 onDeactivated(() => {

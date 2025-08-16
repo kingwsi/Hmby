@@ -3,6 +3,7 @@ package org.example.hmby.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import org.example.hmby.ai.ChatModelService;
 import org.example.hmby.emby.EmbyFeignClient;
 import org.example.hmby.emby.ItemTag;
 import org.example.hmby.emby.MovieItem;
@@ -14,6 +15,7 @@ import org.example.hmby.enumerate.ConfigKey;
 import org.example.hmby.repository.ConfigRepository;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
+import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.ai.vectorstore.pgvector.PgVectorStore;
 import org.springframework.stereotype.Service;
@@ -34,11 +36,12 @@ import java.util.stream.Collectors;
 @AllArgsConstructor
 public class EmbeddingService {
 
-    private final PgVectorStore vectorStore;
     private final EmbyFeignClient embyFeignClient;
+    private final ChatModelService chatModelService;
 
     public void embeddingTags() {
         FilterExpressionBuilder b = new FilterExpressionBuilder();
+        VectorStore vectorStore = chatModelService.createVectorStore();
         vectorStore.delete(b.eq("index", "tag").build());
 
         int pageSize = 100;
@@ -54,6 +57,7 @@ public class EmbeddingService {
 
     public void embeddingMovies() {
         FilterExpressionBuilder b = new FilterExpressionBuilder();
+        VectorStore vectorStore = chatModelService.createVectorStore();
         vectorStore.delete(b.eq("index", "movie").build());
 
         int pageSize = 5;
@@ -91,6 +95,7 @@ public class EmbeddingService {
     
     public List<Document> similaritySearch(String type, String content) {
         FilterExpressionBuilder b = new FilterExpressionBuilder();
+        VectorStore vectorStore = chatModelService.createVectorStore();
 
         return vectorStore.similaritySearch(SearchRequest.builder()
                 .query(content)

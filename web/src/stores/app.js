@@ -30,18 +30,8 @@ export const useAppStore = defineStore('app', () => {
       fontSize: 12,
       wireframe: false
     },
-    algorithm: theme.defaultAlgorithm
+    algorithm: theme.darkAlgorithm
   }));
-
-
-  const { defaultAlgorithm, defaultSeed } = theme;
-
-  const mapToken = defaultAlgorithm(defaultSeed);
-  const toggleTheme = async () => {
-    config.value.dark = !config.value.dark;
-    await request.put(`/api/config/dark/${config.value.dark}`);
-    console.log('mapToken', mapToken)
-  };
 
   const init = async () => {
     if (typeof window === 'undefined' || listenerAdded) return;
@@ -127,7 +117,6 @@ export const useAppStore = defineStore('app', () => {
     config,
 
     // 方法
-    toggleTheme,
     checkMobile,
     init,
     login,
