@@ -29,3 +29,9 @@ hmby:
   config:
     volume-bind:
     output-media-path: /downloads/output
+    
+openai:
+  base-url: http://192.168.123.171:1234/v1
+  api-key: 1234
+  model: qwen3-30b-a3b-instruct-2507-mlx
+  embedding-model: text-embedding-qwen3-embedding-0.6b
