@@ -271,13 +271,14 @@ public class SubtitleService {
                     }
                     prompt = prompt.replace(PromptPlaceholder.TRANS.getPlaceholder(), placeholder);
                 }
+                
 
                 ChatModel chatModel = chatModelService.createChatModel();
                 String result = chatModel
-                        .call(SystemMessage.builder().text(prompt).build(), UserMessage.builder().text(content).build());
+                        .call(SystemMessage.builder().text(prompt).build(), UserMessage.builder().text("{\"%s\":\"\"}".formatted(content)).build());
                 Map<String, String> map = objectMapper.readValue(result, new TypeReference<>() {
                 });
-                String resultText = map.keySet().stream().findFirst().map(map::get).orElseThrow(() -> new RuntimeException("返回结果错误，请重试"));
+                String resultText = map.keySet().stream().map(map::get).collect(Collectors.joining(" "));
                 sseEmitter.send(SseEmitter.event().name(SseEventType.MESSAGE.name()).data(resultText).build());
                 sseEmitter.complete();
             } catch (Exception e) {

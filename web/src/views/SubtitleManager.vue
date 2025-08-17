@@ -13,7 +13,6 @@
           <Ellipsis :tooltip="true" :line="1" :length="80">
             {{ mediaDetail?.SortName }}
           </Ellipsis>
-          {{ language }}
         </div>
       </template>
       <div style="display: flex; gap: 8px; overflow-x: auto; padding: 8px 0">
@@ -168,13 +167,13 @@
     <template #footer>
       <a-space>
         <a-button :loading="translating" @click="() => handleTranslate()"
-          >快速翻译</a-button
+          >翻译</a-button
         >
         <a-button
           type="primary"
           :disabled="!completionsResult.content"
           @click="applyTranslation"
-          >应用翻译</a-button
+          >应用</a-button
         >
       </a-space>
     </template>
