@@ -19,13 +19,12 @@
                 placeholder="请选择状态"
                 allowClear
               >
-                <a-select-option value="NONE">NONE</a-select-option>
-                <a-select-option value="PENDING">PENDING</a-select-option>
-                <a-select-option value="PROCESSING">PROCESSING</a-select-option>
-                <a-select-option value="SUCCESS">SUCCESS</a-select-option>
-                <a-select-option value="FAIL">FAIL</a-select-option>
-                <a-select-option value="DELETED">DELETED</a-select-option>
-                <a-select-option value="WAITING">WAITING</a-select-option>
+                <a-select-option
+                  v-for="(value, key) in mediaStatus"
+                  :key="key"
+                  :value="key"
+                  >{{ value }}</a-select-option
+                >
               </a-select>
             </a-form-item>
           </a-col>
@@ -36,9 +35,12 @@
                 placeholder="请选择类型"
                 allowClear
               >
-                <a-select-option value="ENCODE">ENCODE</a-select-option>
-                <a-select-option value="CUT">CUT</a-select-option>
-                <a-select-option value="MOVE">MOVE</a-select-option>
+                <a-select-option
+                  v-for="(value, key) in mediaTypes"
+                  :key="key"
+                  :value="key"
+                  >{{ value }}</a-select-option
+                >
               </a-select>
             </a-form-item>
           </a-col>
@@ -50,33 +52,7 @@
         </a-row>
       </a-form>
     </div>
-    <!-- 进度信息展示 -->
-    <a-card
-      v-if="progressInfo"
-      :bodyStyle="{ padding: '15px' }"
-      style="margin-bottom: 8px; background-color: #f5f5f5"
-    >
-      <a-row :gutter="[16, 8]" align="middle">
-        <a-col :xs="24" :sm="12" :md="8" :lg="6">
-          <span style="margin-right: 8px">{{ progressInfo.mediaName }}</span>
-        </a-col>
-        <a-col :xs="12" :sm="6" :md="4" :lg="3">
-          <span>进度: {{ progressInfo.percentage }}</span>
-        </a-col>
-        <a-col :xs="12" :sm="6" :md="4" :lg="3">
-          <span>{{ progressInfo.fps }} FPS</span>
-        </a-col>
-        <a-col :xs="12" :sm="6" :md="4" :lg="3">
-          <span>速度: {{ progressInfo.speed }}x</span>
-        </a-col>
-        <a-col :xs="12" :sm="6" :md="4" :lg="4">
-          <span>比特率: {{ progressInfo.bitRate }}</span>
-        </a-col>
-        <a-col :xs="12" :sm="6" :md="4" :lg="5">
-          <span>剩余时间: {{ progressInfo.timeLeft }}</span>
-        </a-col>
-      </a-row>
-    </a-card>
+    
     <!-- 数据表格 -->
     <a-table
       :columns="columns"
@@ -88,7 +64,13 @@
       row-key="id"
     >
       <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'action'">
+        <template v-if="column.key === 'fileName'">
+          <a-space>
+            <a-tag :color="Colorful(record.type)">{{ GetMediaInfoType(record.type) }}</a-tag>
+            <Ellipsis length="50" :tooltip="true"> {{ record.fileName }}</Ellipsis>
+          </a-space>
+        </template>
+        <template v-else-if="column.key === 'action'">
           <a-space size="1">
             <a-popconfirm
               title="确定要删除这条记录吗？"
@@ -163,12 +145,12 @@
 
 <script setup>
 import { ref, reactive, onDeactivated, h, onActivated, onUnmounted } from "vue";
-import { message } from "ant-design-vue";
+import { message, Tag } from "ant-design-vue";
 import request from "@/utils/request";
-import MediaStatusTag from "@/components/MediaStatusTag.vue";
 import Ellipsis from "@/components/Ellipsis.vue";
 import { useRouter } from "vue-router";
 import EmbyDetailPanel from "@/components/EmbyDetailPanel.vue";
+import { Colorful, GetMediaInfoType, GetMediaStatus, mediaTypes, mediaStatus } from "@/utils/emby-util.js";
 
 // 表格列定义
 const columns = [
@@ -176,7 +158,7 @@ const columns = [
     title: "ID",
     dataIndex: "id",
     key: "id",
-    width: 80,
+    width: 50,
   },
   {
     title: "文件名",
@@ -200,21 +182,15 @@ const columns = [
     dataIndex: "status",
     key: "status",
     customRender: ({ text }) => {
-      return h(MediaStatusTag, { status: text });
+      return h(Tag, { color: Colorful(text) }, () => GetMediaStatus(text));
     },
-    width: 120,
-  },
-  {
-    title: "任务类型",
-    dataIndex: "type",
-    key: "type",
     width: 120,
   },
   {
     title: "操作",
     key: "action",
     fixed: "right",
-    width: 250,
+    width: 150,
   },
 ];
 

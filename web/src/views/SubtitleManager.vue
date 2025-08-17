@@ -11,7 +11,7 @@
       <template #title>
         <div>
           <Ellipsis :tooltip="true" :line="1" :length="80">
-            {{ mediaDetail?.SortName }}
+            {{ mediaDetail?.Name }}
           </Ellipsis>
         </div>
       </template>
@@ -29,7 +29,9 @@
         <a-skeleton v-else />
       </div>
       <template #tags v-if="mediaDetail.mediaInfo">
-        <MediaStatusTag :status="mediaDetail.mediaInfo.status" />
+        <a-tag :color="Colorful(mediaDetail.mediaInfo.status)">
+          {{ GetMediaStatus(mediaDetail.mediaInfo.status) }}
+        </a-tag>
       </template>
       <template #extra>
         <a-space size="small">
@@ -198,10 +200,10 @@ import { message, theme } from "ant-design-vue";
 import { TranslationOutlined } from "@ant-design/icons-vue";
 import request from "@/utils/request";
 import VideoPlayer from "@/components/VideoPlayer.vue";
-import MediaStatusTag from "@/components/MediaStatusTag.vue";
 import Ellipsis from "@/components/Ellipsis.vue";
 import { eventHandler } from "@/utils/request";
 import { parseThinkingMessage } from "@/utils/chat-util.js";
+import {Colorful, GetMediaStatus} from "../utils/emby-util.js";
 
 const route = useRoute();
 const router = useRouter();
@@ -560,7 +562,7 @@ watch(
     padding: 8px;
 
     &:hover {
-      background: #f0f0f0;
+      background: #535357;
     }
 
     .subtitle-content {
@@ -630,7 +632,7 @@ watch(
             line-height: 1.4;
 
             &:hover {
-              background: #e6f7ff;
+              background: #535357;
             }
           }
 

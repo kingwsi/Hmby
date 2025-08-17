@@ -11,7 +11,7 @@
           <img :src="getPrimary(item)" alt="Iceland Cabin">
           <div class="blur-overlay"></div>
           <div class="status">
-            <MediaStatusTag v-if="item.MediaInfo?.status" :status="item.MediaInfo?.status" />
+            <a-tag v-if="item.MediaInfo?.status" :color="Colorful(item.MediaInfo.status)"> {{ item.MediaInfo.status }}</a-tag>
           </div>
           <div class="card-content">
             <h2>
@@ -43,9 +43,8 @@
 import { ref, reactive } from "vue";
 import request from "@/utils/request";
 import Ellipsis from "@/components/Ellipsis.vue";
-import { getThumb, getPrimary } from "@/utils/emby-util";
+import {getThumb, getPrimary, Colorful} from "@/utils/emby-util";
 import { theme } from "ant-design-vue";
-import MediaStatusTag from "@/components/MediaStatusTag.vue";
 const { useToken } = theme;
 const { token } = useToken();
 

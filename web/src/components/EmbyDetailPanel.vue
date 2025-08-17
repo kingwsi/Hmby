@@ -86,7 +86,7 @@
                   </a-space>
                 </a-descriptions-item>
                 <a-descriptions-item v-if="mediaInfo.inputPath" :label="mediaDetail.Id">
-                  {{ mediaDetail.SortName }}
+                  {{ mediaDetail.Name }}
                 </a-descriptions-item>
                 <a-descriptions-item v-if="mediaInfo.inputPath" label="目录">{{
                     mediaInfo.inputPath.substr(

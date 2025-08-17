@@ -31,5 +31,5 @@ hmby:
 openai:
   base-url: http://localhost:1234/v1
   api-key: 1234
-  model: qwen2.5-14b-instruct-1m-abliterated
+  model: qwen3-30b-a3b-instruct-2507-mlx
   embedding-model: text-embedding-qwen3-embedding-0.6b

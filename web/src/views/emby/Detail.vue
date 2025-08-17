@@ -10,7 +10,7 @@
           <img class="poster" :src="mediaDetail.poster" alt="poster" />
         </div>
         <div class="info-section">
-          <h1 class="title">{{ mediaDetail.SortName }}</h1>
+          <h1 class="title">{{ mediaDetail.Name }}</h1>
           <div class="buttons">
             <a-space>
               <div class="btn glass" :style="{ backgroundColor: `${token.colorPrimaryActive}` }" @click="playHandler" :icon="h(PlayCircleFilled)">播放</div>
@@ -25,7 +25,7 @@
       <div v-else class="mobile-layout">
         <div class="mobile-header" :style="{ backgroundImage: `url(${mediaDetail.poster})` }">
           <div class="mobile-overlay">
-            <h3 class="title mobile">{{ mediaDetail.SortName }}</h3>
+            <h3 class="title mobile">{{ mediaDetail.Name }}</h3>
             <div class="buttons mobile">
               <a-space>
                 <div class="btn glass" :style="{ backgroundColor: `${token.colorPrimaryActive}` }" @click="playHandler" :icon="h(PlayCircleFilled)">播放</div>

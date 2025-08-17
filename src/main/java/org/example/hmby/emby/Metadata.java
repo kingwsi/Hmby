@@ -38,6 +38,8 @@ public class Metadata {
     private boolean supportsSync;
     @JsonProperty("Container")
     private String container;
+    @JsonProperty("Name")
+    private String name;
     @JsonProperty("SortName")
     private String sortName;
     @JsonProperty("ExternalUrls")
