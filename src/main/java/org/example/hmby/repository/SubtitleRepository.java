@@ -21,4 +21,6 @@ public interface SubtitleRepository extends JpaRepository<Subtitle, Long> {
             from subtitles where sequence >= :start AND sequence <= :end AND media_id = :mediaId ORDER BY sequence
             """)
     List<Subtitle> findChunks(Long mediaId, int start, int end);
+
+    long countByMediaId(Long mediaId);
 }

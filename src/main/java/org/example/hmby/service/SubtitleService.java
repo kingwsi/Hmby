@@ -207,8 +207,12 @@ public class SubtitleService {
             throw new IllegalArgumentException(language + " is not found");
         }
         MediaInfo mediaInfo = mediaInfoRepository.findByInputPath(subtitleFilePath);
-        if (mediaInfo != null && mediaInfo.getType() == MediaConvertType.TRANSLATE) {
-            return mediaInfo;
+        if (mediaInfo != null) {
+            if (subtitleRepository.countByMediaId(mediaInfo.getId()) > 0) {
+                return mediaInfo;
+            }
+        } else {
+            mediaInfo = new MediaInfo();
         }
 
         Path path = Paths.get(mediaInfoService.handlerVolumeBind(subtitleFilePath));
@@ -218,7 +222,6 @@ public class SubtitleService {
 
         List<Subtitle> subtitles = SRTParser.parseSRT(path);
 
-        mediaInfo = new MediaInfo();
         mediaInfo.setFileName(metadata.getSortName());
         mediaInfo.setFileSize(metadata.getSize());
         mediaInfo.setInputPath(subtitleFilePath);
