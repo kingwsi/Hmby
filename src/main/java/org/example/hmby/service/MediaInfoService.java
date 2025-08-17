@@ -39,6 +39,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -250,7 +251,7 @@ public class MediaInfoService {
     }
 
     public List<MediaInfo> listByEmbyIds(List<Long> ids) {
-        return mediaInfoRepository.findByEmbyIdIn(ids);
+        return mediaInfoRepository.findByEmbyIdIn(ids, Sort.by(Sort.Direction.DESC, "updatedAt"));
     }
 
     public List<MediaInfo> listByOutput(List<String> paths) {

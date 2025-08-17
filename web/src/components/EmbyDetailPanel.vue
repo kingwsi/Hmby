@@ -88,11 +88,8 @@
                 <a-descriptions-item v-if="mediaInfo.inputPath" :label="mediaDetail.Id">
                   {{ mediaDetail.Name }}
                 </a-descriptions-item>
-                <a-descriptions-item v-if="mediaInfo.inputPath" label="目录">{{
-                    mediaInfo.inputPath.substr(
-                        0,
-                        mediaInfo.inputPath.lastIndexOf("/") + 1
-                    )
+                <a-descriptions-item v-if="mediaDetail.Path" label="目录">{{
+                    mediaDetail.Path
                   }}
                 </a-descriptions-item>
                 <a-descriptions-item label="详情">{{ mediaStream.Size }}
@@ -367,6 +364,7 @@ const saveMediaInfo = async () => {
         return;
       }
     }
+    mediaInfo.value.inputPath = mediaDetail.value.Path
     mediaInfo.value.type = viewMode.value;
     await request.post("/api/media-info", {
       ...mediaInfo.value,
