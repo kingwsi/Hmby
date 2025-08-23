@@ -135,14 +135,14 @@ public class SubtitleService {
             if (!finish) {
                 throw new RuntimeException("达到最大重试次数，停止任务！");
             }
-            taskManager.updateProgress(SseEventType.MESSAGE, TaskManager.Prefix.TRANSLATE + mediaId, Map.of("chunks", inputSubtitles));
+            taskManager.updateProgress(SseEventType.MESSAGE, TaskManager.Type.TRANSLATE, mediaId.toString(), Map.of("chunks", inputSubtitles));
         }
         this.outputToFile(mediaId);
         mediaInfoRepository.findById(mediaId).ifPresent(mediaInfo -> {
             mediaInfo.setStatus(MediaStatus.DONE);
             mediaInfoRepository.save(mediaInfo);
         });
-        taskManager.completionProgress(TaskManager.Prefix.TRANSLATE + mediaId);
+        taskManager.completionProgress(TaskManager.Type.TRANSLATE,  mediaId.toString());
     }
 
 

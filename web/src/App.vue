@@ -42,7 +42,6 @@ const showGlobalLoading = computed(() => {
   left: 0;
   width: 100%;
   height: 100vh;
-  background: #f0f2f5;
   display: flex;
   justify-content: center;
   align-items: center;
