@@ -30,7 +30,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -39,7 +38,6 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -51,6 +49,7 @@ public class MediaInfoService {
     private final MediaInfoConvertMapper mediainfoConvertMapper;
     private final MediaMarkRepository mediaMarkRepository;
     private final PropertiesConfig propertiesConfig;
+    private final HostVolumeMapService hostVolumeMapService;
 
     @Transactional(rollbackOn = Exception.class)
     public void save(MediaInfoDTO mediainfoDTO) {
@@ -155,14 +154,14 @@ public class MediaInfoService {
     @Transactional(rollbackOn = Exception.class)
     public void handlerSourceMedia(Long id, String operate) throws ChangeSetPersister.NotFoundException, IOException {
         MediaInfo mediaInfo = mediaInfoRepository.findById(id).orElseThrow(ChangeSetPersister.NotFoundException::new);
-        String outputPath = this.handlerVolumeBind(mediaInfo.getOutputPath());
-        String inputPath = this.handlerVolumeBind(mediaInfo.getInputPath());
+        String outputPath = hostVolumeMapService.mapping(mediaInfo.getOutputPath());
+        String inputPath = hostVolumeMapService.mapping(mediaInfo.getInputPath());
 
         Path source = Paths.get(inputPath);
         if (!Files.exists(source)) {
             throw new ChangeSetPersister.NotFoundException();
         }
-        String recycleTargetPath = Paths.get(this.handlerVolumeBind(propertiesConfig.getOutputMediaPath()),
+        String recycleTargetPath = Paths.get(hostVolumeMapService.mapping(propertiesConfig.getOutputMediaPath()),
                 "recycle").toAbsolutePath().toString();
         Path path1 = Paths.get(recycleTargetPath);
         if (!Files.exists(path1)) {
@@ -223,31 +222,6 @@ public class MediaInfoService {
         query.setSuffix("Japanese");
         return mediaInfoRepository.findAll(Example.of(query))
                 .stream().findFirst().map(mediainfoConvertMapper::toMediaInfoDTO).orElse(null);
-    }
-
-    public String handlerVolumeBind(String path) {
-        path = String.valueOf(path);
-        if (propertiesConfig.getVolumeBind() != null && !propertiesConfig.getVolumeBind().isEmpty()) {
-            // 卷路径映射处理
-            for (String item : propertiesConfig.getVolumeBind()) {
-                String[] split = item.trim().split("->");
-                if (split.length != 2) {
-                    throw new BusinessException("Volume bind exception!");
-                }
-                String hostVolume = split[0];
-                String embyVolume = split[1];
-                if (path.startsWith(hostVolume)) {
-                    return path;
-                }
-                if (path.startsWith(embyVolume)) {
-                    String realPath =  hostVolume.replace(File.separatorChar, '/') + path.substring(embyVolume.length());
-//                    String realPath = path.replaceFirst(embyVolume, hostVolume.replace(File.separatorChar, '/'));
-                    log.info("Volume path replace : {} ->{}", path, realPath);
-                    return realPath.replace('/', File.separatorChar);
-                }
-            }
-        }
-        return path;
     }
 
     public List<MediaInfo> listByEmbyIds(List<Long> ids) {

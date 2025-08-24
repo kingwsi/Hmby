@@ -57,9 +57,9 @@ const routes = [
     meta: { requiresAuth: true, hideInNav: false, keepAlive: true }
   },
   {
-    path: '/chat',
-    name: 'Chat',
-    component: () => import('../views/Chat.vue'),
+    path: '/collection',
+    name: '合集管理',
+    component: () => import('../views/CollectionManager.vue'),
     meta: { requiresAuth: true, hideInNav: false, keepAlive: true }
   },
   {
