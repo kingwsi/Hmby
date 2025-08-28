@@ -69,6 +69,12 @@ const routes = [
     meta: { requiresAuth: true, keepAlive: false, hideInNav: true, hideNav: true }
   },
   {
+    path: '/poster/:id?',
+    name: '拼图',
+    component: () => import('../views/Poster.vue'),
+    meta: { requiresAuth: true, hideInNav: false, keepAlive: true,hideNav: true  }
+  },
+  {
     path: '/thumb-maker/:itemId',
     name: 'ThumbMaker',
     component: () => import('../views/ThumbMaker.vue'),
