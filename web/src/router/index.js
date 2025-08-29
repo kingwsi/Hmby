@@ -17,7 +17,7 @@ const routes = [
     path: '/emby-manager',
     name: '管理',
     component: () => import('@/views/EmbyManager.vue'),
-    meta: { requiresAuth: true, hideInNav: false, keepAlive: true, icon: 'SettingOutlined' }
+    meta: { requiresAuth: true, hideInNav: false, keepAlive: true, icon: 'BlockOutlined' }
   },
   {
     path: '/emby-output',
@@ -63,7 +63,7 @@ const routes = [
   },
   {
     path: '/poster/:id?',
-    name: '拼图',
+    name: 'Poster',
     component: () => import('../views/Poster.vue'),
     meta: { requiresAuth: true, hideInNav: true, keepAlive: true,hideNav: true  }
   },

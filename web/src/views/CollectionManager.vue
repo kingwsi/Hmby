@@ -157,9 +157,6 @@ import {
   SearchOutlined,
   FileOutlined,
   FolderAddOutlined,
-  EditOutlined,
-  SaveOutlined,
-  ClearOutlined,
   EyeOutlined
 } from '@ant-design/icons-vue'
 

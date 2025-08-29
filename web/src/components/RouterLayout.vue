@@ -1,7 +1,7 @@
 <template>
   <a-config-provider :theme="app.themeConfig">
     <a-layout class="layout">
-      <a-float-button-group v-if="app.isMobile && !currentRoute.meta.hideNav" trigger="click" type="primary" :style="{ left: '24px', bottom: '100px' }">
+      <a-float-button-group v-if="app.isMobile && !currentRoute.meta.hideNav" trigger="click" type="primary" :style="{ bottom: '40px' }">
         <template #icon>
           <component :is="allIcons['MenuOutlined']" />
         </template>
@@ -15,7 +15,7 @@
         </a-float-button>
         <a-float-button @click="showUserModal">
           <template #icon>
-            <component :is="allIcons['UserOutlined']" />
+            <component :is="allIcons['SettingOutlined']" />
           </template>
           <template #tooltip>
             用户配置
