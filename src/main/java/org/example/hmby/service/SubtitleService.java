@@ -57,7 +57,7 @@ public class SubtitleService {
     private final ChatPromptRepository chatPromptRepository;
     private final ChatModelService chatModelService;
     private final TaskManager taskManager;
-    private final HostVolumeMapService hostVolumeMapService;
+    private final HostVolumeMappingHelper hostVolumeMappingHelper;
 
     public List<Subtitle> listSubtitles(Long mediaId) {
         return subtitleRepository.findAllByMediaId(mediaId, Sort.by(Sort.Direction.ASC, "sequence"));
@@ -216,7 +216,7 @@ public class SubtitleService {
             mediaInfo = new MediaInfo();
         }
 
-        Path path = Paths.get(hostVolumeMapService.mapping(subtitleFilePath));
+        Path path = Paths.get(hostVolumeMappingHelper.mapping(subtitleFilePath));
         if (!path.toFile().exists()) {
             throw new RuntimeException("subtitle file does not exist: " + path);
         }
@@ -254,7 +254,7 @@ public class SubtitleService {
         String outputFileName = inputFileName.substring(0, inputFileName.indexOf(".")) + ".zh.srt";
         String outputPath = inputPath.substring(0, inputPath.lastIndexOf("/"));
         String fullPath = outputPath + "/" + outputFileName;
-        String s = hostVolumeMapService.mapping(fullPath);
+        String s = hostVolumeMappingHelper.mapping(fullPath);
         SRTParser.writeSRT(s, subtitles);
         mediaInfo.setOutputPath(fullPath);
         mediaInfoRepository.save(mediaInfo);

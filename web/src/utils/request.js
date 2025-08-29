@@ -26,47 +26,47 @@ request.interceptors.request.use(
 
 // 响应拦截器
 request.interceptors.response.use(
-    response => {
-        if (response.status === 401) {
-            localStorage.removeItem('token');
-            router.push('/login');
-        }
-        const res = response.data;
+  async response => {
+    const res = response.data;
 
-        // 如果状态码不是200，说明请求出错
-        if (res.status !== 200) {
-            message.error(res.message || '未知错误');
+    // 检查响应体内的状态码，这是后端业务层面的成功/失败
+    // 注意：这里假设后端成功时总会返回 status: 200 在响应体内
+    if (res.status !== 200) {
+      message.error(res.message || '业务错误');
 
-            // 如果是401，说明token失效，需要重新登录
-            if (res.status === 401) {
-                localStorage.removeItem('token');
-                router.push('/login');
-            }
+      // 如果业务状态码是401，同样需要触发登出
+      if (res.status === 401) {
+        const { useAppStore } = await import('@/stores/app');
+        const appStore = useAppStore();
+        appStore.logout();
+      }
 
-            return Promise.reject(new Error(res.message || '未知错误'));
-        }
-
-        return res;
-    },
-    error => {
-        // 如果是401错误，说明未登录或token失效
-        if (error.response?.status === 401) {
-            localStorage.removeItem('token');
-            message.error('需要登录');
-            // 使用 nextTick 确保在下一个事件循环中执行路由跳转
-            setTimeout(() => {
-                router.push({
-                    path: '/login',
-                    query: { redirect: router.currentRoute.value.fullPath }
-                });
-            }, 100);
-        } else {
-            const errMsg = error.response?.data?.message || '网络错误';
-            message.error(errMsg);
-        }
-
-        return Promise.reject(error);
+      return Promise.reject(new Error(res.message || '业务错误'));
     }
+
+    return res;
+  },
+  async error => {
+    // HTTP层面的错误（如 401, 404, 500）
+    if (error.response?.status === 401) {
+      // 使用动态导入安全地获取 store 实例
+      const { useAppStore } = await import('@/stores/app');
+      const appStore = useAppStore();
+
+      // 避免在登录页面收到401时产生重定向循环
+      if (router.currentRoute.value.name !== 'Login') {
+        message.error('登录已失效，请重新登录');
+        // 调用集中的 logout action，它会处理状态清理和页面跳转
+        await appStore.logout();
+      }
+    } else {
+      // 对于其他HTTP错误，显示后端返回的错误消息或通用网络错误
+      const errMsg = error.response?.data?.message || '网络错误';
+      message.error(errMsg);
+    }
+
+    return Promise.reject(error);
+  }
 );
 
 /**

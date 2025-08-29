@@ -55,15 +55,28 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { reactive, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
-import { useAppStore } from '@/stores/app' // 根据你的 store 路径调整
+import { useAppStore } from '@/stores/app'
 
 const router = useRouter()
 const appStore = useAppStore()
 
-// 表单
+// 根据路由 query 获取重定向地址，提供默认值
+const getRedirectPath = () => {
+  const { redirect } = router.currentRoute.value.query
+  return typeof redirect === 'string' && redirect !== '' ? redirect : '/'
+}
+
+// 如果用户已登录，则重定向到目标页或首页
+onMounted(() => {
+  if (appStore.isAuthenticated) {
+    router.push(getRedirectPath())
+  }
+})
+
+// 表单状态
 const formRef = ref()
 const formState = reactive({
   username: '',
@@ -76,33 +89,35 @@ const rules = {
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 }
 
-// 登录加载
+// 登录加载状态
 const loading = ref(false)
 
-// 提交
+// 提交登录
 const handleSubmit = async () => {
   try {
+    // 1. 表单校验
     await formRef.value.validate()
     loading.value = true
-    const result = await appStore.login({
+
+    // 2. 调用 store 的 login action (失败时会抛出错误)
+    await appStore.login({
       username: formState.username,
       password: formState.password
     })
-    if (result.success) {
-      message.success('登录成功')
-      router.push(getRedirectPath())
-    }
+
+    // 3. 登录成功，显示消息并跳转
+    message.success('登录成功')
+    router.push(getRedirectPath())
+
   } catch (error) {
-    // 校验失败或请求失败已在 store 中处理
+    // 4. 登录失败，错误被捕获
+    // request.js 中的拦截器已经弹出了全局错误消息
+    // 我们在这里只需捕获错误，防止程序崩溃，表单内容会因此保留
+    console.error('登录流程失败:', error.message)
   } finally {
+    // 5. 无论成功或失败，都结束 loading
     loading.value = false
   }
-}
-
-// 根据路由 query 获取重定向地址
-const getRedirectPath = () => {
-  const { redirect } = router.currentRoute.value.query
-  return typeof redirect === 'string' ? redirect : '/'
 }
 </script>
 
@@ -129,7 +144,6 @@ const getRedirectPath = () => {
   margin-bottom: 24px;
   font-size: 20px;
   font-weight: 600;
-  color: #333;
 }
 
 .logo {

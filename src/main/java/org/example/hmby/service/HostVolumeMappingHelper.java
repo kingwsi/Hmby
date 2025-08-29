@@ -13,11 +13,11 @@ import java.io.File;
  */
 @Slf4j
 @Service
-public class HostVolumeMapService {
+public class HostVolumeMappingHelper {
 
     private final PropertiesConfig propertiesConfig;
     
-    public HostVolumeMapService(PropertiesConfig propertiesConfig) {
+    public HostVolumeMappingHelper(PropertiesConfig propertiesConfig) {
         this.propertiesConfig = propertiesConfig;
     }
     

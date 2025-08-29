@@ -49,7 +49,7 @@ public class MediaInfoService {
     private final MediaInfoConvertMapper mediainfoConvertMapper;
     private final MediaMarkRepository mediaMarkRepository;
     private final PropertiesConfig propertiesConfig;
-    private final HostVolumeMapService hostVolumeMapService;
+    private final HostVolumeMappingHelper hostVolumeMappingHelper;
 
     @Transactional(rollbackOn = Exception.class)
     public void save(MediaInfoDTO mediainfoDTO) {
@@ -154,14 +154,14 @@ public class MediaInfoService {
     @Transactional(rollbackOn = Exception.class)
     public void handlerSourceMedia(Long id, String operate) throws ChangeSetPersister.NotFoundException, IOException {
         MediaInfo mediaInfo = mediaInfoRepository.findById(id).orElseThrow(ChangeSetPersister.NotFoundException::new);
-        String outputPath = hostVolumeMapService.mapping(mediaInfo.getOutputPath());
-        String inputPath = hostVolumeMapService.mapping(mediaInfo.getInputPath());
+        String outputPath = hostVolumeMappingHelper.mapping(mediaInfo.getOutputPath());
+        String inputPath = hostVolumeMappingHelper.mapping(mediaInfo.getInputPath());
 
         Path source = Paths.get(inputPath);
         if (!Files.exists(source)) {
             throw new ChangeSetPersister.NotFoundException();
         }
-        String recycleTargetPath = Paths.get(hostVolumeMapService.mapping(propertiesConfig.getOutputMediaPath()),
+        String recycleTargetPath = Paths.get(hostVolumeMappingHelper.mapping(propertiesConfig.getOutputMediaPath()),
                 "recycle").toAbsolutePath().toString();
         Path path1 = Paths.get(recycleTargetPath);
         if (!Files.exists(path1)) {

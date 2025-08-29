@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAppStore } from '@/stores/app'
-import Home from '../views/Home.vue'
 import NotFound from '../views/NotFound.vue'
 
 const routes = [
@@ -12,26 +11,20 @@ const routes = [
     path: '/media-info',
     name: '任务',
     component: () => import('../views/MediaInfo.vue'),
-    meta: { requiresAuth: true, hideInNav: false, keepAlive: true }
+    meta: { requiresAuth: true, hideInNav: false, keepAlive: true, icon: 'ScheduleOutlined' }
   },
   {
     path: '/emby-manager',
     name: '管理',
     component: () => import('@/views/EmbyManager.vue'),
-    meta: { requiresAuth: true, hideInNav: false, keepAlive: true }
+    meta: { requiresAuth: true, hideInNav: false, keepAlive: true, icon: 'SettingOutlined' }
   },
   {
     path: '/emby-output',
     name: '已处理',
     component: () => import('../views/EmbyOutputList.vue'),
-    meta: { requiresAuth: true, hideInNav: false, keepAlive: true }
+    meta: { requiresAuth: true, hideInNav: false, keepAlive: true, icon: 'FileDoneOutlined' }
   },
-  // {
-  //   path: '/emby',
-  //   name: 'Emby',
-  //   component: () => import('../views/emby/Library.vue'),
-  //   meta: { requiresAuth: true, hideInNav: false, keepAlive: true }
-  // },
   {
     path: '/emby/list',
     name: 'EmbyList',
@@ -54,13 +47,13 @@ const routes = [
     path: '/tag',
     name: '标签',
     component: () => import('../views/Tag.vue'),
-    meta: { requiresAuth: true, hideInNav: false, keepAlive: true }
+    meta: { requiresAuth: true, hideInNav: false, keepAlive: true, icon: 'TagOutlined' }
   },
   {
     path: '/collection',
     name: '合集管理',
     component: () => import('../views/CollectionManager.vue'),
-    meta: { requiresAuth: true, hideInNav: false, keepAlive: true }
+    meta: { requiresAuth: true, hideInNav: false, keepAlive: true, icon: 'FolderOpenOutlined' }
   },
   {
     path: '/subtitle-manager/:id?',
@@ -72,13 +65,7 @@ const routes = [
     path: '/poster/:id?',
     name: '拼图',
     component: () => import('../views/Poster.vue'),
-    meta: { requiresAuth: true, hideInNav: false, keepAlive: true,hideNav: true  }
-  },
-  {
-    path: '/thumb-maker/:itemId',
-    name: 'ThumbMaker',
-    component: () => import('../views/ThumbMaker.vue'),
-    meta: { requiresAuth: true, hideInNav: true }
+    meta: { requiresAuth: true, hideInNav: true, keepAlive: true,hideNav: true  }
   },
   {
     path: '/login',
@@ -100,28 +87,34 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
-  // ⚠️ 必须在守卫里调用 useAppStore，否则会报 “getActivePinia” 错误
-  const appStore = useAppStore()
+  // 必须在守卫里调用 useAppStore，否则会报 “getActivePinia” 错误
+  const appStore = useAppStore();
+  const isAuthenticated = appStore.isAuthenticated;
 
-  // 1. 已登录用户访问 /login → 直接跳首页
-  if (to.name === 'Login' && appStore.isAuthenticated) {
-    next('/')
-    return
+  // 检查目标路由是否需要认证
+  if (to.meta.requiresAuth) {
+    if (isAuthenticated) {
+      // 用户已登录，允许访问
+      next();
+    } else {
+      // 用户未登录，重定向到登录页
+      next({
+        path: '/login',
+        // 保存用户原本想访问的路径，以便登录后跳转回来
+        query: { redirect: to.fullPath },
+      });
+    }
+  } else {
+    // 目标路由不需要认证
+    // 但如果用户已登录，且要访问的是登录页，则直接跳转到首页
+    if (to.name === 'Login' && isAuthenticated) {
+      next({ path: '/' });
+    } else {
+      // 其他情况（如访问404页面或未登录访问登录页）直接放行
+      next();
+    }
   }
-
-  // 2. 未登录用户访问非白名单页面 → 跳登录并记录 redirect
-  const whiteList = ['Login']
-  if (!whiteList.includes(to.name) && !appStore.isAuthenticated) {
-    next({
-      path: '/login',
-      query: { redirect: to.fullPath }
-    })
-    return
-  }
-
-  // 3. 其余情况放行
-  next()
-})
+});
 
 
 // 全局后置守卫

@@ -328,78 +328,82 @@ const wordCloudRef = ref(null)
 let wordCloudChart = null
 
 // 初始化词云图表
-const initWordCloud = async () => {
-  if (!wordCloudRef.value) return
+const initWordCloud = () => {
+  // 使用setTimeout将重量级任务推迟，避免阻塞UI
+  setTimeout(async () => {
+    if (!wordCloudRef.value) return;
 
-  const { data } = await request.get('/api/tags/page', {
-    params: {
-      page: 0,
-      size: 999,
-      show: true,
-      sort: 'count,desc',
-    }
-  })
-  allTagsData.value = data.content
+    try {
+      const { data } = await request.get('/api/tags/page', {
+        params: {
+          page: 0,
+          size: 200, // 减少数据量
+          show: true,
+          sort: 'count,desc',
+        }
+      });
+      allTagsData.value = data.content;
 
-  // 确保DOM已经渲染
-  nextTick(() => {
-    // 如果已经有实例，先销毁
-    if (wordCloudChart) {
-      wordCloudChart.dispose()
-    }
+      // 等待DOM更新
+      await nextTick();
+      if (!wordCloudRef.value) return;
 
-    // 创建新实例
-    wordCloudChart = echarts.init(wordCloudRef.value)
-
-    // 准备词云数据
-    const wordCloudData = allTagsData.value.map(item => ({
-      name: item.name,
-      value: item.count || 1,
-      textStyle: {
-        fontFamily: 'sans-serif',
-        fontWeight: 'bold',
-        color: ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd'][Math.floor(Math.random() * 5)]
+      if (wordCloudChart) {
+        wordCloudChart.dispose();
       }
-    }))
+      wordCloudChart = echarts.init(wordCloudRef.value);
 
-    // 设置词云配置项
-    const option = {
-      series: [{
-        type: 'wordCloud',
-        shape: 'circle',
-        left: 'center',
-        top: 'center',
-        width: '100%',
-        height: '100%',
-        right: null,
-        bottom: null,
-        sizeRange: [12, 35], // 字体大小范围
-        rotationRange: [-90, 90], // 旋转角度范围
-        rotationStep: 45, // 旋转步进
-        gridSize: 5, // 网格大小，值越大，词之间的间隔越大
-        drawOutOfBound: false,
+      const wordCloudData = allTagsData.value.map(item => ({
+        name: item.name,
+        value: item.count || 1,
+        id: item.id, // 传递id，用于点击事件
         textStyle: {
           fontFamily: 'sans-serif',
-          fontWeight: 'bold'
-        },
-        emphasis: {
+          fontWeight: 'bold',
+          color: ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd'][Math.floor(Math.random() * 5)]
+        }
+      }));
+
+      const option = {
+        series: [{
+          type: 'wordCloud',
+          shape: 'circle',
+          left: 'center',
+          top: 'center',
+          width: '100%',
+          height: '100%',
+          right: null,
+          bottom: null,
+          sizeRange: [12, 35],
+          rotationRange: [-90, 90],
+          rotationStep: 45,
+          gridSize: 5,
+          drawOutOfBound: false,
           textStyle: {
-            shadowBlur: 10,
-            shadowColor: '#333'
-          }
-        },
-        data: wordCloudData
-      }]
+            fontFamily: 'sans-serif',
+            fontWeight: 'bold'
+          },
+          emphasis: {
+            textStyle: {
+              shadowBlur: 10,
+              shadowColor: '#333'
+            }
+          },
+          data: wordCloudData
+        }]
+      };
+
+      wordCloudChart.setOption(option);
+
+      // 修正点击事件，传递包含id的data对象
+      wordCloudChart.on('click', function (params) {
+        handleEdit(params.data);
+      });
+    } catch (error) {
+      console.error("Failed to initialize word cloud:", error);
+      // 可以在这里添加一些错误处理，比如在UI上显示错误信息
     }
-
-    // 应用配置
-    wordCloudChart.setOption(option)
-
-    // 添加点击事件
-    wordCloudChart.on('click', function (params) {
-      handleEdit(params)
-    })
-  })
+  }, 100); // 延迟100ms，给UI响应留出时间
 }
 </script>
 

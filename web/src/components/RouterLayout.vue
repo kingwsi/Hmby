@@ -1,40 +1,61 @@
 <template>
   <a-config-provider :theme="app.themeConfig">
     <a-layout class="layout">
-      <a-float-button v-if="app.isMobile && !showDrawer" @click="showDrawer = true" />
+      <a-float-button-group v-if="app.isMobile && !currentRoute.meta.hideNav" trigger="click" type="primary" :style="{ left: '24px', bottom: '100px' }">
+        <template #icon>
+          <component :is="allIcons['MenuOutlined']" />
+        </template>
+        <a-float-button v-for="route in routes" :key="route.path" @click="() => router.push(route.path)">
+          <template #icon>
+            <component :is="allIcons[route.meta.icon || 'AppstoreOutlined']" />
+          </template>
+          <template #tooltip>
+            {{ route.name }}
+          </template>
+        </a-float-button>
+        <a-float-button @click="showUserModal">
+          <template #icon>
+            <component :is="allIcons['UserOutlined']" />
+          </template>
+          <template #tooltip>
+            用户配置
+          </template>
+        </a-float-button>
+        <a-float-button @click="handleLogout">
+          <template #icon>
+            <component :is="allIcons['LogoutOutlined']" />
+          </template>
+          <template #tooltip>
+            登出
+          </template>
+        </a-float-button>
+      </a-float-button-group>
       <a-layout-header v-if="!currentRoute.meta.hideNav && !app.isMobile" class="header"
         :style="{ position: 'fixed', zIndex: 10, width: '100%' }">
         <div class="header-content">
           <div class="logo">
             <span class="logo-text"> {{ currentRoute.hideNav }}</span>
           </div>
-          <a-menu v-model:selectedKeys="selectedKeys" theme="dark" mode="horizontal" :style="{ lineHeight: '64px' }"
+          <a-menu :selectedKeys="selectedKeys" theme="dark" mode="horizontal" :style="{ lineHeight: '64px' }"
             class="desktop-menu">
             <a-menu-item v-for="route in routes" :key="route.path">
               <router-link :to="route.path">{{ route.name }}</router-link>
             </a-menu-item>
-            <a-menu-item @click="handleLogout" style="margin-left: auto">
-              <a><logout-outlined /> 登出</a>
-            </a-menu-item>
+            <a-sub-menu style="margin-left: auto;">
+              <template #title>
+                <a-avatar size="small" style="margin-right: 8px; background-color: #87d068">{{ app.username ? app.username.charAt(0).toUpperCase() : '' }}</a-avatar>
+                <span>{{ app.username }}</span>
+              </template>
+              <a-menu-item @click="showUserModal">
+                <a>用户配置</a>
+              </a-menu-item>
+              <a-menu-item @click="handleLogout">
+                <a><component :is="allIcons['LogoutOutlined']" /> 登出</a>
+              </a-menu-item>
+            </a-sub-menu>
           </a-menu>
         </div>
       </a-layout-header>
-
-      <!-- 移动端侧边菜单 -->
-      <a-drawer v-if="app.isMobile" v-model:open="showDrawer" placement="left" :closable="false" width="250">
-        <a-menu v-model:selectedKeys="selectedKeys" class="mobile-menu-wrapper" mode="vertical">
-          <a-menu-item v-for="route in routes" :key="route.path">
-            <router-link :to="route.path" @click="showDrawer = false">
-              {{ route.name }}
-            </router-link>
-          </a-menu-item>
-        </a-menu>
-        <template #footer>
-          <a-space>
-            <a-button type="link" class="logout-btn" @click="handleLogout">登出</a-button>
-          </a-space>
-        </template>
-      </a-drawer>
 
       <a-layout-content :class="{ 'content-wrapper': !currentRoute.meta.hideNav, 'content-wrapper-mobile': app.isMobile }">
         <!-- <a-page-header v-if="app.isMobile" :title="currentRoute.name" /> -->
@@ -50,31 +71,34 @@
         </div>
       </a-layout-content>
     </a-layout>
+    <UserConfigModal v-model:open="isModalVisible" @save="handleSave" />
   </a-config-provider>
 </template>
 <script setup>
-import { ref, computed, onMounted, h } from 'vue';
-import { LogoutOutlined } from '@ant-design/icons-vue';
+import { ref, computed, onMounted, h, watch } from 'vue';
+import * as allIcons from '@ant-design/icons-vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAppStore } from '@/stores/app';
+import UserConfigModal from './UserConfigModal.vue';
+import { message } from 'ant-design-vue';
 
 const router = useRouter();
 const route = useRoute();
 
 const routes = computed(() => {
-  return router.options.routes.filter(route => route.name && !route.meta?.hideInNav);
+  return router.options.routes.filter(route => route.name && !route.meta?.hideInNav && !route.meta?.hideNav);
 });
 
 const currentRoute = computed(() => {
   return route;
 });
 
-const selectedKeys = computed(() => {
-  return [route.path];
+const selectedKeys = ref([route.path]);
+watch(() => route.path, path => {
+  selectedKeys.value = [path];
 });
 
 const app = useAppStore();
-const showDrawer = ref(false);
 
 const handleLogout = async () => {
   try {
@@ -87,6 +111,24 @@ const handleLogout = async () => {
     app.logout();
     router.push('/login');
   }
+};
+
+// User Config Modal
+const isModalVisible = ref(false);
+
+const showUserModal = () => {
+    isModalVisible.value = true;
+};
+
+const handleSave = async (updatedConfig) => {
+    try {
+        await app.updateConfig(updatedConfig);
+        message.success('配置已保存');
+        isModalVisible.value = false;
+    } catch (error) {
+        message.error('配置保存失败');
+        console.error('Failed to save config:', error);
+    }
 };
 
 // 在组件挂载时获取用户信息

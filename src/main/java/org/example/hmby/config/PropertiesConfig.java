@@ -22,4 +22,6 @@ public class PropertiesConfig {
      * /Volumes/downloads->/downloads/movies
      */
     private List<String> volumeBind;
+    
+    private String embyServer;
 }

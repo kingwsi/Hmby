@@ -1,6 +1,6 @@
 package org.example.hmby.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.example.hmby.Response;
@@ -13,16 +13,14 @@ import org.example.hmby.emby.PageWrapper;
 import org.example.hmby.emby.PlayerInfo;
 import org.example.hmby.emby.request.EmbyItemRequest;
 import org.example.hmby.emby.request.MetadataRequest;
-import org.example.hmby.entity.Config;
 import org.example.hmby.entity.MediaInfo;
-import org.example.hmby.enumerate.ConfigKey;
 import org.example.hmby.exception.BusinessException;
 import org.example.hmby.emby.EmbyFeignClient;
-import org.example.hmby.repository.ConfigRepository;
 import org.example.hmby.sceurity.EmbyUser;
 import org.example.hmby.sceurity.SimilarResult;
 import org.example.hmby.sceurity.UserContextHolder;
 import org.example.hmby.service.EmbeddingService;
+import org.example.hmby.service.HostVolumeMappingHelper;
 import org.example.hmby.service.MediaInfoService;
 import org.example.hmby.service.TagService;
 import org.springframework.ai.document.Document;
@@ -40,7 +38,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
@@ -62,9 +59,10 @@ import java.util.stream.Collectors;
  * date: 2022/4/6 17:25 <br>
  * author:  <br>
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/emby-item")
-@Slf4j
+@AllArgsConstructor
 public class EmbyController {
 
     private final EmbyFeignClient embyClient;
@@ -73,19 +71,8 @@ public class EmbyController {
 
     private final MediaInfoService mediaInfoService;
     private final TagService tagService;
-    private final ObjectMapper objectMapper;
-    private final ConfigRepository configRepository;
     private final EmbeddingService embeddingService;
-
-    public EmbyController(EmbyFeignClient embyClient, PropertiesConfig propertiesConfig, MediaInfoService mediaInfoService, TagService tagService, ObjectMapper objectMapper, ConfigRepository configRepository, EmbeddingService embeddingService) {
-        this.embyClient = embyClient;
-        this.propertiesConfig = propertiesConfig;
-        this.mediaInfoService = mediaInfoService;
-        this.tagService = tagService;
-        this.objectMapper = objectMapper;
-        this.configRepository = configRepository;
-        this.embeddingService = embeddingService;
-    }
+    private final HostVolumeMappingHelper hostVolumeMappingHelper;
 
     @GetMapping("/page")
     public Response<Page<MovieItem>> page(EmbyItemRequest embyItemRequest) {
@@ -240,9 +227,8 @@ public class EmbyController {
                 .map(SecurityContext::getAuthentication)
                 .map(Authentication::getPrincipal)
                 .orElseThrow(() -> new BusinessException("emby认证信息获取异常！"));
-        String embyServer = Optional.ofNullable(configRepository.findOneByKey(ConfigKey.emby_server))
-                .map(Config::getVal)
-                .orElseThrow(() -> new BusinessException(ConfigKey.emby_server + "未配置！"));
+        String embyServer = Optional.ofNullable(propertiesConfig.getEmbyServer())
+                .orElseThrow(() -> new BusinessException("embyServer未配置！"));
         Metadata itemMetadata = embyClient.getItemMetadata(itemId);
 
         Metadata.MediaSource mediaSource = Optional.of(itemMetadata)
@@ -325,7 +311,7 @@ public class EmbyController {
         String BASE_DIR = Optional.ofNullable(embyClient.getItemMetadata(id))
                 .map(Metadata::getPath)
                 .orElseThrow(() -> new RuntimeException("Not Found Media Source " + id));
-        Path path = Paths.get(BASE_DIR);
+        Path path = Paths.get(hostVolumeMappingHelper.mapping(BASE_DIR));
         // 获取文件名（带后缀）
         String fileNameWithExt = path.getFileName().toString();
         // 去除后缀名

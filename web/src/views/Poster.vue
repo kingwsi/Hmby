@@ -372,7 +372,23 @@ async function generateCanvasImage() {
             allowTaint: true,
             backgroundColor: '#000',
         });
-        return canvas.toDataURL('image/jpeg', 0.9);
+
+        const maxWidth = 800;
+        if (canvas.width <= maxWidth) {
+            return canvas.toDataURL('image/jpeg', 0.9);
+        }
+
+        const newWidth = maxWidth;
+        const newHeight = Math.round(canvas.height * (maxWidth / canvas.width));
+        
+        const resizedCanvas = document.createElement('canvas');
+        resizedCanvas.width = newWidth;
+        resizedCanvas.height = newHeight;
+        
+        const ctx = resizedCanvas.getContext('2d');
+        ctx.drawImage(canvas, 0, 0, newWidth, newHeight);
+        
+        return resizedCanvas.toDataURL('image/jpeg', 0.9);
     } catch (error) {
         console.error("Error generating canvas image:", error);
         message.error("生成图片失败!");

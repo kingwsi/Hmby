@@ -10,8 +10,6 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import org.example.hmby.config.PropertiesConfig;
 import org.example.hmby.emby.EmbyAuthResult;
-import org.example.hmby.entity.Config;
-import org.example.hmby.enumerate.ConfigKey;
 import org.example.hmby.repository.ConfigRepository;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.InsufficientAuthenticationException;
@@ -30,6 +28,7 @@ public class EmbyAuthenticationProvider implements AuthenticationProvider {
 
     private final ConfigRepository configRepository;
     private final ObjectMapper objectMapper;
+    private final PropertiesConfig  propertiesConfig;
 
 
     @Override
@@ -57,9 +56,8 @@ public class EmbyAuthenticationProvider implements AuthenticationProvider {
 
         OkHttpClient client = new OkHttpClient.Builder().build();
 
-        String emby_server = Optional.ofNullable(configRepository.findOneByKey(ConfigKey.emby_server))
-                .map(Config::getVal)
-                .orElseThrow(() -> new InsufficientAuthenticationException("emby server config not found"));
+        String emby_server = Optional.ofNullable(propertiesConfig.getEmbyServer())
+                .orElseThrow(() -> new RuntimeException("Emby server property not set"));
         Request request = new Request.Builder().url(emby_server + "/Users/Public").get().build();
         try (Response response = client.newCall(request).execute()) {
             if (response.isSuccessful() && response.code() == 200 && response.body() != null) {

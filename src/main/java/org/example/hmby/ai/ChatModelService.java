@@ -1,7 +1,6 @@
 package org.example.hmby.ai;
 
 import org.example.hmby.entity.Config;
-import org.example.hmby.enumerate.ConfigKey;
 import org.example.hmby.exception.ConfigNotFoundException;
 import org.example.hmby.repository.ConfigRepository;
 import org.springframework.ai.chat.model.ChatModel;
@@ -45,9 +44,9 @@ public class ChatModelService {
     }
 
     public ChatModel createChatModel() {
-        String model_name = Optional.ofNullable(configRepository.findOneByKey(ConfigKey.model_name))
-                .map(Config::getVal)
-                .orElseThrow(() -> new ConfigNotFoundException(ConfigKey.model_name));
+        String model_name = Optional.ofNullable(configRepository.findConfigBy())
+                .map(Config::getModelName)
+                .orElseThrow(() -> new ConfigNotFoundException("model_name"));
 
 
         return OpenAiChatModel.builder()
@@ -56,9 +55,9 @@ public class ChatModelService {
     }
     
     public OpenAiApi getOpenaiApi(){
-        String openai_base_url = Optional.ofNullable(configRepository.findOneByKey(ConfigKey.openai_base_url))
-                .map(Config::getVal)
-                .orElseThrow(() -> new ConfigNotFoundException(ConfigKey.openai_base_url));
+        String openai_base_url = Optional.ofNullable(configRepository.findConfigBy())
+                .map(Config::getOpenaiBaseUrl)
+                .orElseThrow(() -> new ConfigNotFoundException("openai_base_url"));
 
         return OpenAiApi.builder()
                 .baseUrl(openai_base_url)
@@ -81,9 +80,9 @@ public class ChatModelService {
     }
     
     public EmbeddingModel createEmbeddingModel() {
-        String embedding_model_name = Optional.ofNullable(configRepository.findOneByKey(ConfigKey.embedding_model_name))
-                .map(Config::getVal)
-                .orElseThrow(() -> new ConfigNotFoundException(ConfigKey.embedding_model_name));
+        String embedding_model_name = Optional.ofNullable(configRepository.findConfigBy())
+                .map(Config::getEmbeddingModelName)
+                .orElseThrow(() -> new ConfigNotFoundException("embedding_model_name"));
         return new OpenAiEmbeddingModel(
                 this.getOpenaiApi(),
                 MetadataMode.EMBED,

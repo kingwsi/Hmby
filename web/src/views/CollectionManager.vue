@@ -1,12 +1,7 @@
 <template>
   <div class="collection-manager">
-    <div class="header">
-      <h2>合集管理</h2>
-      <p class="description">管理和创建媒体文件合集</p>
-    </div>
-
     <!-- 路径输入区域 -->
-    <a-card title="NFO文件目录选择" class="path-card">
+    <a-card title="目录选择" class="path-card">
       <a-row :gutter="16">
         <a-col :span="18">
           <a-input
@@ -29,7 +24,6 @@
             block
           >
             <search-outlined />
-            加载NFO文件
           </a-button>
         </a-col>
       </a-row>
@@ -380,18 +374,6 @@ onMounted(() => {
   padding: 24px;
   max-width: 1200px;
   margin: 0 auto;
-}
-
-.header {
-  margin-bottom: 24px;
-  text-align: center;
-}
-
-.header h2 {
-  margin: 0;
-  color: #69c0ff;
-  font-size: 28px;
-  font-weight: 600;
 }
 
 .description {

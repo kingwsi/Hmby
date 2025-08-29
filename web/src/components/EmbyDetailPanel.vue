@@ -490,8 +490,8 @@ const openSubtitle = (id) => {
 const openMakeThumbPage = () => {
   if (mediaDetail.value) {
     const routeData = router.resolve({
-        name: 'ThumbMaker',
-        params: { itemId: mediaDetail.value.Id }
+        name: 'Poster',
+        params: { id: mediaDetail.value.Id }
     });
     window.open(routeData.href, '_blank');
   }

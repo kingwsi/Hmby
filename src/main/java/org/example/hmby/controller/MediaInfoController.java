@@ -5,13 +5,10 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.example.hmby.Response;
-import org.example.hmby.entity.Config;
 import org.example.hmby.entity.MediaInfo;
 import org.example.hmby.enumerate.CacheKey;
-import org.example.hmby.enumerate.ConfigKey;
 import org.example.hmby.enumerate.MediaStatus;
 import org.example.hmby.exception.BusinessException;
-import org.example.hmby.exception.ConfigNotFoundException;
 import org.example.hmby.repository.ConfigRepository;
 import org.example.hmby.service.MediaInfoService;
 import org.example.hmby.vo.MediaInfoDTO;
@@ -29,13 +26,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
@@ -45,7 +37,6 @@ public class MediaInfoController {
     private final MediaInfoService mediaInfoService;
 
     private final ConcurrentHashMap<Object, Object> localCache;
-    private final ConfigRepository configRepository;
 
     @PostMapping
     public Response<String> save(@RequestBody MediaInfoDTO mediaInfoDTO) {

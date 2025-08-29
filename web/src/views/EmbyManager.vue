@@ -78,9 +78,9 @@ const selectedItemId = ref(null);
 
 // 查询参数
 const queryParam = reactive({
-  parentId: "1551",
+  parentId: null,
   searchTerm: "",
-  tags: undefined,
+  tags: null,
   number: 1,
   size: 24,
 });
@@ -115,18 +115,15 @@ const handleClickItem = (item) => {
   }
 };
 
-// 生命周期
-onMounted(async () => {
-  await fetchLibraries();
-  await fetchData();
-});
-
 onActivated(async () => {
   const route = useRoute();
   if (route.query.tag) {
     queryParam.tags = route.query.tag;
     queryParam.parentId = null;
+  } else if (app.config?.default_library){
+    queryParam.parentId = app.config?.default_library
   }
+  fetchLibraries();
   await fetchData();
 });
 </script>

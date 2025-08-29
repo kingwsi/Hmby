@@ -18,7 +18,7 @@ public class UserContextHolder {
     }
     
     public static String getUsername(){
-        return Optional.ofNullable(useridHolder.get()).orElseThrow(() -> new RuntimeException("Unable to retrieve username"));
+        return Optional.ofNullable(usernameHolder.get()).orElseThrow(() -> new RuntimeException("Unable to retrieve username"));
     }
 
     public static void setUserid(String userid) {

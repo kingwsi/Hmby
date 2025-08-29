@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { theme } from 'ant-design-vue';
 import request from '@/utils/request';
+import router from '@/router';
 
 let listenerAdded = false;
 
@@ -10,11 +11,11 @@ export const useAppStore = defineStore('app', () => {
   const config = ref({})
   const isMobile = ref(false);
   const loading = ref(false);
-  const initializing = ref(false);
+  const initializing = ref(true); // Start as true, set to false after init
 
   // 用户认证状态
   const token = ref(localStorage.getItem('token') || '');
-  const username = ref('');
+  const username = ref(localStorage.getItem('username') || '');
   const isAuthenticated = computed(() => !!token.value);
 
   const checkMobile = () => {
@@ -25,7 +26,6 @@ export const useAppStore = defineStore('app', () => {
 
   const themeConfig = computed(() => ({
     token: {
-      // colorPrimary需要添加#前缀
       colorPrimary: '#52b54b',
       fontSize: 12,
       wireframe: false
@@ -34,76 +34,87 @@ export const useAppStore = defineStore('app', () => {
   }));
 
   const init = async () => {
-    if (typeof window === 'undefined' || listenerAdded) return;
-
-    initializing.value = true;
-    loading.value = true;
+    if (typeof window === 'undefined') return;
 
     try {
-      // 获取应用配置
-      if (localStorage.getItem('token')) {
-        const { data } = await request.get('/api/config');
-        data.dark = data.dark === 'true' || data.dark === true;
-        config.value = data;
+      // If a token exists, validate it and fetch user info + config
+      if (token.value) {
+        await fetchUser(); // This will throw on failure
       }
-
-      // 初始化移动端检测
-      checkMobile();
-      window.addEventListener('resize', checkMobile);
-      listenerAdded = true;
-
-      // 初始化用户状态
-      initUserState();
     } catch (error) {
-      console.error('应用初始化失败:', error);
+      console.error('应用初始化失败 (token可能无效): ', error.message);
+      // The 401 interceptor in request.js should handle the logout and redirect.
+      // We don't need to call logout() here again to avoid potential loops.
     } finally {
-      // 确保有足够的时间显示loading效果
+      if (!listenerAdded) {
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        listenerAdded = true;
+      }
+      // Ensure loading state is handled
       setTimeout(() => {
         loading.value = false;
         initializing.value = false;
       }, 300);
     }
   };
-  // 用户认证方法
+
+  // REFACTORED: login action
   const login = async (credentials) => {
+    // No try-catch. Let the error propagate to the UI component.
+    const response = await request.post('/api/auth/login', {
+      username: credentials.username,
+      password: credentials.password
+    });
+
+    // Save token
+    token.value = response.data;
+    localStorage.setItem('token', response.data);
+
+    // After successful login, fetch user details to confirm and store username
+    await fetchUser();
+  };
+
+  // NEW: Action to fetch user info based on token
+  const fetchUser = async () => {
     try {
-      loading.value = true;
-      const response = await request.post('/api/auth/login', {
-        username: credentials.username,
-        password: credentials.password
-      });
+      // The backend should return user details and config if the token is valid
+      const response = await request.get('/api/auth/userinfo');
+      const { data } = response;
 
-      // 保存token和用户信息
-      token.value = response.data;
-      localStorage.setItem('token', response.data);
-      username.value = credentials.username;
-      localStorage.setItem('username', credentials.username);
+      // Set username
+      username.value = data.username;
+      localStorage.setItem('username', data.username);
 
-      return { success: true };
+      if (data.config) {
+        config.value = data.config;
+      }
     } catch (error) {
-      console.error('登录失败:', error);
-      return { success: false, error: error.message || '登录失败' };
-    } finally {
-      loading.value = false;
+      console.error('获取用户信息和配置失败, token可能已失效');
+      // Re-throw the error to be caught by the caller (e.g., init or router guard)
+      throw error;
     }
   };
 
-  const logout = () => {
+  // REFACTORED: logout action
+  const logout = async () => {
     token.value = '';
     username.value = '';
     localStorage.removeItem('token');
     localStorage.removeItem('username');
+    
+    // Use replace to avoid adding to history.
+    // A small timeout can prevent race conditions with router guards.
+    setTimeout(() => {
+      router.replace('/login');
+    }, 10);
   };
 
-  // 初始化用户状态
-  const initUserState = () => {
-    const savedUsername = localStorage.getItem('username');
-    if (savedUsername && token.value) {
-      username.value = savedUsername;
-    }
+  const updateConfig = async (newConfig) => {
+    const response = await request.put('/api/config', newConfig);
+    config.value = { ...config.value, ...newConfig };
+    return response;
   };
-
-
 
   return {
     // 状态
@@ -121,6 +132,7 @@ export const useAppStore = defineStore('app', () => {
     init,
     login,
     logout,
-    initUserState,
+    fetchUser,
+    updateConfig,
   };
 });

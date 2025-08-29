@@ -11,7 +11,7 @@
     <div v-if="!image" class="empty-placeholder" @click="onRequestUpload">
       <div class="empty-placeholder-content">
         <upload-outlined />
-        <span>Click to Upload</span>
+        <span>选择图片</span>
       </div>
     </div>
     <template v-else>

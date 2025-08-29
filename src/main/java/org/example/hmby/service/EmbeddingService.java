@@ -9,18 +9,12 @@ import org.example.hmby.emby.ItemTag;
 import org.example.hmby.emby.MovieItem;
 import org.example.hmby.emby.PageWrapper;
 import org.example.hmby.emby.request.EmbyItemRequest;
-import org.example.hmby.entity.Config;
-import org.example.hmby.enumerate.CacheKey;
-import org.example.hmby.enumerate.ConfigKey;
-import org.example.hmby.repository.ConfigRepository;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
-import org.springframework.ai.vectorstore.pgvector.PgVectorStore;
 import org.springframework.stereotype.Service;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
