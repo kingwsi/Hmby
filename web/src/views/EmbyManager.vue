@@ -120,7 +120,7 @@ onActivated(async () => {
   if (route.query.tag) {
     queryParam.tags = route.query.tag;
     queryParam.parentId = null;
-  } else if (app.config?.defaultLibrary){
+  } else if (!queryParam.parentId && app.config?.defaultLibrary){
     queryParam.parentId = app.config?.defaultLibrary
   }
   fetchLibraries();

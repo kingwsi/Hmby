@@ -89,6 +89,7 @@ const handlePageChange = (page, size) => {
   queryParam.page = page;
   queryParam.size = size;
   fetchData(queryParam);
+  window.scrollTo({ top: 0, behavior: "smooth" });
 };
 
 const emit = defineEmits(["click"]);
