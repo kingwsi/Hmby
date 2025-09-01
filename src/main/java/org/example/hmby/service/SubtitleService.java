@@ -19,6 +19,7 @@ import org.example.hmby.enumerate.SubtitleStatus;
 import org.example.hmby.repository.ChatPromptRepository;
 import org.example.hmby.repository.MediaInfoRepository;
 import org.example.hmby.repository.SubtitleRepository;
+import org.example.hmby.sceurity.SecurityUtils;
 import org.example.hmby.utils.FixedSizeQueue;
 import org.example.hmby.utils.SRTParser;
 import org.example.hmby.utils.TaskManager;
@@ -27,6 +28,8 @@ import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.data.domain.Sort;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -265,8 +268,10 @@ public class SubtitleService {
         sseEmitter.onCompletion(() -> log.info("SSE completed"));
         sseEmitter.onTimeout(() -> log.warn("SSE timeout"));
         sseEmitter.onError(ex -> log.error("SSE error", ex));
+        SecurityContext securityContext = SecurityContextHolder.getContext();
         new Thread(() -> {
             try {
+                SecurityContextHolder.setContext(securityContext);
                 String prompt = chatPromptRepository.findById(2L).map(ChatPrompt::getPrompt).orElseThrow(() -> new RuntimeException("No prompt found: 1"));
                 if (prompt.contains(PromptPlaceholder.TRANS.getPlaceholder())) {
                     String placeholder = "None";
@@ -277,7 +282,7 @@ public class SubtitleService {
                 }
                 
 
-                ChatModel chatModel = chatModelService.createChatModel();
+                ChatModel chatModel = chatModelService.createChatModel(SecurityUtils.getUserId());
                 String result = chatModel
                         .call(SystemMessage.builder().text(prompt).build(), UserMessage.builder().text("{\"%s\":\"\"}".formatted(content)).build());
                 Map<String, String> map = objectMapper.readValue(result, new TypeReference<>() {

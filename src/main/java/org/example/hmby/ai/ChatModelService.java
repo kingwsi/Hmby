@@ -43,6 +43,17 @@ public class ChatModelService {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    public ChatModel createChatModel(String userid) {
+        String model_name = Optional.ofNullable(configRepository.findConfigByUserId((userid)))
+                .map(Config::getModelName)
+                .orElseThrow(() -> new ConfigNotFoundException("model_name"));
+
+
+        return OpenAiChatModel.builder()
+                .defaultOptions(OpenAiChatOptions.builder().model(model_name).build())
+                .openAiApi(this.getOpenaiApi(userid)).build();
+    }
+
     public ChatModel createChatModel() {
         String model_name = Optional.ofNullable(configRepository.findConfigBy())
                 .map(Config::getModelName)
@@ -52,6 +63,31 @@ public class ChatModelService {
         return OpenAiChatModel.builder()
                 .defaultOptions(OpenAiChatOptions.builder().model(model_name).build())
                 .openAiApi(this.getOpenaiApi()).build();
+    }
+
+    public OpenAiApi getOpenaiApi(String userid){
+        String openai_base_url = Optional.ofNullable(configRepository.findConfigByUserId((userid)))
+                .map(Config::getOpenaiBaseUrl)
+                .orElseThrow(() -> new ConfigNotFoundException("openai_base_url"));
+
+        return OpenAiApi.builder()
+                .baseUrl(openai_base_url)
+                .completionsPath("/chat/completions")
+                .embeddingsPath("/embeddings")
+                .apiKey(new NoopApiKey())
+                .webClientBuilder(WebClient.builder()
+                        // Force HTTP/1.1 for streaming
+                        .clientConnector(new JdkClientHttpConnector(HttpClient.newBuilder()
+                                .version(HttpClient.Version.HTTP_1_1)
+                                .connectTimeout(Duration.ofSeconds(100))
+                                .build())))
+                .restClientBuilder(RestClient.builder()
+                        // Force HTTP/1.1 for non-streaming
+                        .requestFactory(new JdkClientHttpRequestFactory(HttpClient.newBuilder()
+                                .version(HttpClient.Version.HTTP_1_1)
+                                .connectTimeout(Duration.ofSeconds(100))
+                                .build())))
+                .build();
     }
     
     public OpenAiApi getOpenaiApi(){

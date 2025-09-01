@@ -1,6 +1,11 @@
 package org.example.hmby.sceurity;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.Filter;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.AllArgsConstructor;
 import org.example.hmby.Response;
@@ -21,6 +26,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 
+import java.io.IOException;
 import java.util.List;
 
 @Configuration
@@ -44,6 +50,7 @@ public class SecurityConfig {
                 })
                 .authorizeHttpRequests(auth -> auth.anyRequest().permitAll()) // 允许所有 SSE 请求
                 .csrf(AbstractHttpConfigurer::disable)
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
     
